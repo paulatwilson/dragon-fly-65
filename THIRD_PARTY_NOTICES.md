@@ -27,3 +27,11 @@ Both `naken_asm` and DragonFly 65 are GPL-3.0 licensed, so code may be ported be
 Any source files in DragonFly 65 that are ported or substantially derived from `naken_asm`
 must preserve Michael Kohn's copyright notice, reference the upstream file path, and be noted
 in this file when first introduced.
+
+### Derived files
+
+- `src/assembler/table.ts` — The 256-entry W65C816 opcode table (mnemonic, addressing mode,
+  and opcode byte for each entry) is derived from `table/65816.cpp` and `table/65816.h` in
+  `naken_asm`. Michael Kohn's copyright notice is preserved in the file header. The addressing
+  mode enum and instruction mnemonic list follow the same structure as the upstream source.
+  The TypeScript implementation is original; the data values are ported.

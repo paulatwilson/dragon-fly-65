@@ -5,7 +5,8 @@
   "type": "module",
   "private": false,
   "exports": {
-    "./emulator": "./src/emulator/index.ts"
+    "./emulator": "./src/emulator/index.ts",
+    "./assembler": "./src/assembler/index.ts"
   },
   "license": "GPL-3.0-only",
   "author": "Paul Wilson",

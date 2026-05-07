@@ -43,6 +43,16 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 
 ### Create an original W65C832 assembler
 
+- [x] Core assembler (`src/assembler/`) — two-pass cross-assembler, 138 tests
+  - Full W65C816 + W65C832 instruction set (all 256 opcodes)
+  - Directives: `.org`, `.db`, `.dw`, `.dl`, `.ascii`, `.asciiz`, `.resb`, `.equ`, `.65816`, `.65832`, `.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`
+  - Address auto-selection (dp/abs/long) with `<`, `!`, `>` force modifiers
+  - Two-pass label resolution with forward reference support
+  - REP/SEP auto-track accumulator/index width for correct immediate encoding
+  - Opcode table derived from Michael Kohn's `naken_asm` (GPL-3.0, with attribution)
+- [ ] Assembler CLI / REPL interface
+- [ ] Disassembler
+
 - informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented
 - When porting from `naken_asm`, preserve Michael Kohn's copyright notice and document which parts are derived in `THIRD_PARTY_NOTICES.md`
 
