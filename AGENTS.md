@@ -19,6 +19,26 @@ The project is intended to become an open-source system that can run on Fly.io.
 
 ## Roadmap
 
+Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
+
+- [x] Chunk 0: Foundation.
+- [ ] Chunk 1: Execution core shape.
+- [ ] Chunk 2: Fetch helpers and immediate addressing.
+- [ ] Chunk 3: Load instructions.
+- [ ] Chunk 4: Store instructions.
+- [ ] Chunk 5: Transfers and register operations.
+- [ ] Chunk 6: Stack basics.
+- [ ] Chunk 7: Branches and jumps.
+- [ ] Chunk 8: Subroutines.
+- [ ] Chunk 9: ALU and comparisons.
+- [ ] Chunk 10: Addressing modes.
+- [ ] Chunk 11: Mode switching.
+- [ ] Chunk 12: Interrupts and vectors.
+- [ ] Chunk 13: Opcode family coverage pass.
+- [ ] Chunk 14: Timing metadata.
+- [ ] Chunk 15: Compatibility and validation.
+- [ ] Chunk 16: Public API hardening.
+
 1. Create the W65C832 emulator.
 2. Create an original W65C832 assembler informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented. Do not copy GPL-3.0 `naken_asm` source into MIT-licensed Dragon Fly 65 modules without an explicit licensing decision.
 3. Build a test rig to test the assembler.
