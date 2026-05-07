@@ -8,6 +8,7 @@ This document records the processor direction for Dragon Fly 65. The aim is to b
 - Mike Kohn FPGA core: <https://github.com/mikeakohn/w65c832>
 - Mike Kohn project notes: <https://www.mikekohn.net/micro/w65c832_fpga.php>
 - Compliance notes: `docs/compliance.md`
+- Emulator roadmap: `docs/emulator-roadmap.md`
 
 The WDC datasheet is the architectural reference. Mike Kohn's FPGA core is the practical implementation reference. When the two disagree, Dragon Fly 65 should document the disagreement before choosing behavior.
 
@@ -26,6 +27,8 @@ Initial implementation priorities:
 - Documented deviations from WDC or FPGA behavior.
 
 Cycle timing can be introduced later as a separate concern once functional behavior is stable.
+
+Implementation work should follow `docs/emulator-roadmap.md` so processor development stays chunked, testable, and resumable.
 
 ## Reusable Library Boundary
 

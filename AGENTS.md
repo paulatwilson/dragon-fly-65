@@ -13,6 +13,10 @@ The project is intended to become an open-source system that can run on Fly.io.
 - Run tests: `bun test`
 - Typecheck: `bun run typecheck`
 
+## Active Plans
+
+- Processor emulator chunks are tracked in `docs/emulator-roadmap.md`.
+
 ## Roadmap
 
 1. Create the W65C832 emulator.
@@ -28,6 +32,7 @@ The project is intended to become an open-source system that can run on Fly.io.
 ## Guidelines
 
 - Prefer small, focused changes that match the existing project structure.
+- Follow `docs/emulator-roadmap.md` when working on the W65C832 emulator. Complete one chunk at a time and keep tests close to the behavior being added.
 - Keep the W65C832 emulator reusable as an independent TypeScript library. Do not couple `src/emulator/` to Dragon Fly 65 OS, SSH, Fly.io, or server concerns.
 - Keep CPU clock behavior externally configurable. Dragon Fly 65's fictional 40 MHz variant belongs in app/machine config, while the reusable emulator only validates and reports supplied clock metadata.
 - Keep TypeScript strict and explicit around CPU, memory, operating system, and network state.
