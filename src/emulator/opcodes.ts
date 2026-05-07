@@ -290,6 +290,15 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     absoluteIndexedX(0xbd, "LDA", 4, (cpu, context) =>
       cpu.completeLoadAccumulatorAbsoluteIndexedX(context),
     ),
+    byteImmediate(0x00, "BRK", 7, (cpu, context) =>
+      cpu.completeBrkInstruction(context),
+    ),
+    byteImmediate(0x02, "COP", 7, (cpu, context) =>
+      cpu.completeCopInstruction(context),
+    ),
+    implied(0x40, "RTI", 6, (cpu, context) =>
+      cpu.completeReturnFromInterrupt(context),
+    ),
     byteImmediate(0xc2, "REP", 3, (cpu, context) =>
       cpu.completeResetProcessorStatus(context),
     ),

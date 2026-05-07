@@ -4,11 +4,15 @@ import {
   createCpu,
   createInitialCpuState,
   createRam,
+  EMU_COP_VECTOR,
+  EMU_IRQ_BRK_VECTOR,
+  EMU_NMI_VECTOR,
   getOpcodeDefinition,
   makeDataAddress,
   makeDirectAddress,
   makeProgramAddress,
   maskToWidth,
+  NATIVE_BRK_VECTOR,
   OPCODES,
   readLong,
   readWord,
@@ -202,7 +206,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(73);
+  expect(OPCODES.size).toBe(76);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -2156,4 +2160,259 @@ test("full mode sequence: W65C02 → W65C816 → W65C832 → W65C816 → W65C02"
   cpu.step();
   expect(cpu.readRegister("e8")).toBe(true);
   expect(cpu.readRegister("e16")).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 12: Interrupts and Vectors
+// ---------------------------------------------------------------------------
+
+test("BRK in emulation mode pushes PCH, PCL, P and jumps to IRQ/BRK vector", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  // BRK at address 0x0200 (default W65C02 emulation: E8=true, E16=true)
+  cpu.writeRegister("pc", 0x0200);
+  ram.writeByte(0x0200, 0x00); // BRK
+  ram.writeByte(0x0201, 0x00); // padding
+
+  // Install handler address at EMU_IRQ_BRK_VECTOR (0xFFFE)
+  writeWord(ram, EMU_IRQ_BRK_VECTOR, 0x0400);
+  cpu.writeRegister("p", StatusFlag.Carry);
+
+  const spBefore = Number(cpu.readRegister("sp")); // 0x01FF
+
+  const result = cpu.step();
+
+  expect(result).toMatchObject({
+    opcode: 0x00,
+    mnemonic: "BRK",
+    pcBefore: 0x0200,
+    pcAfter: 0x0400,
+    cycles: 7,
+  });
+
+  // PC after BRK+padding = 0x0202; pushed as PCH=0x02, PCL=0x02
+  expect(ram.readByte(spBefore)).toBe(0x02);      // PCH at top of stack
+  expect(ram.readByte(spBefore - 1)).toBe(0x02);  // PCL
+  expect(ram.readByte(spBefore - 2)).toBe(Number(cpu.readRegister("p")) === 0
+    ? StatusFlag.Carry | StatusFlag.InterruptDisable
+    : ram.readByte(spBefore - 2)); // P was pushed before I was set
+
+  // SP decreased by 3 (PCH, PCL, P)
+  expect(Number(cpu.readRegister("sp"))).toBe(spBefore - 3);
+
+  // I flag is set after BRK
+  expect(Number(cpu.readRegister("p")) & StatusFlag.InterruptDisable).toBe(
+    StatusFlag.InterruptDisable,
+  );
+
+  // PC now points to handler
+  expect(cpu.readRegister("pc")).toBe(0x0400);
+});
+
+test("BRK in emulation mode pushed P value has I flag clear (captured before set)", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("pc", 0x0300);
+  cpu.writeRegister("p", StatusFlag.Carry); // I is clear before BRK
+  ram.writeByte(0x0300, 0x00);
+  ram.writeByte(0x0301, 0x00);
+  writeWord(ram, EMU_IRQ_BRK_VECTOR, 0x0500);
+
+  const spBefore = Number(cpu.readRegister("sp"));
+  cpu.step();
+
+  // P that was pushed should reflect status BEFORE I was set
+  const pushedP = ram.readByte(spBefore - 2);
+  expect(pushedP & StatusFlag.InterruptDisable).toBe(0); // I was clear when pushed
+  expect(pushedP & StatusFlag.Carry).toBe(StatusFlag.Carry);
+});
+
+test("BRK in native mode pushes PBR, PCH, PCL, P and clears D flag", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  // Switch to W65C832 native mode
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("pc", 0x0200);
+  cpu.writeRegister("prb", 0x01);
+  cpu.writeRegister("sp", 0x0300);
+  cpu.writeRegister("p", StatusFlag.Decimal); // D set; should be cleared after
+
+  ram.writeByte(0x010200, 0x00); // BRK at PRB:PC = 0x010200
+  ram.writeByte(0x010201, 0x00);
+  writeWord(ram, NATIVE_BRK_VECTOR, 0x1000);
+
+  const result = cpu.step();
+
+  expect(result).toMatchObject({
+    opcode: 0x00,
+    mnemonic: "BRK",
+    pcAfter: 0x1000,
+    cycles: 8,
+  });
+
+  // Stack layout (top to bottom): PBR, PCH, PCL, P
+  expect(ram.readByte(0x0300)).toBe(0x01);  // PBR
+  expect(ram.readByte(0x02ff)).toBe(0x02);  // PCH (0x0202 >> 8)
+  expect(ram.readByte(0x02fe)).toBe(0x02);  // PCL (0x0202 & 0xff)
+  // P pushed (Decimal set at push time), sp=0x02FC after
+  expect(Number(cpu.readRegister("sp"))).toBe(0x02fc);
+
+  // D cleared, I set in current P
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Decimal).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.InterruptDisable).toBe(
+    StatusFlag.InterruptDisable,
+  );
+
+  // PRB set to 0
+  expect(cpu.readRegister("prb")).toBe(0);
+  expect(cpu.readRegister("pc")).toBe(0x1000);
+});
+
+test("RTI in emulation mode restores P and PC from stack", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  // Pre-load stack as if BRK pushed: PCH=0x03, PCL=0x10, P=Carry
+  const sp = 0x01fc;
+  cpu.writeRegister("sp", sp);
+  ram.writeByte(sp + 1, StatusFlag.Carry); // P
+  ram.writeByte(sp + 2, 0x10);             // PCL
+  ram.writeByte(sp + 3, 0x03);             // PCH
+
+  ram.writeByte(0, 0x40); // RTI at PC=0
+  const result = cpu.step();
+
+  expect(result).toMatchObject({
+    opcode: 0x40,
+    mnemonic: "RTI",
+    pcAfter: 0x0310,
+    cycles: 6,
+  });
+  expect(cpu.readRegister("pc")).toBe(0x0310);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("sp"))).toBe(0x01ff); // SP restored
+});
+
+test("RTI in native mode restores PBR, P, and PC from stack", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  const sp = 0x02fc;
+  cpu.writeRegister("sp", sp);
+
+  // Stack (lowest first, pulled first): P, PCL, PCH, PBR
+  ram.writeByte(sp + 1, StatusFlag.Carry); // P
+  ram.writeByte(sp + 2, 0x00);             // PCL
+  ram.writeByte(sp + 3, 0x05);             // PCH
+  ram.writeByte(sp + 4, 0x02);             // PBR
+
+  ram.writeByte(0, 0x40); // RTI
+  const result = cpu.step();
+
+  expect(result).toMatchObject({ cycles: 7, pcAfter: 0x020500 });
+  expect(cpu.readRegister("pc")).toBe(0x0500);
+  expect(cpu.readRegister("prb")).toBe(0x02);
+  expect(Number(cpu.readRegister("sp"))).toBe(0x0300);
+});
+
+test("BRK then RTI round-trip returns to instruction after BRK in emulation mode", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  // Program: BRK at 0x0200, handler NOP at 0x0400, RTI at 0x0401
+  cpu.writeRegister("pc", 0x0200);
+  ram.writeByte(0x0200, 0x00); // BRK
+  ram.writeByte(0x0201, 0x00); // padding
+  ram.writeByte(0x0202, 0xdb); // STP (should resume here after RTI)
+  writeWord(ram, EMU_IRQ_BRK_VECTOR, 0x0400);
+  ram.writeByte(0x0400, 0xea); // NOP (handler)
+  ram.writeByte(0x0401, 0x40); // RTI
+
+  cpu.step(); // BRK
+  expect(cpu.readRegister("pc")).toBe(0x0400);
+
+  cpu.step(); // NOP in handler
+  cpu.step(); // RTI
+
+  // Should resume at 0x0202 (byte after BRK+padding)
+  expect(cpu.readRegister("pc")).toBe(0x0202);
+
+  cpu.step(); // STP
+  expect(cpu.readRegister("stopped")).toBe(true);
+});
+
+test("COP uses COP vector, not BRK vector", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("pc", 0x0100);
+  ram.writeByte(0x0100, 0x02); // COP
+  ram.writeByte(0x0101, 0x00); // signature
+  writeWord(ram, EMU_COP_VECTOR, 0x0600);
+  writeWord(ram, EMU_IRQ_BRK_VECTOR, 0x0700);
+
+  const result = cpu.step();
+
+  expect(result).toMatchObject({ mnemonic: "COP", pcAfter: 0x0600 });
+  expect(cpu.readRegister("pc")).toBe(0x0600);
+});
+
+test("triggerIrq pushes stack frame with B=0 and jumps to IRQ vector", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("pc", 0x0500);
+  cpu.writeRegister("p", StatusFlag.Carry | StatusFlag.Index | StatusFlag.Memory);
+  writeWord(ram, EMU_IRQ_BRK_VECTOR, 0x0800);
+
+  const spBefore = Number(cpu.readRegister("sp"));
+  const result = cpu.triggerIrq();
+
+  expect(result).toMatchObject({ mnemonic: "IRQ", pcAfter: 0x0800, cycles: 7 });
+  expect(cpu.readRegister("pc")).toBe(0x0800);
+
+  // P pushed with bit 4 (B/Index) cleared
+  const pushedP = ram.readByte(spBefore - 2);
+  expect(pushedP & StatusFlag.Index).toBe(0); // B=0 for hardware IRQ
+  expect(pushedP & StatusFlag.Carry).toBe(StatusFlag.Carry); // other flags preserved
+});
+
+test("triggerNmi uses NMI vector and wakes a stopped CPU", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  // Stop the CPU first
+  cpu.writeRegister("pc", 0x0100);
+  ram.writeByte(0x0100, 0xdb); // STP
+  cpu.step();
+  expect(cpu.readRegister("stopped")).toBe(true);
+
+  writeWord(ram, EMU_NMI_VECTOR, 0x0900);
+  const result = cpu.triggerNmi();
+
+  expect(result).toMatchObject({ mnemonic: "NMI", pcAfter: 0x0900 });
+  expect(cpu.readRegister("pc")).toBe(0x0900);
+  expect(cpu.readRegister("stopped")).toBe(false);
+});
+
+test("native mode BRK uses native BRK vector, not emulation vector", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("pc", 0x0200);
+  ram.writeByte(0x0200, 0x00); // BRK
+  ram.writeByte(0x0201, 0x00);
+  writeWord(ram, NATIVE_BRK_VECTOR, 0x1100);
+  writeWord(ram, EMU_IRQ_BRK_VECTOR, 0x1200); // should NOT be used
+
+  const result = cpu.step();
+  expect(result.pcAfter).toBe(0x1100);
 });

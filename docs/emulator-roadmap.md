@@ -230,6 +230,8 @@ Definition of done:
 
 ## Chunk 12: Interrupts And Vectors
 
+Status: done.
+
 Goal: support reset, IRQ, NMI, BRK, COP, and ABORT behavior.
 
 Tasks:

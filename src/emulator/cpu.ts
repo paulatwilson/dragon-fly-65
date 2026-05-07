@@ -1,6 +1,15 @@
 import { createClockConfig, type ClockConfig } from "./clock";
 import {
   BYTE_MASK,
+  EMU_ABORT_VECTOR,
+  EMU_COP_VECTOR,
+  EMU_IRQ_BRK_VECTOR,
+  EMU_NMI_VECTOR,
+  NATIVE_ABORT_VECTOR,
+  NATIVE_BRK_VECTOR,
+  NATIVE_COP_VECTOR,
+  NATIVE_IRQ_VECTOR,
+  NATIVE_NMI_VECTOR,
   RESET_VECTOR_ADDRESS,
   type RegisterWidth,
   StatusFlag,
@@ -1036,6 +1045,178 @@ export class W65C832Cpu {
   completeCompareYImmediate(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeCompareInstruction(context, "y", index);
+  }
+
+  private interruptVector(native: number, emulation: number): number {
+    return this.state.e16 ? emulation : native;
+  }
+
+  private enterInterrupt(vector: number, clearBit4InEmulation: boolean): void {
+    const pToPush =
+      clearBit4InEmulation && this.state.e16
+        ? (this.state.p & ~StatusFlag.Index) & BYTE_MASK
+        : this.state.p & BYTE_MASK;
+
+    if (!this.state.e16) {
+      this.pushByte(this.state.prb);
+    }
+    this.pushByte((this.state.pc >> 8) & BYTE_MASK);
+    this.pushByte(this.state.pc & BYTE_MASK);
+    this.pushByte(pToPush);
+
+    setStatusFlag(this.state, StatusFlag.InterruptDisable, true);
+    if (!this.state.e16) {
+      setStatusFlag(this.state, StatusFlag.Decimal, false);
+    }
+
+    this.state.pc = readWord(this.memory, vector);
+    if (!this.state.e16) {
+      this.state.prb = 0;
+    }
+  }
+
+  private buildInterruptResult(
+    pcBefore: number,
+    mnemonic: string,
+    bytes: number[],
+    stackBefore: number,
+    statusBefore: number,
+    cycles: number,
+  ): StepResult {
+    const registerChanges: StepResult["registerChanges"] = {};
+    if (stackBefore !== this.state.sp) {
+      registerChanges.sp = { before: stackBefore, after: this.state.sp };
+    }
+    if (statusBefore !== this.state.p) {
+      registerChanges.p = { before: statusBefore, after: this.state.p };
+    }
+    return {
+      pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: bytes[0] ?? 0,
+      mnemonic,
+      bytes,
+      cycles,
+      stopped: false,
+      registerChanges,
+    };
+  }
+
+  private completeInterruptInstruction(
+    context: InstructionContext,
+    mnemonic: string,
+    nativeVector: number,
+    emuVector: number,
+  ): StepResult {
+    const isEmulation = this.state.e16;
+    const vector = this.interruptVector(nativeVector, emuVector);
+    const stackBefore = this.state.sp;
+    const statusBefore = this.state.p;
+    const cycles = isEmulation ? 7 : 8;
+
+    this.enterInterrupt(vector, false);
+    this.state.cycles += cycles;
+
+    return this.buildInterruptResult(
+      context.pcBefore,
+      mnemonic,
+      context.bytes,
+      stackBefore,
+      statusBefore,
+      cycles,
+    );
+  }
+
+  completeBrkInstruction(context: InstructionContext): StepResult {
+    return this.completeInterruptInstruction(
+      context, "BRK", NATIVE_BRK_VECTOR, EMU_IRQ_BRK_VECTOR,
+    );
+  }
+
+  completeCopInstruction(context: InstructionContext): StepResult {
+    return this.completeInterruptInstruction(
+      context, "COP", NATIVE_COP_VECTOR, EMU_COP_VECTOR,
+    );
+  }
+
+  completeReturnFromInterrupt(context: InstructionContext): StepResult {
+    const isEmulation = this.state.e16;
+    const stackBefore = this.state.sp;
+    const statusBefore = this.state.p;
+    const cycles = isEmulation ? 6 : 7;
+
+    this.state.p = this.pullByte() & BYTE_MASK;
+    const pcl = this.pullByte();
+    const pch = this.pullByte();
+    this.state.pc = ((pch << 8) | pcl) & WORD_MASK;
+    if (!isEmulation) {
+      this.state.prb = this.pullByte() & BYTE_MASK;
+    }
+    this.state.cycles += cycles;
+
+    const registerChanges: StepResult["registerChanges"] = {};
+    if (stackBefore !== this.state.sp) {
+      registerChanges.sp = { before: stackBefore, after: this.state.sp };
+    }
+    if (statusBefore !== this.state.p) {
+      registerChanges.p = { before: statusBefore, after: this.state.p };
+    }
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "RTI",
+      bytes: context.bytes,
+      cycles,
+      stopped: false,
+      registerChanges,
+    };
+  }
+
+  triggerIrq(): StepResult {
+    const isEmulation = this.state.e16;
+    const pcBefore = makeProgramAddress(this.state.prb, this.state.pc);
+    const vector = this.interruptVector(NATIVE_IRQ_VECTOR, EMU_IRQ_BRK_VECTOR);
+    const stackBefore = this.state.sp;
+    const statusBefore = this.state.p;
+    const cycles = isEmulation ? 7 : 8;
+
+    this.state.stopped = false;
+    this.enterInterrupt(vector, true); // clear bit 4 → hardware IRQ, not BRK
+    this.state.cycles += cycles;
+
+    return this.buildInterruptResult(pcBefore, "IRQ", [], stackBefore, statusBefore, cycles);
+  }
+
+  triggerNmi(): StepResult {
+    const isEmulation = this.state.e16;
+    const pcBefore = makeProgramAddress(this.state.prb, this.state.pc);
+    const vector = this.interruptVector(NATIVE_NMI_VECTOR, EMU_NMI_VECTOR);
+    const stackBefore = this.state.sp;
+    const statusBefore = this.state.p;
+    const cycles = isEmulation ? 7 : 8;
+
+    this.state.stopped = false;
+    this.enterInterrupt(vector, true);
+    this.state.cycles += cycles;
+
+    return this.buildInterruptResult(pcBefore, "NMI", [], stackBefore, statusBefore, cycles);
+  }
+
+  triggerAbort(): StepResult {
+    const isEmulation = this.state.e16;
+    const pcBefore = makeProgramAddress(this.state.prb, this.state.pc);
+    const vector = this.interruptVector(NATIVE_ABORT_VECTOR, EMU_ABORT_VECTOR);
+    const stackBefore = this.state.sp;
+    const statusBefore = this.state.p;
+    const cycles = isEmulation ? 7 : 8;
+
+    this.state.stopped = false;
+    this.enterInterrupt(vector, true);
+    this.state.cycles += cycles;
+
+    return this.buildInterruptResult(pcBefore, "ABORT", [], stackBefore, statusBefore, cycles);
   }
 
   private enforceIndexWidth(): void {
