@@ -19,6 +19,8 @@ The project is intended to become an open-source system that can run on Fly.io.
 
 ## Roadmap
 
+### Create the W65C832 emulator
+
 Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 
 - [x] Chunk 0: Foundation.
@@ -39,15 +41,24 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 - [ ] Chunk 15: Compatibility and validation.
 - [ ] Chunk 16: Public API hardening.
 
-1. Create the W65C832 emulator.
-2. Create an original W65C832 assembler informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented. Do not copy GPL-3.0 `naken_asm` source into MIT-licensed Dragon Fly 65 modules without an explicit licensing decision.
-3. Build a test rig to test the assembler.
-4. Build a basic monitor in W65C832 assembler.
-5. Build the SSH server for Dragon Fly 65.
-6. Deploy to Fly.io.
-7. Define Dragon Fly 65 (DF65).
-8. Create a custom language for DF65.
-9. Build DF65/OS in W65C832 using the custom language.
+### Create an original W65C832 assembler
+
+- informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented
+- Do not copy GPL-3.0 `naken_asm` source into MIT-licensed Dragon Fly 65 modules without an explicit licensing decision
+
+### Build a test rig to test the assembler
+
+### Build a basic monitor in W65C832 assembler
+
+### Build the SSH server for Dragon Fly 65
+
+### Deploy to Fly.io
+
+### Define Dragon Fly 65 (DF65)
+
+### Create a custom language for DF65
+
+### Build DF65/OS in W65C832 using the custom language.
 
 ## Guidelines
 
