@@ -494,7 +494,7 @@ test("STA absolute stores accumulator through the data bank", () => {
     mnemonic: "STA",
     bytes: [0x8d, 0x00, 0x20],
     pcAfter: 3,
-    cycles: 4,
+    cycles: 7,
     effectiveAddress: 0x022000,
   });
   expect(readLong(ram, 0x022000)).toBe(0x89ab_cdef);
@@ -526,7 +526,7 @@ test("STX and STY direct store index registers at active index width", () => {
     effectiveAddress: 0x0320,
   });
   expect(readWord(ram, 0x0320)).toBe(0x4567);
-  expect(cpu.readRegister("cycles")).toBe(6);
+  expect(cpu.readRegister("cycles")).toBe(8);
 });
 
 test("STX and STY absolute store index registers through the data bank", () => {
@@ -2888,4 +2888,261 @@ test("STX dp,Y stores X to direct page indexed by Y", () => {
   cpu.step();
 
   expect(ram.readByte(0x12)).toBe(0x77);
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 14: Timing Metadata
+// ---------------------------------------------------------------------------
+
+test("LDA immediate takes 2 cycles in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0, 0xa9); // LDA #
+  ram.writeByte(1, 0x42);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(2);
+});
+
+test("LDA immediate takes 3 cycles in 16-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true); // W65C816
+  cpu.writeRegister("p", 0x00); // M=0 = 16-bit acc
+  ram.writeByte(0, 0xa9); // LDA #
+  ram.writeByte(1, 0x34);
+  ram.writeByte(2, 0x12);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(3);
+});
+
+test("LDA immediate takes 5 cycles in 32-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("e16", false); // W65C832 native (e8=true, e16=false) = 32-bit
+  cpu.writeRegister("p", 0x00); // M=0 = 32-bit acc
+  ram.writeByte(0, 0xa9); // LDA #
+  ram.writeByte(1, 0x78);
+  ram.writeByte(2, 0x56);
+  ram.writeByte(3, 0x34);
+  ram.writeByte(4, 0x12);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(5);
+  expect(result.registerChanges?.a?.after).toBe(0x12345678);
+});
+
+test("LDX immediate takes 2 cycles in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0, 0xa2); // LDX #
+  ram.writeByte(1, 0x55);
+
+  expect(cpu.step().cycles).toBe(2);
+});
+
+test("LDX immediate takes 3 cycles in 16-bit index mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true); // W65C816
+  cpu.writeRegister("p", 0x00); // X=0 = 16-bit index
+  ram.writeByte(0, 0xa2); // LDX #
+  ram.writeByte(1, 0x34);
+  ram.writeByte(2, 0x12);
+
+  expect(cpu.step().cycles).toBe(3);
+});
+
+test("ADC immediate takes 2 cycles in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0, 0x69); // ADC #
+  ram.writeByte(1, 0x01);
+
+  expect(cpu.step().cycles).toBe(2);
+});
+
+test("ADC immediate takes 3 cycles in 16-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0x00);
+  ram.writeByte(0, 0x69); // ADC #
+  ram.writeByte(1, 0x01);
+  ram.writeByte(2, 0x00);
+
+  expect(cpu.step().cycles).toBe(3);
+});
+
+test("CMP immediate takes 2 cycles in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0, 0xc9); // CMP #
+  ram.writeByte(1, 0x00);
+
+  expect(cpu.step().cycles).toBe(2);
+});
+
+test("PHA takes 3 cycles in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0, 0x48); // PHA
+
+  expect(cpu.step().cycles).toBe(3);
+});
+
+test("PHA takes 4 cycles in 16-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0x00);
+  cpu.writeRegister("sp", 0x01ff);
+  ram.writeByte(0, 0x48); // PHA
+
+  expect(cpu.step().cycles).toBe(4);
+});
+
+test("LDA dp takes 3 cycles when DL=0 in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0x0000); // DL = 0
+  ram.writeByte(0x10, 0x42);
+  ram.writeByte(0, 0xa5); // LDA dp
+  ram.writeByte(1, 0x10);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(3);
+});
+
+test("LDA dp takes 4 cycles when DL!=0 in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0x0001); // DL = 1, non-zero
+  ram.writeByte(0x11, 0x42); // DL(1) + offset(0x10) = 0x11
+  ram.writeByte(0, 0xa5); // LDA dp
+  ram.writeByte(1, 0x10);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(4);
+});
+
+test("LDA dp takes 4 cycles in 16-bit mode with DL=0", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0x00); // M=0 = 16-bit acc
+  cpu.writeRegister("dr", 0x0000);
+  ram.writeByte(0x10, 0x34);
+  ram.writeByte(0x11, 0x12);
+  ram.writeByte(0, 0xa5); // LDA dp
+  ram.writeByte(1, 0x10);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(4);
+});
+
+test("LDA abs takes 4 cycles in 8-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0x50, 0x99);
+  ram.writeByte(0, 0xad); // LDA abs
+  ram.writeByte(1, 0x50);
+  ram.writeByte(2, 0x00);
+
+  expect(cpu.step().cycles).toBe(4);
+});
+
+test("LDA abs takes 5 cycles in 16-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0x00);
+  ram.writeByte(0x50, 0x34);
+  ram.writeByte(0x51, 0x12);
+  ram.writeByte(0, 0xad); // LDA abs
+  ram.writeByte(1, 0x50);
+  ram.writeByte(2, 0x00);
+
+  expect(cpu.step().cycles).toBe(5);
+});
+
+test("AND immediate takes 3 cycles in 16-bit mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0x00);
+  ram.writeByte(0, 0x29); // AND #
+  ram.writeByte(1, 0xff);
+  ram.writeByte(2, 0xff);
+
+  expect(cpu.step().cycles).toBe(3);
+});
+
+test("PHX takes 4 cycles in 16-bit index mode", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0x00); // X=0 = 16-bit index
+  cpu.writeRegister("sp", 0x01ff);
+  ram.writeByte(0, 0xda); // PHX
+
+  expect(cpu.step().cycles).toBe(4);
+});
+
+test("cycle totals accumulate across steps", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  // NOP (2) + NOP (2) + NOP (2)
+  ram.writeByte(0, 0xea);
+  ram.writeByte(1, 0xea);
+  ram.writeByte(2, 0xea);
+
+  cpu.step();
+  cpu.step();
+  cpu.step();
+
+  expect(cpu.readRegister("cycles")).toBe(6);
 });

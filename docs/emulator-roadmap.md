@@ -268,6 +268,8 @@ Definition of done:
 
 ## Chunk 14: Timing Metadata
 
+Status: done.
+
 Goal: add cycle metadata without forcing cycle-perfect execution too early.
 
 Tasks:

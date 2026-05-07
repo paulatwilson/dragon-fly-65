@@ -355,7 +355,8 @@ export class W65C832Cpu {
 
     this.state.a = value;
     updateNegativeZeroFlags(this.state, value, accumulator);
-    this.state.cycles += 2;
+    const cycles = 2 + this.accWidthPenalty();
+    this.state.cycles += cycles;
 
     return this.completeRegisterInstruction(
       context,
@@ -363,7 +364,7 @@ export class W65C832Cpu {
       before,
       value,
       statusBefore,
-      2,
+      cycles,
     );
   }
 
@@ -376,7 +377,8 @@ export class W65C832Cpu {
 
     this.state.x = value;
     updateNegativeZeroFlags(this.state, value, index);
-    this.state.cycles += 2;
+    const cycles = 2 + this.idxWidthPenalty();
+    this.state.cycles += cycles;
 
     return this.completeRegisterInstruction(
       context,
@@ -384,7 +386,7 @@ export class W65C832Cpu {
       before,
       value,
       statusBefore,
-      2,
+      cycles,
     );
   }
 
@@ -397,7 +399,8 @@ export class W65C832Cpu {
 
     this.state.y = value;
     updateNegativeZeroFlags(this.state, value, index);
-    this.state.cycles += 2;
+    const cycles = 2 + this.idxWidthPenalty();
+    this.state.cycles += cycles;
 
     return this.completeRegisterInstruction(
       context,
@@ -405,186 +408,187 @@ export class W65C832Cpu {
       before,
       value,
       statusBefore,
-      2,
+      cycles,
     );
   }
 
   completeStoreAccumulatorDirect(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveDirectAddress(context.operandBytes), this.state.a, accumulator, 3,
+      context, this.resolveDirectAddress(context.operandBytes), this.state.a, accumulator, 3 + this.accWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeStoreAccumulatorAbsolute(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.a, accumulator, 4,
+      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.a, accumulator, 4 + this.accWidthPenalty(),
     );
   }
 
   completeStoreAccumulatorDirectIndexedX(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveDirectIndexedXAddress(context.operandBytes), this.state.a, accumulator, 4,
+      context, this.resolveDirectIndexedXAddress(context.operandBytes), this.state.a, accumulator, 4 + this.accWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeStoreAccumulatorAbsoluteIndexedX(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveAbsoluteIndexedXAddress(context.operandBytes), this.state.a, accumulator, 5,
+      context, this.resolveAbsoluteIndexedXAddress(context.operandBytes), this.state.a, accumulator, 5 + this.accWidthPenalty(),
     );
   }
 
   completeStoreAccumulatorAbsoluteIndexedY(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveAbsoluteIndexedYAddress(context.operandBytes), this.state.a, accumulator, 5,
+      context, this.resolveAbsoluteIndexedYAddress(context.operandBytes), this.state.a, accumulator, 5 + this.accWidthPenalty(),
     );
   }
 
   completeStoreAccumulatorLong(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveLongAbsoluteAddress(context.operandBytes), this.state.a, accumulator, 5,
+      context, this.resolveLongAbsoluteAddress(context.operandBytes), this.state.a, accumulator, 5 + this.accWidthPenalty(),
     );
   }
 
   completeStoreAccumulatorIndirect(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveIndirectAddress(context.operandBytes), this.state.a, accumulator, 5,
+      context, this.resolveIndirectAddress(context.operandBytes), this.state.a, accumulator, 5 + this.accWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeStoreAccumulatorStackRelative(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveStackRelativeAddress(context.operandBytes), this.state.a, accumulator, 4,
+      context, this.resolveStackRelativeAddress(context.operandBytes), this.state.a, accumulator, 4 + this.accWidthPenalty(),
     );
   }
 
   completeStoreXDirect(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveDirectAddress(context.operandBytes), this.state.x, index, 3,
+      context, this.resolveDirectAddress(context.operandBytes), this.state.x, index, 3 + this.idxWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeStoreXAbsolute(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.x, index, 4,
+      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.x, index, 4 + this.idxWidthPenalty(),
     );
   }
 
   completeStoreYDirect(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveDirectAddress(context.operandBytes), this.state.y, index, 3,
+      context, this.resolveDirectAddress(context.operandBytes), this.state.y, index, 3 + this.idxWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeStoreYAbsolute(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.y, index, 4,
+      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.y, index, 4 + this.idxWidthPenalty(),
     );
   }
 
   completeLoadAccumulatorDirect(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveDirectAddress(context.operandBytes), 3,
+      context, "a", accumulator, this.resolveDirectAddress(context.operandBytes), 3 + this.accWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeLoadAccumulatorAbsolute(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveAbsoluteAddress(context.operandBytes), 4,
+      context, "a", accumulator, this.resolveAbsoluteAddress(context.operandBytes), 4 + this.accWidthPenalty(),
     );
   }
 
   completeLoadAccumulatorDirectIndexedX(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveDirectIndexedXAddress(context.operandBytes), 4,
+      context, "a", accumulator, this.resolveDirectIndexedXAddress(context.operandBytes), 4 + this.accWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeLoadAccumulatorAbsoluteIndexedX(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveAbsoluteIndexedXAddress(context.operandBytes), 4,
+      context, "a", accumulator, this.resolveAbsoluteIndexedXAddress(context.operandBytes), 4 + this.accWidthPenalty(),
     );
   }
 
   completeLoadAccumulatorAbsoluteIndexedY(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveAbsoluteIndexedYAddress(context.operandBytes), 4,
+      context, "a", accumulator, this.resolveAbsoluteIndexedYAddress(context.operandBytes), 4 + this.accWidthPenalty(),
     );
   }
 
   completeLoadAccumulatorLong(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveLongAbsoluteAddress(context.operandBytes), 5,
+      context, "a", accumulator, this.resolveLongAbsoluteAddress(context.operandBytes), 5 + this.accWidthPenalty(),
     );
   }
 
   completeLoadAccumulatorIndirect(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveIndirectAddress(context.operandBytes), 5,
+      context, "a", accumulator, this.resolveIndirectAddress(context.operandBytes), 5 + this.accWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeLoadAccumulatorStackRelative(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "a", accumulator, this.resolveStackRelativeAddress(context.operandBytes), 4,
+      context, "a", accumulator, this.resolveStackRelativeAddress(context.operandBytes), 4 + this.accWidthPenalty(),
     );
   }
 
   completeLoadXDirect(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "x", index, this.resolveDirectAddress(context.operandBytes), 3,
+      context, "x", index, this.resolveDirectAddress(context.operandBytes), 3 + this.idxWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeLoadXAbsolute(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "x", index, this.resolveAbsoluteAddress(context.operandBytes), 4,
+      context, "x", index, this.resolveAbsoluteAddress(context.operandBytes), 4 + this.idxWidthPenalty(),
     );
   }
 
   completeLoadYDirect(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "y", index, this.resolveDirectAddress(context.operandBytes), 3,
+      context, "y", index, this.resolveDirectAddress(context.operandBytes), 3 + this.idxWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeLoadYAbsolute(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "y", index, this.resolveAbsoluteAddress(context.operandBytes), 4,
+      context, "y", index, this.resolveAbsoluteAddress(context.operandBytes), 4 + this.idxWidthPenalty(),
     );
   }
 
   completePushAccumulator(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     const stackBefore = this.state.sp;
+    const cycles = 3 + this.accWidthPenalty();
 
     this.pushValue(this.state.a, accumulator);
-    this.state.cycles += 3;
+    this.state.cycles += cycles;
 
-    return this.completeStackInstruction(context, stackBefore, 3);
+    return this.completeStackInstruction(context, stackBefore, cycles);
   }
 
   completePullAccumulator(context: InstructionContext): StepResult {
@@ -592,13 +596,14 @@ export class W65C832Cpu {
     const stackBefore = this.state.sp;
     const accumulatorBefore = this.state.a;
     const statusBefore = this.state.p;
+    const cycles = 4 + this.accWidthPenalty();
     const value = this.pullValue(accumulator);
 
     this.state.a = value;
     updateNegativeZeroFlags(this.state, value, accumulator);
-    this.state.cycles += 4;
+    this.state.cycles += cycles;
 
-    return this.completeStackInstruction(context, stackBefore, 4, {
+    return this.completeStackInstruction(context, stackBefore, cycles, {
       a:
         accumulatorBefore === value
           ? undefined
@@ -1374,8 +1379,9 @@ export class W65C832Cpu {
     const a = maskToWidth(this.state.a, accumulator);
     const statusBefore = this.state.p;
 
+    const cycles = 2 + this.accWidthPenalty();
     setStatusFlag(this.state, StatusFlag.Zero, (a & value) === 0);
-    this.state.cycles += 2;
+    this.state.cycles += cycles;
 
     const registerChanges: StepResult["registerChanges"] = {};
     if (statusBefore !== this.state.p) registerChanges.p = { before: statusBefore, after: this.state.p };
@@ -1383,7 +1389,7 @@ export class W65C832Cpu {
       pcBefore: context.pcBefore,
       pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
       opcode: context.opcode, mnemonic: "BIT",
-      bytes: context.bytes, cycles: 2, stopped: false, registerChanges,
+      bytes: context.bytes, cycles, stopped: false, registerChanges,
     };
   }
 
@@ -1410,10 +1416,10 @@ export class W65C832Cpu {
   }
 
   completeBitDirect(context: InstructionContext): StepResult {
-    return this.completeBitMemory(context, this.resolveDirectAddress(context.operandBytes), 3);
+    return this.completeBitMemory(context, this.resolveDirectAddress(context.operandBytes), 3 + this.accWidthPenalty() + this.dpPenalty());
   }
   completeBitAbsolute(context: InstructionContext): StepResult {
-    return this.completeBitMemory(context, this.resolveAbsoluteAddress(context.operandBytes), 4);
+    return this.completeBitMemory(context, this.resolveAbsoluteAddress(context.operandBytes), 4 + this.accWidthPenalty());
   }
 
   private completeTestBitsInstruction(
@@ -1536,10 +1542,10 @@ export class W65C832Cpu {
   }
 
   completeStoreZeroDirect(context: InstructionContext): StepResult {
-    return this.completeStoreZero(context, this.resolveDirectAddress(context.operandBytes), 3);
+    return this.completeStoreZero(context, this.resolveDirectAddress(context.operandBytes), 3 + this.accWidthPenalty() + this.dpPenalty());
   }
   completeStoreZeroAbsolute(context: InstructionContext): StepResult {
-    return this.completeStoreZero(context, this.resolveAbsoluteAddress(context.operandBytes), 4);
+    return this.completeStoreZero(context, this.resolveAbsoluteAddress(context.operandBytes), 4 + this.accWidthPenalty());
   }
 
   // --- Push/pull X, Y, B, D, K ----------------------------------------------
@@ -1547,9 +1553,10 @@ export class W65C832Cpu {
   completePushX(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     const stackBefore = this.state.sp;
+    const cycles = 3 + this.idxWidthPenalty();
     this.pushValue(this.state.x, index);
-    this.state.cycles += 3;
-    return this.completeStackInstruction(context, stackBefore, 3);
+    this.state.cycles += cycles;
+    return this.completeStackInstruction(context, stackBefore, cycles);
   }
 
   completePullX(context: InstructionContext): StepResult {
@@ -1557,11 +1564,12 @@ export class W65C832Cpu {
     const stackBefore = this.state.sp;
     const before = this.state.x;
     const statusBefore = this.state.p;
+    const cycles = 4 + this.idxWidthPenalty();
     const value = this.pullValue(index);
     this.state.x = value;
     updateNegativeZeroFlags(this.state, value, index);
-    this.state.cycles += 4;
-    return this.completeStackInstruction(context, stackBefore, 4, {
+    this.state.cycles += cycles;
+    return this.completeStackInstruction(context, stackBefore, cycles, {
       x: before === value ? undefined : { before, after: value },
       p: statusBefore === this.state.p ? undefined : { before: statusBefore, after: this.state.p },
     });
@@ -1570,9 +1578,10 @@ export class W65C832Cpu {
   completePushY(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     const stackBefore = this.state.sp;
+    const cycles = 3 + this.idxWidthPenalty();
     this.pushValue(this.state.y, index);
-    this.state.cycles += 3;
-    return this.completeStackInstruction(context, stackBefore, 3);
+    this.state.cycles += cycles;
+    return this.completeStackInstruction(context, stackBefore, cycles);
   }
 
   completePullY(context: InstructionContext): StepResult {
@@ -1580,11 +1589,12 @@ export class W65C832Cpu {
     const stackBefore = this.state.sp;
     const before = this.state.y;
     const statusBefore = this.state.p;
+    const cycles = 4 + this.idxWidthPenalty();
     const value = this.pullValue(index);
     this.state.y = value;
     updateNegativeZeroFlags(this.state, value, index);
-    this.state.cycles += 4;
-    return this.completeStackInstruction(context, stackBefore, 4, {
+    this.state.cycles += cycles;
+    return this.completeStackInstruction(context, stackBefore, cycles, {
       y: before === value ? undefined : { before, after: value },
       p: statusBefore === this.state.p ? undefined : { before: statusBefore, after: this.state.p },
     });
@@ -1736,14 +1746,14 @@ export class W65C832Cpu {
     const { accumulator } = resolveWidthMode(this.state);
     const address = this.resolveDirectAddress(context.operandBytes);
     const operand = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
-    return this.completeAdderInstruction(context, operand, accumulator);
+    return this.completeAdderInstruction(context, operand, accumulator, 3 + this.dpPenalty());
   }
 
   completeSubtractWithCarryDirect(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     const address = this.resolveDirectAddress(context.operandBytes);
     const raw = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
-    return this.completeAdderInstruction(context, (~raw) & maskForWidth(accumulator), accumulator);
+    return this.completeAdderInstruction(context, (~raw) & maskForWidth(accumulator), accumulator, 3 + this.dpPenalty());
   }
 
   completeAndDirect(context: InstructionContext): StepResult {
@@ -1773,14 +1783,15 @@ export class W65C832Cpu {
     const operand = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
     const regValue = maskToWidth(this.state.a, accumulator);
     const statusBefore = this.state.p;
+    const cycles = 3 + this.accWidthPenalty() + this.dpPenalty();
     updateNegativeZeroFlags(this.state, maskToWidth(regValue - operand, accumulator), accumulator);
     setStatusFlag(this.state, StatusFlag.Carry, regValue >= operand);
-    this.state.cycles += 3;
+    this.state.cycles += cycles;
     const registerChanges: StepResult["registerChanges"] = {};
     if (statusBefore !== this.state.p) registerChanges.p = { before: statusBefore, after: this.state.p };
     return {
       pcBefore: context.pcBefore, pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
-      opcode: context.opcode, mnemonic: "CMP", bytes: context.bytes, cycles: 3, stopped: false, registerChanges,
+      opcode: context.opcode, mnemonic: "CMP", bytes: context.bytes, cycles, stopped: false, registerChanges,
     };
   }
 
@@ -1790,14 +1801,15 @@ export class W65C832Cpu {
     const operand = maskToWidth(this.readMemoryValue(address, index), index);
     const regValue = maskToWidth(this.state.x, index);
     const statusBefore = this.state.p;
+    const cycles = 3 + this.idxWidthPenalty() + this.dpPenalty();
     updateNegativeZeroFlags(this.state, maskToWidth(regValue - operand, index), index);
     setStatusFlag(this.state, StatusFlag.Carry, regValue >= operand);
-    this.state.cycles += 3;
+    this.state.cycles += cycles;
     const registerChanges: StepResult["registerChanges"] = {};
     if (statusBefore !== this.state.p) registerChanges.p = { before: statusBefore, after: this.state.p };
     return {
       pcBefore: context.pcBefore, pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
-      opcode: context.opcode, mnemonic: "CPX", bytes: context.bytes, cycles: 3, stopped: false, registerChanges,
+      opcode: context.opcode, mnemonic: "CPX", bytes: context.bytes, cycles, stopped: false, registerChanges,
     };
   }
 
@@ -1807,14 +1819,15 @@ export class W65C832Cpu {
     const operand = maskToWidth(this.readMemoryValue(address, index), index);
     const regValue = maskToWidth(this.state.y, index);
     const statusBefore = this.state.p;
+    const cycles = 3 + this.idxWidthPenalty() + this.dpPenalty();
     updateNegativeZeroFlags(this.state, maskToWidth(regValue - operand, index), index);
     setStatusFlag(this.state, StatusFlag.Carry, regValue >= operand);
-    this.state.cycles += 3;
+    this.state.cycles += cycles;
     const registerChanges: StepResult["registerChanges"] = {};
     if (statusBefore !== this.state.p) registerChanges.p = { before: statusBefore, after: this.state.p };
     return {
       pcBefore: context.pcBefore, pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
-      opcode: context.opcode, mnemonic: "CPY", bytes: context.bytes, cycles: 3, stopped: false, registerChanges,
+      opcode: context.opcode, mnemonic: "CPY", bytes: context.bytes, cycles, stopped: false, registerChanges,
     };
   }
 
@@ -1823,14 +1836,14 @@ export class W65C832Cpu {
   completeLoadXDirectIndexedY(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
-      context, "x", index, this.resolveDirectIndexedYAddress(context.operandBytes), 4,
+      context, "x", index, this.resolveDirectIndexedYAddress(context.operandBytes), 4 + this.idxWidthPenalty() + this.dpPenalty(),
     );
   }
 
   completeStoreXDirectIndexedY(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
-      context, this.resolveDirectIndexedYAddress(context.operandBytes), this.state.x, index, 4,
+      context, this.resolveDirectIndexedYAddress(context.operandBytes), this.state.x, index, 4 + this.idxWidthPenalty() + this.dpPenalty(),
     );
   }
 
@@ -1892,13 +1905,14 @@ export class W65C832Cpu {
   ): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     const operand = maskToWidth(this.readBytesValue(context.operandBytes), accumulator);
-    return this.completeBitwiseOnValue(context, operand, fn, accumulator, 2);
+    return this.completeBitwiseOnValue(context, operand, fn, accumulator, 2 + this.accWidthPenalty());
   }
 
   private completeAdderInstruction(
     context: InstructionContext,
     operand: number,
     accumulator: RegisterWidth,
+    baseCycles = 2,
   ): StepResult {
     const mask = maskForWidth(accumulator);
     const a = maskToWidth(this.state.a, accumulator);
@@ -1918,7 +1932,8 @@ export class W65C832Cpu {
       StatusFlag.Overflow,
       ((~(a ^ operand) & (a ^ result)) & signBit) !== 0,
     );
-    this.state.cycles += 2;
+    const cycles = baseCycles + this.accWidthPenalty();
+    this.state.cycles += cycles;
 
     return this.completeRegisterInstruction(
       context,
@@ -1926,7 +1941,7 @@ export class W65C832Cpu {
       before,
       result,
       statusBefore,
-      2,
+      cycles,
     );
   }
 
@@ -1942,9 +1957,10 @@ export class W65C832Cpu {
     const regValue = maskToWidth(this.state[register], width);
     const statusBefore = this.state.p;
 
+    const cycles = 2 + this.widthPenalty(width);
     updateNegativeZeroFlags(this.state, maskToWidth(regValue - operand, width), width);
     setStatusFlag(this.state, StatusFlag.Carry, regValue >= operand);
-    this.state.cycles += 2;
+    this.state.cycles += cycles;
 
     // Register is unchanged; only status may change
     return this.completeRegisterInstruction(
@@ -1953,7 +1969,7 @@ export class W65C832Cpu {
       this.state[register],
       this.state[register],
       statusBefore,
-      2,
+      cycles,
     );
   }
 
@@ -2072,6 +2088,22 @@ export class W65C832Cpu {
     }
 
     return (this.state.sp + delta) & WORD_MASK;
+  }
+
+  private widthPenalty(width: RegisterWidth): number {
+    return width === 8 ? 0 : width === 16 ? 1 : 3;
+  }
+
+  private accWidthPenalty(): number {
+    return this.widthPenalty(resolveWidthMode(this.state).accumulator);
+  }
+
+  private idxWidthPenalty(): number {
+    return this.widthPenalty(resolveWidthMode(this.state).index);
+  }
+
+  private dpPenalty(): number {
+    return (this.state.dr & 0xff) !== 0 ? 1 : 0;
   }
 }
 
