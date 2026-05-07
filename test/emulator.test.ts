@@ -145,7 +145,7 @@ test("CPU fetchLong reads little-endian values from program space", () => {
 });
 
 test("CPU immediate fetch helpers follow active accumulator and index widths", () => {
-  const ram = createRam(64);
+  const ram = createRam(128);
   const cpu = createCpu({ memory: ram });
 
   ram.writeByte(0, 0x7f);
@@ -180,6 +180,25 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
   ram.writeByte(17, 0xab);
   expect(cpu.fetchIndexImmediate()).toBe(0xabcd);
   expect(cpu.readRegister("pc")).toBe(18);
+
+  cpu.writeRegister("pc", 24);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(24, 0x42);
+  expect(cpu.fetchIndexImmediate()).toBe(0x42);
+  expect(cpu.readRegister("pc")).toBe(25);
+
+  cpu.writeRegister("pc", 32);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(32, 0xef);
+  ram.writeByte(33, 0xbe);
+  ram.writeByte(34, 0xad);
+  ram.writeByte(35, 0xde);
+  expect(cpu.fetchIndexImmediate()).toBe(0xdead_beef);
+  expect(cpu.readRegister("pc")).toBe(36);
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
