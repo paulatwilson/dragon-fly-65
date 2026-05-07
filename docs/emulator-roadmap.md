@@ -248,6 +248,8 @@ Definition of done:
 
 ## Chunk 13: Coverage Pass For Opcode Families
 
+Status: done.
+
 Goal: fill in remaining opcode families systematically.
 
 Tasks:

@@ -206,7 +206,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(76);
+  expect(OPCODES.size).toBe(128);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -2415,4 +2415,477 @@ test("native mode BRK uses native BRK vector, not emulation vector", () => {
 
   const result = cpu.step();
   expect(result.pcAfter).toBe(0x1100);
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 13: Coverage Pass for Opcode Families
+// ---------------------------------------------------------------------------
+
+// --- Shifts and rotates -----------------------------------------------------
+
+test("ASL accumulator shifts left, sets carry from MSB and updates N/Z", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0b1010_0101); // bit 7 set → carry out
+  ram.writeByte(0, 0x0a); // ASL A
+
+  cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0b0100_1010);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+});
+
+test("LSR direct shifts memory right, sets carry from LSB", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0x00);
+  ram.writeByte(0x10, 0b1001_0011); // bit 0 set → carry out
+  ram.writeByte(0, 0x46); // LSR dp
+  ram.writeByte(1, 0x10);
+
+  cpu.step();
+
+  expect(ram.readByte(0x10)).toBe(0b0100_1001);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+});
+
+test("ROL accumulator rotates left through carry", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+  cpu.writeRegister("a", 0b0100_0000); // bit 7 clear → no new carry
+  ram.writeByte(0, 0x2a); // ROL A
+
+  cpu.step();
+
+  // result = 0b1000_0001 (old carry bit rotated into bit 0)
+  expect(cpu.readRegister("a")).toBe(0b1000_0001);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(StatusFlag.Negative);
+});
+
+test("ROR absolute rotates memory right through carry", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("drb", 0);
+  ram.writeByte(0x2000, 0b0000_0001); // bit 0 → carry out; carry in = 0
+  ram.writeByte(0, 0x6e); // ROR abs
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x20);
+
+  cpu.step();
+
+  expect(ram.readByte(0x2000)).toBe(0b0000_0000);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+});
+
+test("ASL accumulator in 16-bit mode shifts 16 bits", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0); // M=0 → 16-bit accumulator
+  cpu.writeRegister("a", 0x8001); // MSB set → carry
+  ram.writeByte(0, 0x0a);
+
+  cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x0002);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+});
+
+// --- Bit tests --------------------------------------------------------------
+
+test("BIT immediate sets Zero when A AND operand is zero (does not touch N/V)", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x0f);
+  ram.writeByte(0, 0x89); // BIT imm
+  ram.writeByte(1, 0xf0); // A & 0xf0 = 0 → Z set
+
+  cpu.step();
+
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+  // N and V should NOT be set by immediate BIT
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(0);
+});
+
+test("BIT direct sets N from bit 7 and V from bit 6 of memory value", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0);
+  cpu.writeRegister("a", 0xff); // A & mem != 0 → Z clear
+  ram.writeByte(0x10, 0b1100_0001); // bit 7 = N, bit 6 = V
+  ram.writeByte(0, 0x24); // BIT dp
+  ram.writeByte(1, 0x10);
+
+  cpu.step();
+
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(StatusFlag.Negative);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(StatusFlag.Overflow);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+});
+
+test("TSB direct sets bits in memory and sets Z from A AND original memory", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0);
+  cpu.writeRegister("a", 0x0f);
+  ram.writeByte(0x20, 0xf0); // A & mem = 0 → Z set; mem becomes 0xff
+  ram.writeByte(0, 0x04); // TSB dp
+  ram.writeByte(1, 0x20);
+
+  cpu.step();
+
+  expect(ram.readByte(0x20)).toBe(0xff);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+});
+
+test("TRB direct clears bits in memory", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0);
+  cpu.writeRegister("a", 0x0f); // clears lower nibble
+  ram.writeByte(0x30, 0xff);
+  ram.writeByte(0, 0x14); // TRB dp
+  ram.writeByte(1, 0x30);
+
+  cpu.step();
+
+  expect(ram.readByte(0x30)).toBe(0xf0);
+  // A & original = 0x0f != 0 → Z clear
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+});
+
+// --- Read-modify-write ------------------------------------------------------
+
+test("INC accumulator increments A and wraps", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0xff);
+  ram.writeByte(0, 0x1a); // INC A
+
+  cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x00);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+});
+
+test("DEC direct decrements memory value", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0);
+  ram.writeByte(0x10, 0x05);
+  ram.writeByte(0, 0xc6); // DEC dp
+  ram.writeByte(1, 0x10);
+
+  cpu.step();
+
+  expect(ram.readByte(0x10)).toBe(0x04);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+});
+
+test("STZ absolute writes zero to memory using accumulator width", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  // 16-bit accumulator mode
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0); // M=0 → 16-bit
+  cpu.writeRegister("drb", 0);
+  ram.writeByte(0x2000, 0xab);
+  ram.writeByte(0x2001, 0xcd);
+  ram.writeByte(0, 0x9c); // STZ abs
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x20);
+
+  cpu.step();
+
+  expect(ram.readByte(0x2000)).toBe(0x00);
+  expect(ram.readByte(0x2001)).toBe(0x00);
+});
+
+// --- Block moves ------------------------------------------------------------
+
+test("MVN copies block forward incrementing X and Y", () => {
+  const ram = createRam(0x20000); // 128KB for two banks
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  // Copy 3 bytes (A = 2 = count-1) from bank 0 addr 0x0100 to bank 1 addr 0x0200
+  cpu.writeRegister("a", 2);
+  cpu.writeRegister("x", 0x0100);
+  cpu.writeRegister("y", 0x0200);
+  writeWord(ram, 0x000100, 0xBEEF); // 0xEF at 0x100, 0xBE at 0x101
+  ram.writeByte(0x000102, 0xAB);
+
+  ram.writeByte(0, 0x54); // MVN
+  ram.writeByte(1, 0x01); // dst bank
+  ram.writeByte(2, 0x00); // src bank
+
+  cpu.step();
+
+  expect(ram.readByte(0x010200)).toBe(0xef);
+  expect(ram.readByte(0x010201)).toBe(0xbe);
+  expect(ram.readByte(0x010202)).toBe(0xab);
+  expect(cpu.readRegister("x")).toBe(0x0103);
+  expect(cpu.readRegister("y")).toBe(0x0203);
+  expect(Number(cpu.readRegister("drb"))).toBe(0x01);
+});
+
+test("MVP copies block backward decrementing X and Y", () => {
+  const ram = createRam(0x20000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 1); // 2 bytes
+  cpu.writeRegister("x", 0x0101); // source end (high address first)
+  cpu.writeRegister("y", 0x0201);
+  ram.writeByte(0x000101, 0x22);
+  ram.writeByte(0x000100, 0x11);
+
+  ram.writeByte(0, 0x44); // MVP
+  ram.writeByte(1, 0x00); // dst bank 0
+  ram.writeByte(2, 0x00); // src bank 0
+
+  cpu.step();
+
+  expect(ram.readByte(0x000201)).toBe(0x22);
+  expect(ram.readByte(0x000200)).toBe(0x11);
+});
+
+// --- Push/pull variants -----------------------------------------------------
+
+test("PHX and PLX round-trip preserves X and updates flags", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("x", 0x42);
+  ram.writeByte(0, 0xda); // PHX
+  ram.writeByte(1, 0xfa); // PLX
+
+  cpu.step(); // PHX
+  cpu.writeRegister("x", 0x00); // clobber X
+  cpu.step(); // PLX
+
+  expect(cpu.readRegister("x")).toBe(0x42);
+});
+
+test("PHY and PLY round-trip", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("y", 0x7f);
+  ram.writeByte(0, 0x5a); // PHY
+  ram.writeByte(1, 0x7a); // PLY
+
+  cpu.step();
+  cpu.writeRegister("y", 0);
+  cpu.step();
+
+  expect(cpu.readRegister("y")).toBe(0x7f);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+});
+
+test("PHB and PLB round-trip preserves data bank register", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("drb", 0x05);
+  ram.writeByte(0, 0x8b); // PHB
+  ram.writeByte(1, 0xab); // PLB
+
+  cpu.step();
+  cpu.writeRegister("drb", 0x00);
+  cpu.step();
+
+  expect(cpu.readRegister("drb")).toBe(0x05);
+});
+
+test("PHD and PLD round-trip preserves direct register", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("dr", 0x0300);
+  ram.writeByte(0, 0x0b); // PHD
+  ram.writeByte(1, 0x2b); // PLD
+
+  cpu.step();
+  cpu.writeRegister("dr", 0x0000);
+  cpu.step();
+
+  expect(cpu.readRegister("dr")).toBe(0x0300);
+});
+
+test("PHK pushes program bank register", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("prb", 0x03);
+  ram.writeByte(0, 0x4b); // PHK
+
+  const spBefore = Number(cpu.readRegister("sp"));
+  cpu.step();
+
+  expect(ram.readByte(spBefore)).toBe(0x03);
+  expect(Number(cpu.readRegister("sp"))).toBe(spBefore - 1);
+});
+
+// --- Long jumps -------------------------------------------------------------
+
+test("JML sets PC and PRB from 3-byte address", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  ram.writeByte(0, 0x5c); // JML
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x20);
+  ram.writeByte(3, 0x02); // target = 0x022000
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("pc")).toBe(0x2000);
+  expect(cpu.readRegister("prb")).toBe(0x02);
+  expect(result).toMatchObject({ mnemonic: "JML", pcAfter: 0x022000, cycles: 4 });
+});
+
+test("JSL and RTL round-trip", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("pc", 0x0200);
+  cpu.writeRegister("prb", 0x00);
+
+  // JSL $001000 at 0x0200
+  ram.writeByte(0x0200, 0x22);
+  ram.writeByte(0x0201, 0x00);
+  ram.writeByte(0x0202, 0x10);
+  ram.writeByte(0x0203, 0x00);
+
+  // RTL at $001000
+  ram.writeByte(0x1000, 0x6b);
+
+  cpu.step(); // JSL
+  expect(cpu.readRegister("pc")).toBe(0x1000);
+  expect(cpu.readRegister("prb")).toBe(0x00);
+
+  cpu.step(); // RTL
+  expect(cpu.readRegister("pc")).toBe(0x0204); // byte after JSL
+  expect(cpu.readRegister("prb")).toBe(0x00);
+});
+
+test("JMP (abs) jumps to address read from absolute pointer", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  // JMP (0x0100) where [0x0100] = 0x2000
+  writeWord(ram, 0x0100, 0x2000);
+  ram.writeByte(0, 0x6c); // JMP (abs)
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x01);
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("pc")).toBe(0x2000);
+  expect(result).toMatchObject({ mnemonic: "JMP", effectiveAddress: 0x0100, pcAfter: 0x2000 });
+});
+
+// --- ALU direct-page --------------------------------------------------------
+
+test("ADC direct adds memory value to accumulator", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+  cpu.writeRegister("dr", 0);
+  cpu.writeRegister("a", 0x10);
+  ram.writeByte(0x20, 0x05);
+  ram.writeByte(0, 0x65); // ADC dp
+  ram.writeByte(1, 0x20);
+
+  cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x16); // 0x10 + 0x05 + carry(1)
+});
+
+test("CMP direct compares accumulator with memory", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0);
+  cpu.writeRegister("a", 0x42);
+  ram.writeByte(0x10, 0x42);
+  ram.writeByte(0, 0xc5); // CMP dp
+  ram.writeByte(1, 0x10);
+
+  cpu.step();
+
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+});
+
+// --- LDX dp,Y and STX dp,Y --------------------------------------------------
+
+test("LDX dp,Y loads X from direct page indexed by Y", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0);
+  cpu.writeRegister("y", 0x04);
+  ram.writeByte(0x14, 0x99); // offset 0x10 + Y(0x04) = 0x14
+  ram.writeByte(0, 0xb6); // LDX dp,Y
+  ram.writeByte(1, 0x10);
+
+  cpu.step();
+
+  expect(cpu.readRegister("x")).toBe(0x99);
+});
+
+test("STX dp,Y stores X to direct page indexed by Y", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0);
+  cpu.writeRegister("x", 0x77);
+  cpu.writeRegister("y", 0x02);
+  ram.writeByte(0, 0x96); // STX dp,Y
+  ram.writeByte(1, 0x10); // offset 0x10 + Y(0x02) = 0x12
+
+  cpu.step();
+
+  expect(ram.readByte(0x12)).toBe(0x77);
 });

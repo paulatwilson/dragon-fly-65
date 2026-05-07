@@ -205,6 +205,50 @@ const stackRelative = (
   execute,
 });
 
+const accumulatorMode = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 1,
+  cycles,
+  addressingMode: "accumulator",
+  byteLength: () => 1,
+  execute,
+});
+
+const indirectAbsolute = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 3,
+  cycles,
+  addressingMode: "indirect-absolute",
+  byteLength: () => 3,
+  execute,
+});
+
+const blockMove = (
+  opcode: number,
+  mnemonic: string,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 3,
+  cycles: 7,
+  addressingMode: "block-move",
+  byteLength: () => 3,
+  execute,
+});
+
 const byteImmediate = (
   opcode: number,
   mnemonic: string,
@@ -290,6 +334,74 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     absoluteIndexedX(0xbd, "LDA", 4, (cpu, context) =>
       cpu.completeLoadAccumulatorAbsoluteIndexedX(context),
     ),
+    // --- Shifts and rotates ---------------------------------------------------
+    direct(0x06, "ASL", 5, (cpu, context) => cpu.completeAslDirect(context)),
+    accumulatorMode(0x0a, "ASL", 2, (cpu, context) => cpu.completeAslAccumulator(context)),
+    absolute(0x0e, "ASL", 6, (cpu, context) => cpu.completeAslAbsolute(context)),
+    direct(0x26, "ROL", 5, (cpu, context) => cpu.completeRolDirect(context)),
+    accumulatorMode(0x2a, "ROL", 2, (cpu, context) => cpu.completeRolAccumulator(context)),
+    absolute(0x2e, "ROL", 6, (cpu, context) => cpu.completeRolAbsolute(context)),
+    direct(0x46, "LSR", 5, (cpu, context) => cpu.completeLsrDirect(context)),
+    accumulatorMode(0x4a, "LSR", 2, (cpu, context) => cpu.completeLsrAccumulator(context)),
+    absolute(0x4e, "LSR", 6, (cpu, context) => cpu.completeLsrAbsolute(context)),
+    direct(0x66, "ROR", 5, (cpu, context) => cpu.completeRorDirect(context)),
+    accumulatorMode(0x6a, "ROR", 2, (cpu, context) => cpu.completeRorAccumulator(context)),
+    absolute(0x6e, "ROR", 6, (cpu, context) => cpu.completeRorAbsolute(context)),
+
+    // --- Bit tests -----------------------------------------------------------
+    direct(0x04, "TSB", 5, (cpu, context) => cpu.completeTsbDirect(context)),
+    absolute(0x0c, "TSB", 6, (cpu, context) => cpu.completeTsbAbsolute(context)),
+    direct(0x14, "TRB", 5, (cpu, context) => cpu.completeTrbDirect(context)),
+    absolute(0x1c, "TRB", 6, (cpu, context) => cpu.completeTrbAbsolute(context)),
+    direct(0x24, "BIT", 3, (cpu, context) => cpu.completeBitDirect(context)),
+    absolute(0x2c, "BIT", 4, (cpu, context) => cpu.completeBitAbsolute(context)),
+    accumulatorImmediate(0x89, "BIT", 2, (cpu, context) => cpu.completeBitImmediate(context)),
+
+    // --- Read-modify-write ---------------------------------------------------
+    accumulatorMode(0x1a, "INC", 2, (cpu, context) => cpu.completeIncrementAccumulator(context)),
+    accumulatorMode(0x3a, "DEC", 2, (cpu, context) => cpu.completeDecrementAccumulator(context)),
+    direct(0x64, "STZ", 3, (cpu, context) => cpu.completeStoreZeroDirect(context)),
+    direct(0xc6, "DEC", 5, (cpu, context) => cpu.completeDecrementDirect(context)),
+    absolute(0xce, "DEC", 6, (cpu, context) => cpu.completeDecrementAbsolute(context)),
+    direct(0xe6, "INC", 5, (cpu, context) => cpu.completeIncrementDirect(context)),
+    absolute(0xee, "INC", 6, (cpu, context) => cpu.completeIncrementAbsolute(context)),
+    absolute(0x9c, "STZ", 4, (cpu, context) => cpu.completeStoreZeroAbsolute(context)),
+
+    // --- Block moves ---------------------------------------------------------
+    blockMove(0x44, "MVP", (cpu, context) => cpu.completeMoveBlockPrevious(context)),
+    blockMove(0x54, "MVN", (cpu, context) => cpu.completeMoveBlockNext(context)),
+
+    // --- Push/pull variants --------------------------------------------------
+    implied(0x0b, "PHD", 4, (cpu, context) => cpu.completePushDirect(context)),
+    implied(0x2b, "PLD", 5, (cpu, context) => cpu.completePullDirect(context)),
+    implied(0x4b, "PHK", 3, (cpu, context) => cpu.completePushProgramBank(context)),
+    implied(0x5a, "PHY", 3, (cpu, context) => cpu.completePushY(context)),
+    implied(0x7a, "PLY", 4, (cpu, context) => cpu.completePullY(context)),
+    implied(0x8b, "PHB", 3, (cpu, context) => cpu.completePushDataBank(context)),
+    implied(0xab, "PLB", 4, (cpu, context) => cpu.completePullDataBank(context)),
+    implied(0xda, "PHX", 3, (cpu, context) => cpu.completePushX(context)),
+    implied(0xfa, "PLX", 4, (cpu, context) => cpu.completePullX(context)),
+
+    // --- Long jumps ----------------------------------------------------------
+    longAbsolute(0x22, "JSL", 8, (cpu, context) => cpu.completeJumpSubroutineLong(context)),
+    longAbsolute(0x5c, "JML", 4, (cpu, context) => cpu.completeJumpLong(context)),
+    indirectAbsolute(0x6c, "JMP", 5, (cpu, context) => cpu.completeJumpIndirectAbsolute(context)),
+    implied(0x6b, "RTL", 6, (cpu, context) => cpu.completeReturnSubroutineLong(context)),
+
+    // --- ALU direct-page modes -----------------------------------------------
+    direct(0x05, "ORA", 3, (cpu, context) => cpu.completeOrDirect(context)),
+    direct(0x25, "AND", 3, (cpu, context) => cpu.completeAndDirect(context)),
+    direct(0x45, "EOR", 3, (cpu, context) => cpu.completeExclusiveOrDirect(context)),
+    direct(0x65, "ADC", 3, (cpu, context) => cpu.completeAddWithCarryDirect(context)),
+    direct(0xc4, "CPY", 3, (cpu, context) => cpu.completeCompareYDirect(context)),
+    direct(0xc5, "CMP", 3, (cpu, context) => cpu.completeCompareAccumulatorDirect(context)),
+    direct(0xe4, "CPX", 3, (cpu, context) => cpu.completeCompareXDirect(context)),
+    direct(0xe5, "SBC", 3, (cpu, context) => cpu.completeSubtractWithCarryDirect(context)),
+
+    // --- LDX/STX direct indexed Y --------------------------------------------
+    directIndexedY(0x96, "STX", 4, (cpu, context) => cpu.completeStoreXDirectIndexedY(context)),
+    directIndexedY(0xb6, "LDX", 4, (cpu, context) => cpu.completeLoadXDirectIndexedY(context)),
+
     byteImmediate(0x00, "BRK", 7, (cpu, context) =>
       cpu.completeBrkInstruction(context),
     ),

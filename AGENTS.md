@@ -36,7 +36,7 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 - [x] [Chunk 10: Addressing modes](docs/emulator-roadmap.md#chunk-10-addressing-modes).
 - [x] [Chunk 11: Mode switching](docs/emulator-roadmap.md#chunk-11-mode-switching).
 - [x] [Chunk 12: Interrupts and vectors](docs/emulator-roadmap.md#chunk-12-interrupts-and-vectors).
-- [ ] [Chunk 13: Opcode family coverage pass](docs/emulator-roadmap.md#chunk-13-coverage-pass-for-opcode-families).
+- [x] [Chunk 13: Opcode family coverage pass](docs/emulator-roadmap.md#chunk-13-coverage-pass-for-opcode-families).
 - [ ] [Chunk 14: Timing metadata](docs/emulator-roadmap.md#chunk-14-timing-metadata).
 - [ ] [Chunk 15: Compatibility and validation](docs/emulator-roadmap.md#chunk-15-compatibility-and-validation).
 - [ ] [Chunk 16: Public API hardening](docs/emulator-roadmap.md#chunk-16-public-api-hardening).
