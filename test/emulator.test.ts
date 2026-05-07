@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(28);
+  expect(OPCODES.size).toBe(32);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -244,6 +244,13 @@ test("opcode metadata describes implemented implied instructions", () => {
     cycles: 2,
     addressingMode: "implied",
   });
+  expect(getOpcodeDefinition(0x48)).toMatchObject({
+    opcode: 0x48,
+    mnemonic: "PHA",
+    bytes: 1,
+    cycles: 3,
+    addressingMode: "implied",
+  });
   expect(getOpcodeDefinition(0xdb)).toMatchObject({
     opcode: 0xdb,
     mnemonic: "STP",
@@ -252,6 +259,196 @@ test("opcode metadata describes implemented implied instructions", () => {
     addressingMode: "implied",
   });
   expect(getOpcodeDefinition(0xff)).toBeUndefined();
+});
+
+test("stack byte helpers use page one in W65C02 emulation", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("sp", 0x0100);
+  cpu.pushByte(0xab);
+
+  expect(ram.readByte(0x0100)).toBe(0xab);
+  expect(cpu.readRegister("sp")).toBe(0x01ff);
+  expect(cpu.pullByte()).toBe(0xab);
+  expect(cpu.readRegister("sp")).toBe(0x0100);
+});
+
+test("stack byte helpers use 16-bit stack addresses outside W65C02 emulation", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("sp", 0x2000);
+  cpu.pushByte(0xcd);
+
+  expect(ram.readByte(0x2000)).toBe(0xcd);
+  expect(cpu.readRegister("sp")).toBe(0x1fff);
+  expect(cpu.pullByte()).toBe(0xcd);
+  expect(cpu.readRegister("sp")).toBe(0x2000);
+});
+
+test("PHA and PLA round-trip accumulator values and update flags", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("a", 0x80);
+  ram.writeByte(0, 0x48);
+  ram.writeByte(1, 0xa9);
+  ram.writeByte(2, 0x00);
+  ram.writeByte(3, 0x68);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x48,
+    mnemonic: "PHA",
+    registerChanges: {
+      sp: {
+        before: 0x01ff,
+        after: 0x01fe,
+      },
+    },
+  });
+  expect(ram.readByte(0x01ff)).toBe(0x80);
+
+  expect(cpu.step().opcode).toBe(0xa9);
+  expect(cpu.readRegister("a")).toBe(0);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x68,
+    mnemonic: "PLA",
+    registerChanges: {
+      a: {
+        before: 0,
+        after: 0x80,
+      },
+      sp: {
+        before: 0x01fe,
+        after: 0x01ff,
+      },
+    },
+  });
+  expect(cpu.readRegister("a")).toBe(0x80);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+});
+
+test("PHA and PLA support 16-bit and 32-bit accumulator widths", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("sp", 0x2001);
+  cpu.writeRegister("a", 0xabcd);
+  ram.writeByte(0, 0x48);
+  ram.writeByte(1, 0xa9);
+  ram.writeByte(2, 0x00);
+  ram.writeByte(3, 0x00);
+  ram.writeByte(4, 0x68);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x48,
+    registerChanges: {
+      sp: {
+        before: 0x2001,
+        after: 0x1fff,
+      },
+    },
+  });
+  expect(ram.readByte(0x2001)).toBe(0xab);
+  expect(ram.readByte(0x2000)).toBe(0xcd);
+  expect(cpu.step().opcode).toBe(0xa9);
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x68,
+    registerChanges: {
+      a: {
+        before: 0,
+        after: 0xabcd,
+      },
+    },
+  });
+
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("sp", 0x3003);
+  cpu.writeRegister("pc", 8);
+  cpu.writeRegister("a", 0x89ab_cdef);
+  ram.writeByte(8, 0x48);
+  ram.writeByte(9, 0xa9);
+  ram.writeByte(10, 0x00);
+  ram.writeByte(11, 0x00);
+  ram.writeByte(12, 0x00);
+  ram.writeByte(13, 0x00);
+  ram.writeByte(14, 0x68);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x48,
+    registerChanges: {
+      sp: {
+        before: 0x3003,
+        after: 0x2fff,
+      },
+    },
+  });
+  expect(ram.readByte(0x3003)).toBe(0x89);
+  expect(ram.readByte(0x3002)).toBe(0xab);
+  expect(ram.readByte(0x3001)).toBe(0xcd);
+  expect(ram.readByte(0x3000)).toBe(0xef);
+  expect(cpu.step().opcode).toBe(0xa9);
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x68,
+    registerChanges: {
+      a: {
+        before: 0,
+        after: 0x89ab_cdef,
+      },
+    },
+  });
+});
+
+test("PHP and PLP round-trip processor status", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Carry | StatusFlag.Negative);
+  ram.writeByte(0, 0x08);
+  ram.writeByte(1, 0x18);
+  ram.writeByte(2, 0xb8);
+  ram.writeByte(3, 0x28);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x08,
+    mnemonic: "PHP",
+    registerChanges: {
+      sp: {
+        before: 0x01ff,
+        after: 0x01fe,
+      },
+    },
+  });
+  expect(ram.readByte(0x01ff)).toBe(StatusFlag.Carry | StatusFlag.Negative);
+
+  expect(cpu.step().opcode).toBe(0x18);
+  expect(cpu.step().opcode).toBe(0xb8);
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x28,
+    mnemonic: "PLP",
+    registerChanges: {
+      p: {
+        before: StatusFlag.Negative,
+        after: StatusFlag.Carry | StatusFlag.Negative,
+      },
+      sp: {
+        before: 0x01fe,
+        after: 0x01ff,
+      },
+    },
+  });
+  expect(cpu.readRegister("p")).toBe(StatusFlag.Carry | StatusFlag.Negative);
 });
 
 test("STA direct stores accumulator using direct register addressing", () => {

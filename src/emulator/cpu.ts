@@ -2,6 +2,7 @@ import { createClockConfig, type ClockConfig } from "./clock";
 import {
   BYTE_MASK,
   RESET_VECTOR_ADDRESS,
+  type RegisterWidth,
   StatusFlag,
   WORD_MASK,
 } from "./constants";
@@ -22,6 +23,7 @@ import {
 import type {
   CpuOptions,
   CpuState,
+  RegisterChange,
   RegisterName,
   StepResult,
   WidthMode,
@@ -193,6 +195,43 @@ export class W65C832Cpu {
       this.memory.writeByte(address + 2, normalized >> 16);
       this.memory.writeByte(address + 3, normalized >> 24);
     }
+  }
+
+  getStackAddress(): number {
+    if (this.state.e16 && this.state.e8) {
+      return 0x0100 | (this.state.sp & BYTE_MASK);
+    }
+
+    return this.state.sp & WORD_MASK;
+  }
+
+  pushByte(value: number): void {
+    this.memory.writeByte(this.getStackAddress(), value);
+    this.state.sp = this.nextStackPointer(-1);
+  }
+
+  pullByte(): number {
+    this.state.sp = this.nextStackPointer(1);
+    return this.memory.readByte(this.getStackAddress());
+  }
+
+  pushValue(value: number, width: RegisterWidth): void {
+    const byteCount = width / 8;
+
+    for (let index = byteCount - 1; index >= 0; index -= 1) {
+      this.pushByte(value >> (index * 8));
+    }
+  }
+
+  pullValue(width: RegisterWidth): number {
+    const byteCount = width / 8;
+    let value = 0;
+
+    for (let index = 0; index < byteCount; index += 1) {
+      value |= this.pullByte() << (index * 8);
+    }
+
+    return maskToWidth(value, width);
   }
 
   completeFlagInstruction(
@@ -384,6 +423,64 @@ export class W65C832Cpu {
       index,
       4,
     );
+  }
+
+  completePushAccumulator(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const stackBefore = this.state.sp;
+
+    this.pushValue(this.state.a, accumulator);
+    this.state.cycles += 3;
+
+    return this.completeStackInstruction(context, stackBefore, 3);
+  }
+
+  completePullAccumulator(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const stackBefore = this.state.sp;
+    const accumulatorBefore = this.state.a;
+    const statusBefore = this.state.p;
+    const value = this.pullValue(accumulator);
+
+    this.state.a = value;
+    updateNegativeZeroFlags(this.state, value, accumulator);
+    this.state.cycles += 4;
+
+    return this.completeStackInstruction(context, stackBefore, 4, {
+      a:
+        accumulatorBefore === value
+          ? undefined
+          : { before: accumulatorBefore, after: value },
+      p:
+        statusBefore === this.state.p
+          ? undefined
+          : { before: statusBefore, after: this.state.p },
+    });
+  }
+
+  completePushProcessorStatus(context: InstructionContext): StepResult {
+    const stackBefore = this.state.sp;
+
+    this.pushByte(this.state.p);
+    this.state.cycles += 3;
+
+    return this.completeStackInstruction(context, stackBefore, 3);
+  }
+
+  completePullProcessorStatus(context: InstructionContext): StepResult {
+    const stackBefore = this.state.sp;
+    const statusBefore = this.state.p;
+    const value = this.pullByte() & BYTE_MASK;
+
+    this.state.p = value;
+    this.state.cycles += 4;
+
+    return this.completeStackInstruction(context, stackBefore, 4, {
+      p:
+        statusBefore === value
+          ? undefined
+          : { before: statusBefore, after: value },
+    });
   }
 
   completeTransferAccumulatorToX(context: InstructionContext): StepResult {
@@ -610,6 +707,39 @@ export class W65C832Cpu {
     );
   }
 
+  private completeStackInstruction(
+    context: InstructionContext,
+    stackBefore: number,
+    cycles: number,
+    extraChanges: Record<string, RegisterChange | undefined> = {},
+  ): StepResult {
+    const registerChanges: StepResult["registerChanges"] = {};
+
+    if (stackBefore !== this.state.sp) {
+      registerChanges.sp = {
+        before: stackBefore,
+        after: this.state.sp,
+      };
+    }
+
+    for (const [register, change] of Object.entries(extraChanges)) {
+      if (change !== undefined) {
+        registerChanges[register] = change;
+      }
+    }
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: getOpcodeDefinition(context.opcode)?.mnemonic ?? "???",
+      bytes: context.bytes,
+      cycles,
+      stopped: false,
+      registerChanges,
+    };
+  }
+
   private completeStoreInstruction(
     context: InstructionContext,
     effectiveAddress: number,
@@ -630,6 +760,14 @@ export class W65C832Cpu {
       stopped: false,
       effectiveAddress,
     };
+  }
+
+  private nextStackPointer(delta: -1 | 1): number {
+    if (this.state.e16 && this.state.e8) {
+      return 0x0100 | ((this.state.sp + delta) & BYTE_MASK);
+    }
+
+    return (this.state.sp + delta) & WORD_MASK;
   }
 }
 

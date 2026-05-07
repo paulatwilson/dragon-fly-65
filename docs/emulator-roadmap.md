@@ -122,6 +122,8 @@ Definition of done:
 
 ## Chunk 6: Stack Basics
 
+Status: done.
+
 Goal: establish stack behavior before subroutines and interrupts.
 
 Tasks:

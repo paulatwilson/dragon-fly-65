@@ -29,7 +29,7 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 - [x] [Chunk 3: Load instructions](docs/emulator-roadmap.md#chunk-3-load-instructions).
 - [x] [Chunk 4: Store instructions](docs/emulator-roadmap.md#chunk-4-store-instructions).
 - [x] [Chunk 5: Transfers and register operations](docs/emulator-roadmap.md#chunk-5-transfers-and-register-operations).
-- [ ] [Chunk 6: Stack basics](docs/emulator-roadmap.md#chunk-6-stack-basics).
+- [x] [Chunk 6: Stack basics](docs/emulator-roadmap.md#chunk-6-stack-basics).
 - [ ] [Chunk 7: Branches and jumps](docs/emulator-roadmap.md#chunk-7-branches-and-jumps).
 - [ ] [Chunk 8: Subroutines](docs/emulator-roadmap.md#chunk-8-subroutines).
 - [ ] [Chunk 9: ALU and comparisons](docs/emulator-roadmap.md#chunk-9-alu-and-comparisons).

@@ -111,6 +111,18 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     indexImmediate(0xa2, "LDX", 2, (cpu, context) =>
       cpu.completeLoadXImmediate(context),
     ),
+    implied(0x08, "PHP", 3, (cpu, context) =>
+      cpu.completePushProcessorStatus(context),
+    ),
+    implied(0x28, "PLP", 4, (cpu, context) =>
+      cpu.completePullProcessorStatus(context),
+    ),
+    implied(0x48, "PHA", 3, (cpu, context) =>
+      cpu.completePushAccumulator(context),
+    ),
+    implied(0x68, "PLA", 4, (cpu, context) =>
+      cpu.completePullAccumulator(context),
+    ),
     direct(0x84, "STY", 3, (cpu, context) =>
       cpu.completeStoreYDirect(context),
     ),
