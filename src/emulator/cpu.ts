@@ -787,6 +787,123 @@ export class W65C832Cpu {
     return this.completeStackInstruction(context, stackBefore, 6);
   }
 
+  completeResetProcessorStatus(context: InstructionContext): StepResult {
+    const mask = context.operandBytes[0] ?? 0;
+    const statusBefore = this.state.p;
+    // In emulation mode M and X cannot be cleared — they stay forced to 1.
+    const effectiveMask = this.state.e16
+      ? mask & ~(StatusFlag.Memory | StatusFlag.Index) & BYTE_MASK
+      : mask;
+
+    this.state.p = (this.state.p & ~effectiveMask) & BYTE_MASK;
+    this.state.cycles += 3;
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "REP",
+      bytes: context.bytes,
+      cycles: 3,
+      stopped: false,
+      registerChanges:
+        statusBefore !== this.state.p
+          ? { p: { before: statusBefore, after: this.state.p } }
+          : {},
+    };
+  }
+
+  completeSetProcessorStatus(context: InstructionContext): StepResult {
+    const mask = context.operandBytes[0] ?? 0;
+    const statusBefore = this.state.p;
+    const xBefore = this.state.x;
+    const yBefore = this.state.y;
+
+    this.state.p = (this.state.p | mask) & BYTE_MASK;
+    this.enforceIndexWidth();
+    this.state.cycles += 3;
+
+    const registerChanges: StepResult["registerChanges"] = {};
+    if (statusBefore !== this.state.p) registerChanges.p = { before: statusBefore, after: this.state.p };
+    if (xBefore !== this.state.x) registerChanges.x = { before: xBefore, after: this.state.x };
+    if (yBefore !== this.state.y) registerChanges.y = { before: yBefore, after: this.state.y };
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "SEP",
+      bytes: context.bytes,
+      cycles: 3,
+      stopped: false,
+      registerChanges,
+    };
+  }
+
+  completeExchangeCarryEmulation(context: InstructionContext): StepResult {
+    const prevE8 = this.state.e8;
+    const prevCarry = (this.state.p & StatusFlag.Carry) !== 0;
+    const snap = { e8: prevE8, p: this.state.p, x: this.state.x, y: this.state.y, sp: this.state.sp };
+
+    this.state.e8 = prevCarry;
+    setStatusFlag(this.state, StatusFlag.Carry, prevE8);
+    this.enforceEmulationMode();
+    this.state.cycles += 2;
+
+    const registerChanges: StepResult["registerChanges"] = {};
+    if (snap.e8 !== this.state.e8) registerChanges.e8 = { before: snap.e8, after: this.state.e8 };
+    if (snap.p !== this.state.p) registerChanges.p = { before: snap.p, after: this.state.p };
+    if (snap.x !== this.state.x) registerChanges.x = { before: snap.x, after: this.state.x };
+    if (snap.y !== this.state.y) registerChanges.y = { before: snap.y, after: this.state.y };
+    if (snap.sp !== this.state.sp) registerChanges.sp = { before: snap.sp, after: this.state.sp };
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "XCE",
+      bytes: context.bytes,
+      cycles: 2,
+      stopped: false,
+      registerChanges,
+    };
+  }
+
+  completeExchangeFullEmulation(context: InstructionContext): StepResult {
+    const prevE16 = this.state.e16;
+    const prevE8 = this.state.e8;
+    const prevCarry = (this.state.p & StatusFlag.Carry) !== 0;
+    const prevOverflow = (this.state.p & StatusFlag.Overflow) !== 0;
+    const snap = { e16: prevE16, e8: prevE8, p: this.state.p, x: this.state.x, y: this.state.y, sp: this.state.sp };
+
+    // C ↔ E16, V ↔ E8
+    this.state.e16 = prevCarry;
+    this.state.e8 = prevOverflow;
+    setStatusFlag(this.state, StatusFlag.Carry, prevE16);
+    setStatusFlag(this.state, StatusFlag.Overflow, prevE8);
+    this.enforceEmulationMode();
+    this.state.cycles += 2;
+
+    const registerChanges: StepResult["registerChanges"] = {};
+    if (snap.e16 !== this.state.e16) registerChanges.e16 = { before: snap.e16, after: this.state.e16 };
+    if (snap.e8 !== this.state.e8) registerChanges.e8 = { before: snap.e8, after: this.state.e8 };
+    if (snap.p !== this.state.p) registerChanges.p = { before: snap.p, after: this.state.p };
+    if (snap.x !== this.state.x) registerChanges.x = { before: snap.x, after: this.state.x };
+    if (snap.y !== this.state.y) registerChanges.y = { before: snap.y, after: this.state.y };
+    if (snap.sp !== this.state.sp) registerChanges.sp = { before: snap.sp, after: this.state.sp };
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "XFE",
+      bytes: context.bytes,
+      cycles: 2,
+      stopped: false,
+      registerChanges,
+    };
+  }
+
   completeBranch(
     context: InstructionContext,
     flag: StatusFlag,
@@ -919,6 +1036,24 @@ export class W65C832Cpu {
   completeCompareYImmediate(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeCompareInstruction(context, "y", index);
+  }
+
+  private enforceIndexWidth(): void {
+    if (this.state.p & StatusFlag.Index) {
+      this.state.x = this.state.x & BYTE_MASK;
+      this.state.y = this.state.y & BYTE_MASK;
+    }
+  }
+
+  private enforceEmulationMode(): void {
+    if (this.state.e16) {
+      this.state.p = (this.state.p | StatusFlag.Memory | StatusFlag.Index) & BYTE_MASK;
+      this.state.x = this.state.x & BYTE_MASK;
+      this.state.y = this.state.y & BYTE_MASK;
+      if (this.state.e8) {
+        this.state.sp = 0x0100 | (this.state.sp & BYTE_MASK);
+      }
+    }
   }
 
   private completeLoadFromAddress(

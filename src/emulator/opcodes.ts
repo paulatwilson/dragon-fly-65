@@ -205,6 +205,21 @@ const stackRelative = (
   execute,
 });
 
+const byteImmediate = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles,
+  addressingMode: "immediate",
+  byteLength: () => 2,
+  execute,
+});
+
 const relative = (
   opcode: number,
   mnemonic: string,
@@ -274,6 +289,18 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     ),
     absoluteIndexedX(0xbd, "LDA", 4, (cpu, context) =>
       cpu.completeLoadAccumulatorAbsoluteIndexedX(context),
+    ),
+    byteImmediate(0xc2, "REP", 3, (cpu, context) =>
+      cpu.completeResetProcessorStatus(context),
+    ),
+    byteImmediate(0xe2, "SEP", 3, (cpu, context) =>
+      cpu.completeSetProcessorStatus(context),
+    ),
+    implied(0xeb, "XFE", 2, (cpu, context) =>
+      cpu.completeExchangeFullEmulation(context),
+    ),
+    implied(0xfb, "XCE", 2, (cpu, context) =>
+      cpu.completeExchangeCarryEmulation(context),
     ),
     accumulatorImmediate(0x09, "ORA", 2, (cpu, context) =>
       cpu.completeOrImmediate(context),

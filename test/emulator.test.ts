@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(69);
+  expect(OPCODES.size).toBe(73);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -1930,4 +1930,230 @@ test("LDY absolute loads Y from absolute address", () => {
   cpu.step();
 
   expect(cpu.readRegister("y")).toBe(0x11);
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 11: Mode Switching
+// ---------------------------------------------------------------------------
+
+// --- REP -------------------------------------------------------------------
+
+test("REP clears bits in the processor status register", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Start in native mode so REP can clear M and X
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("p", StatusFlag.Carry | StatusFlag.Overflow | StatusFlag.Negative);
+  ram.writeByte(0, 0xc2);
+  ram.writeByte(1, StatusFlag.Carry | StatusFlag.Overflow); // clear C and V
+
+  const result = cpu.step();
+
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(StatusFlag.Negative);
+  expect(result).toMatchObject({ opcode: 0xc2, mnemonic: "REP", cycles: 3 });
+});
+
+test("REP cannot clear M or X bits in emulation mode (E16=1)", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Default state is W65C02 emulation (E16=true, E8=true), M and X already set
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+  ram.writeByte(0, 0xc2);
+  ram.writeByte(1, StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+
+  cpu.step();
+
+  // Carry cleared, but M and X remain forced to 1
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Memory).toBe(StatusFlag.Memory);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Index).toBe(StatusFlag.Index);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+});
+
+// --- SEP -------------------------------------------------------------------
+
+test("SEP sets bits in the processor status register", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(0, 0xe2);
+  ram.writeByte(1, StatusFlag.Carry | StatusFlag.Decimal);
+
+  const result = cpu.step();
+
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Decimal).toBe(StatusFlag.Decimal);
+  expect(result).toMatchObject({ opcode: 0xe2, mnemonic: "SEP", cycles: 3 });
+});
+
+test("SEP clears upper bytes of X and Y when X flag is set", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Native 16-bit mode, index registers are 16-bit
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", 0); // M=0, X=0
+  cpu.writeRegister("x", 0x1234);
+  cpu.writeRegister("y", 0x5678);
+  ram.writeByte(0, 0xe2);
+  ram.writeByte(1, StatusFlag.Index); // set X flag → 8-bit index
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("x")).toBe(0x34); // upper byte cleared
+  expect(cpu.readRegister("y")).toBe(0x78);
+  expect(result.registerChanges).toMatchObject({
+    x: { before: 0x1234, after: 0x34 },
+    y: { before: 0x5678, after: 0x78 },
+  });
+});
+
+// --- XCE -------------------------------------------------------------------
+
+test("XCE swaps carry and E8: W65C02 emulation to W65C816 emulation", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Start in W65C02 emulation (E8=true, E16=true)
+  // clc then xce → E8 becomes 0 (C was 0), C becomes 1 (old E8)
+  cpu.writeRegister("p", 0); // C=0; mode flags will be set by enforceEmulationMode on boot
+  // ensure E8=true, E16=true
+  expect(cpu.readRegister("e8")).toBe(true);
+  expect(cpu.readRegister("e16")).toBe(true);
+
+  ram.writeByte(0, 0xfb); // XCE
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("e8")).toBe(false); // E8 got old C=0
+  expect(cpu.readRegister("e16")).toBe(true);  // E16 unchanged
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry); // C got old E8=1
+  expect(result).toMatchObject({ opcode: 0xfb, mnemonic: "XCE", cycles: 2 });
+  expect(result.registerChanges).toMatchObject({
+    e8: { before: true, after: false },
+  });
+});
+
+test("XCE: W65C816 emulation to W65C02 emulation forces M=1 X=1 and fixes SP", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Start in W65C816 emulation (E8=false, E16=true)
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("p", StatusFlag.Carry); // C=1
+  cpu.writeRegister("x", 0x1234);
+  cpu.writeRegister("y", 0x5678);
+  cpu.writeRegister("sp", 0x01f0);
+  ram.writeByte(0, 0xfb); // XCE with C=1 → E8 becomes 1
+
+  cpu.step();
+
+  expect(cpu.readRegister("e8")).toBe(true);
+  expect(cpu.readRegister("e16")).toBe(true); // W65C02 emulation
+  // enforceEmulationMode must have forced M=1, X=1
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Memory).toBe(StatusFlag.Memory);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Index).toBe(StatusFlag.Index);
+  // Upper bytes of X and Y cleared
+  expect(cpu.readRegister("x")).toBe(0x34);
+  expect(cpu.readRegister("y")).toBe(0x78);
+  // SP constrained to page 1
+  expect(cpu.readRegister("sp")).toBe(0x01f0); // already page 1, no change
+});
+
+// --- XFE -------------------------------------------------------------------
+
+test("XFE swaps C↔E16 and V↔E8: W65C816 emulation to W65C832 native", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Start in W65C816 emulation (E8=false, E16=true)
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", true);
+  // clc; clv before xfe → C=0, V=0
+  cpu.writeRegister("p", 0); // C=0, V=0
+  ram.writeByte(0, 0xeb); // XFE
+
+  const result = cpu.step();
+
+  // C↔E16: new E16 = old C = 0, new C = old E16 = 1
+  // V↔E8:  new E8  = old V = 0, new V = old E8  = 0
+  expect(cpu.readRegister("e16")).toBe(false); // W65C832 native
+  expect(cpu.readRegister("e8")).toBe(false);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(0);
+  expect(result).toMatchObject({ opcode: 0xeb, mnemonic: "XFE", cycles: 2 });
+  expect(result.registerChanges).toMatchObject({
+    e16: { before: true, after: false },
+  });
+});
+
+test("XFE: W65C832 native to W65C816 emulation forces M=1 X=1", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Start in W65C832 native (E8=false, E16=false)
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  // sec before xfe → C=1 so E16 gets 1 (W65C816 emulation)
+  cpu.writeRegister("p", StatusFlag.Carry); // C=1, V=0
+  cpu.writeRegister("x", 0x1234);
+  cpu.writeRegister("y", 0x5678);
+  ram.writeByte(0, 0xeb); // XFE
+
+  cpu.step();
+
+  expect(cpu.readRegister("e16")).toBe(true);  // W65C816 emulation
+  expect(cpu.readRegister("e8")).toBe(false);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Memory).toBe(StatusFlag.Memory);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Index).toBe(StatusFlag.Index);
+  expect(cpu.readRegister("x")).toBe(0x34);
+  expect(cpu.readRegister("y")).toBe(0x78);
+});
+
+// --- Full mode transition sequence -----------------------------------------
+
+test("full mode sequence: W65C02 → W65C816 → W65C832 → W65C816 → W65C02", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Start: W65C02 emulation (E8=true, E16=true)
+  expect(cpu.readRegister("e8")).toBe(true);
+  expect(cpu.readRegister("e16")).toBe(true);
+
+  // XCE with C=0: W65C02 → W65C816 (E8 goes 1→0)
+  cpu.writeRegister("p", 0);
+  ram.writeByte(0, 0xfb); // XCE
+  cpu.step();
+  expect(cpu.readRegister("e8")).toBe(false);
+  expect(cpu.readRegister("e16")).toBe(true);
+
+  // XFE with C=0, V=0: W65C816 → W65C832 (E16 goes 1→0)
+  cpu.writeRegister("p", 0);
+  ram.writeByte(1, 0xeb); // XFE
+  cpu.step();
+  expect(cpu.readRegister("e8")).toBe(false);
+  expect(cpu.readRegister("e16")).toBe(false);
+
+  // XFE with C=1, V=0: W65C832 → W65C816 (E16 goes 0→1)
+  cpu.writeRegister("p", StatusFlag.Carry);
+  ram.writeByte(2, 0xeb); // XFE
+  cpu.step();
+  expect(cpu.readRegister("e16")).toBe(true);
+  expect(cpu.readRegister("e8")).toBe(false);
+
+  // XCE with C=1: W65C816 → W65C02 (E8 goes 0→1)
+  cpu.writeRegister("p", StatusFlag.Carry);
+  ram.writeByte(3, 0xfb); // XCE
+  cpu.step();
+  expect(cpu.readRegister("e8")).toBe(true);
+  expect(cpu.readRegister("e16")).toBe(true);
 });

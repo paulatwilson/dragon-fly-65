@@ -117,14 +117,44 @@ Mode table:
 
 ## Mode Switching
 
-The WDC datasheet states that `XCE` exchanges carry with `E8`, and that `XFE` exchanges `E8` and `E16` with carry and overflow.
+The WDC datasheet defines:
 
-There is a source discrepancy to resolve before implementation:
+- `XCE`: exchanges carry (`C`) with `E8`.
+- `XFE`: exchanges carry and overflow (`C`, `V`) with both emulation bits (`E16`, `E8`), specifically `C↔E16` and `V↔E8`.
 
-- The GitHub README shows `clc; clv; xce` for entering 65C832 mode from W65C816 mode.
-- Mike Kohn's project page shows `sec; clv; xce` for the same transition.
+**Resolved discrepancy**: both the GitHub README (`clc; clv; xce`) and Mike Kohn's project page (`sec; clv; xce`) cited `xce` as the instruction to enter W65C832 native mode from W65C816 emulation. Neither sequence works with `XCE`: since E8 is already 0 in W65C816 mode, `XCE` (which only touches E8) cannot clear E16. The correct instruction for that transition is `XFE`:
 
-DragonFly 65 must not encode this behavior until we verify the intended operation from the datasheet, the FPGA Verilog, or a focused executable test.
+- `clc; clv; xfe` from W65C816 (E8=0, E16=1): C=0, V=0 → E16 gets C=0, E8 gets V=0 → W65C832 native ✓.
+
+Both sources appear to have used `xce` where they meant `xfe`. Dragon Fly 65 implements the datasheet definitions.
+
+### XCE — Exchange Carry with E8
+
+`XCE` exchanges the carry flag with the E8 emulation bit. This mirrors the W65C816's `XCE` (which exchanged carry with its single E bit). E8 is the primary emulation bit governing W65C02 vs. W65C816 behavior.
+
+| Before              | Instruction | After               |
+|---------------------|-------------|---------------------|
+| E8=1 (W65C02), C=0  | `clc; xce`  | E8=0 (W65C816), C=1 |
+| E8=0 (W65C816), C=1 | `sec; xce`  | E8=1 (W65C02), C=0  |
+
+When XCE causes E8 to become 1 and E16 is also 1 (entering W65C02 emulation), the CPU forces M=1, X=1 in P, clears the upper bytes of X and Y, and constrains SP to page 1.
+
+### XFE — Exchange Full Emulation
+
+`XFE` exchanges carry and overflow with both emulation bits: `C↔E16` and `V↔E8`.
+
+| Before                           | Instruction      | After                             |
+|----------------------------------|------------------|-----------------------------------|
+| E16=1, E8=0 (W65C816), C=0, V=0 | `clc; clv; xfe`  | E16=0, E8=0 (W65C832), C=1, V=0  |
+| E16=0, E8=0 (W65C832), C=1, V=0 | `sec; clv; xfe`  | E16=1, E8=0 (W65C816), C=0, V=0  |
+
+When XFE causes E16 to become 1, the CPU enforces emulation-mode register constraints (M=1, X=1, upper X/Y cleared; SP to page 1 if E8 is also 1).
+
+### REP and SEP
+
+`REP` (Reset Processor Status, 0xC2) clears bits in P by immediate mask. In emulation mode (E16=1), the M and X bits cannot be cleared — they remain forced to 1.
+
+`SEP` (Set Processor Status, 0xE2) sets bits in P by immediate mask. When the X flag transitions from 0 to 1 (shrinking index registers to 8-bit), the upper bytes of X and Y are cleared to zero.
 
 ## Addressing Model
 

@@ -34,7 +34,7 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 - [x] [Chunk 8: Subroutines](docs/emulator-roadmap.md#chunk-8-subroutines).
 - [x] [Chunk 9: ALU and comparisons](docs/emulator-roadmap.md#chunk-9-alu-and-comparisons).
 - [x] [Chunk 10: Addressing modes](docs/emulator-roadmap.md#chunk-10-addressing-modes).
-- [ ] [Chunk 11: Mode switching](docs/emulator-roadmap.md#chunk-11-mode-switching).
+- [x] [Chunk 11: Mode switching](docs/emulator-roadmap.md#chunk-11-mode-switching).
 - [ ] [Chunk 12: Interrupts and vectors](docs/emulator-roadmap.md#chunk-12-interrupts-and-vectors).
 - [ ] [Chunk 13: Opcode family coverage pass](docs/emulator-roadmap.md#chunk-13-coverage-pass-for-opcode-families).
 - [ ] [Chunk 14: Timing metadata](docs/emulator-roadmap.md#chunk-14-timing-metadata).

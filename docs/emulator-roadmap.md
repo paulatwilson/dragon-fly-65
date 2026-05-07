@@ -212,6 +212,8 @@ Definition of done:
 
 ## Chunk 11: Mode Switching
 
+Status: done.
+
 Goal: implement `XCE`, `XFE`, `REP`, and `SEP`.
 
 Tasks:
