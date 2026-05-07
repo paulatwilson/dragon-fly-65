@@ -1,7 +1,12 @@
 import { createClockConfig, type ClockConfig } from "./clock";
-import { BYTE_MASK, WORD_MASK } from "./constants";
-import { makeProgramAddress } from "./memory";
-import { createInitialCpuState } from "./state";
+import {
+  BYTE_MASK,
+  RESET_VECTOR_ADDRESS,
+  StatusFlag,
+  WORD_MASK,
+} from "./constants";
+import { makeProgramAddress, readWord } from "./memory";
+import { createInitialCpuState, setStatusFlag } from "./state";
 import type { CpuOptions, CpuState, RegisterName, StepResult } from "./types";
 
 export class UnsupportedOpcodeError extends Error {
@@ -24,6 +29,7 @@ export class W65C832Cpu {
 
   reset(): void {
     const fresh = createInitialCpuState();
+    fresh.pc = readWord(this.memory, RESET_VECTOR_ADDRESS);
     Object.assign(this.state, fresh);
   }
 
@@ -72,6 +78,48 @@ export class W65C832Cpu {
     this.state.pc = (this.state.pc + 1) & WORD_MASK;
 
     switch (opcode) {
+      case 0x18:
+        return this.completeFlagInstruction(
+          pcBefore,
+          opcode,
+          StatusFlag.Carry,
+          false,
+        );
+      case 0x38:
+        return this.completeFlagInstruction(
+          pcBefore,
+          opcode,
+          StatusFlag.Carry,
+          true,
+        );
+      case 0x58:
+        return this.completeFlagInstruction(
+          pcBefore,
+          opcode,
+          StatusFlag.InterruptDisable,
+          false,
+        );
+      case 0x78:
+        return this.completeFlagInstruction(
+          pcBefore,
+          opcode,
+          StatusFlag.InterruptDisable,
+          true,
+        );
+      case 0xb8:
+        return this.completeFlagInstruction(
+          pcBefore,
+          opcode,
+          StatusFlag.Overflow,
+          false,
+        );
+      case 0xd8:
+        return this.completeFlagInstruction(
+          pcBefore,
+          opcode,
+          StatusFlag.Decimal,
+          false,
+        );
       case 0xea:
         this.state.cycles += 2;
         return {
@@ -80,6 +128,13 @@ export class W65C832Cpu {
           cycles: 2,
           stopped: false,
         };
+      case 0xf8:
+        return this.completeFlagInstruction(
+          pcBefore,
+          opcode,
+          StatusFlag.Decimal,
+          true,
+        );
       case 0xdb:
         this.state.stopped = true;
         this.state.cycles += 3;
@@ -92,6 +147,23 @@ export class W65C832Cpu {
       default:
         throw new UnsupportedOpcodeError(opcode);
     }
+  }
+
+  private completeFlagInstruction(
+    pcBefore: number,
+    opcode: number,
+    flag: StatusFlag,
+    enabled: boolean,
+  ): StepResult {
+    setStatusFlag(this.state, flag, enabled);
+    this.state.cycles += 2;
+
+    return {
+      pcBefore,
+      opcode,
+      cycles: 2,
+      stopped: false,
+    };
   }
 }
 

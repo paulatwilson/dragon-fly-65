@@ -10,6 +10,7 @@ import {
   maskToWidth,
   readLong,
   readWord,
+  RESET_VECTOR_ADDRESS,
   resolveWidthMode,
   StatusFlag,
   writeLong,
@@ -104,6 +105,69 @@ test("CPU exposes configured clock speed", () => {
   expect(cpu.clock.hz).toBe(8_000_000);
   expect(cpu.clock.mhz).toBe(8);
   expect(cpu.clock.nanosecondsPerCycle).toBe(125);
+});
+
+test("CPU reset loads PC from the reset vector", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  writeWord(ram, RESET_VECTOR_ADDRESS, 0x8000);
+  cpu.reset();
+
+  expect(cpu.readRegister("pc")).toBe(0x8000);
+  expect(cpu.readRegister("prb")).toBe(0);
+});
+
+test("CPU executes basic status flag instructions", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  const program = [
+    0x38, // SEC
+    0x18, // CLC
+    0xf8, // SED
+    0xd8, // CLD
+    0x78, // SEI
+    0x58, // CLI
+    0x38, // SEC
+    0xb8, // CLV
+  ];
+
+  for (const [address, opcode] of program.entries()) {
+    ram.writeByte(address, opcode);
+  }
+
+  cpu.writeRegister("p", StatusFlag.Overflow);
+
+  expect(cpu.step().opcode).toBe(0x38);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(
+    StatusFlag.Carry,
+  );
+
+  expect(cpu.step().opcode).toBe(0x18);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+
+  expect(cpu.step().opcode).toBe(0xf8);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Decimal).toBe(
+    StatusFlag.Decimal,
+  );
+
+  expect(cpu.step().opcode).toBe(0xd8);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Decimal).toBe(0);
+
+  expect(cpu.step().opcode).toBe(0x78);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.InterruptDisable).toBe(
+    StatusFlag.InterruptDisable,
+  );
+
+  expect(cpu.step().opcode).toBe(0x58);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.InterruptDisable).toBe(0);
+
+  expect(cpu.step().opcode).toBe(0x38);
+  expect(cpu.step().opcode).toBe(0xb8);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(0);
+  expect(cpu.readRegister("pc")).toBe(program.length);
+  expect(cpu.readRegister("cycles")).toBe(program.length * 2);
 });
 
 test("CPU can execute STP and report stopped state", () => {
