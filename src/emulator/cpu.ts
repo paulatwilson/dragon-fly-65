@@ -5,7 +5,12 @@ import {
   StatusFlag,
   WORD_MASK,
 } from "./constants";
-import { makeProgramAddress, readWord } from "./memory";
+import {
+  makeDataAddress,
+  makeDirectAddress,
+  makeProgramAddress,
+  readWord,
+} from "./memory";
 import { getOpcodeDefinition, type InstructionContext } from "./opcodes";
 import {
   createInitialCpuState,
@@ -175,6 +180,21 @@ export class W65C832Cpu {
     }
   }
 
+  writeMemoryValue(address: number, value: number, width: 8 | 16 | 32): void {
+    const normalized = maskToWidth(value, width);
+
+    this.memory.writeByte(address, normalized);
+
+    if (width >= 16) {
+      this.memory.writeByte(address + 1, normalized >> 8);
+    }
+
+    if (width === 32) {
+      this.memory.writeByte(address + 2, normalized >> 16);
+      this.memory.writeByte(address + 3, normalized >> 24);
+    }
+  }
+
   completeFlagInstruction(
     context: InstructionContext,
     flag: StatusFlag,
@@ -270,6 +290,102 @@ export class W65C832Cpu {
     );
   }
 
+  completeStoreAccumulatorDirect(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const effectiveAddress = makeDirectAddress(
+      this.state.dr,
+      context.operandBytes[0] ?? 0,
+    );
+
+    return this.completeStoreInstruction(
+      context,
+      effectiveAddress,
+      this.state.a,
+      accumulator,
+      3,
+    );
+  }
+
+  completeStoreAccumulatorAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const effectiveAddress = makeDataAddress(
+      this.state.drb,
+      this.readBytesValue(context.operandBytes),
+    );
+
+    return this.completeStoreInstruction(
+      context,
+      effectiveAddress,
+      this.state.a,
+      accumulator,
+      4,
+    );
+  }
+
+  completeStoreXDirect(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const effectiveAddress = makeDirectAddress(
+      this.state.dr,
+      context.operandBytes[0] ?? 0,
+    );
+
+    return this.completeStoreInstruction(
+      context,
+      effectiveAddress,
+      this.state.x,
+      index,
+      3,
+    );
+  }
+
+  completeStoreXAbsolute(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const effectiveAddress = makeDataAddress(
+      this.state.drb,
+      this.readBytesValue(context.operandBytes),
+    );
+
+    return this.completeStoreInstruction(
+      context,
+      effectiveAddress,
+      this.state.x,
+      index,
+      4,
+    );
+  }
+
+  completeStoreYDirect(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const effectiveAddress = makeDirectAddress(
+      this.state.dr,
+      context.operandBytes[0] ?? 0,
+    );
+
+    return this.completeStoreInstruction(
+      context,
+      effectiveAddress,
+      this.state.y,
+      index,
+      3,
+    );
+  }
+
+  completeStoreYAbsolute(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const effectiveAddress = makeDataAddress(
+      this.state.drb,
+      this.readBytesValue(context.operandBytes),
+    );
+
+    return this.completeStoreInstruction(
+      context,
+      effectiveAddress,
+      this.state.y,
+      index,
+      4,
+    );
+  }
+
   completeNoopInstruction(context: InstructionContext): StepResult {
     this.state.cycles += 2;
 
@@ -333,6 +449,28 @@ export class W65C832Cpu {
       cycles,
       stopped: false,
       registerChanges,
+    };
+  }
+
+  private completeStoreInstruction(
+    context: InstructionContext,
+    effectiveAddress: number,
+    value: number,
+    width: 8 | 16 | 32,
+    cycles: number,
+  ): StepResult {
+    this.writeMemoryValue(effectiveAddress, value, width);
+    this.state.cycles += cycles;
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: getOpcodeDefinition(context.opcode)?.mnemonic ?? "???",
+      bytes: context.bytes,
+      cycles,
+      stopped: false,
+      effectiveAddress,
     };
   }
 }

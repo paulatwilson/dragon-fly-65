@@ -70,6 +70,36 @@ const indexImmediate = (
   execute,
 });
 
+const direct = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles,
+  addressingMode: "direct",
+  byteLength: () => 2,
+  execute,
+});
+
+const absolute = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 3,
+  cycles,
+  addressingMode: "absolute",
+  byteLength: () => 3,
+  execute,
+});
+
 export const OPCODES = new Map<number, OpcodeDefinition>(
   [
     accumulatorImmediate(0xa9, "LDA", 2, (cpu, context) =>
@@ -80,6 +110,24 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     ),
     indexImmediate(0xa2, "LDX", 2, (cpu, context) =>
       cpu.completeLoadXImmediate(context),
+    ),
+    direct(0x84, "STY", 3, (cpu, context) =>
+      cpu.completeStoreYDirect(context),
+    ),
+    direct(0x85, "STA", 3, (cpu, context) =>
+      cpu.completeStoreAccumulatorDirect(context),
+    ),
+    direct(0x86, "STX", 3, (cpu, context) =>
+      cpu.completeStoreXDirect(context),
+    ),
+    absolute(0x8c, "STY", 4, (cpu, context) =>
+      cpu.completeStoreYAbsolute(context),
+    ),
+    absolute(0x8d, "STA", 4, (cpu, context) =>
+      cpu.completeStoreAccumulatorAbsolute(context),
+    ),
+    absolute(0x8e, "STX", 4, (cpu, context) =>
+      cpu.completeStoreXAbsolute(context),
     ),
     implied(0x18, "CLC", 2, (cpu, context) =>
       cpu.completeFlagInstruction(context, StatusFlag.Carry, false),

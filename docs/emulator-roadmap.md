@@ -89,6 +89,8 @@ Definition of done:
 
 ## Chunk 4: Store Instructions
 
+Status: done.
+
 Goal: write registers back to memory.
 
 Tasks:

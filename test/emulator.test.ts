@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(12);
+  expect(OPCODES.size).toBe(18);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -216,6 +216,20 @@ test("opcode metadata describes implemented implied instructions", () => {
     cycles: 2,
     addressingMode: "implied",
   });
+  expect(getOpcodeDefinition(0x85)).toMatchObject({
+    opcode: 0x85,
+    mnemonic: "STA",
+    bytes: 2,
+    cycles: 3,
+    addressingMode: "direct",
+  });
+  expect(getOpcodeDefinition(0x8e)).toMatchObject({
+    opcode: 0x8e,
+    mnemonic: "STX",
+    bytes: 3,
+    cycles: 4,
+    addressingMode: "absolute",
+  });
   expect(getOpcodeDefinition(0xdb)).toMatchObject({
     opcode: 0xdb,
     mnemonic: "STP",
@@ -224,6 +238,114 @@ test("opcode metadata describes implemented implied instructions", () => {
     addressingMode: "implied",
   });
   expect(getOpcodeDefinition(0xff)).toBeUndefined();
+});
+
+test("STA direct stores accumulator using direct register addressing", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("a", 0x1234_5678);
+  cpu.writeRegister("dr", 0x0100);
+  ram.writeByte(0, 0x85);
+  ram.writeByte(1, 0x40);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x85,
+    mnemonic: "STA",
+    bytes: [0x85, 0x40],
+    pcAfter: 2,
+    cycles: 3,
+    effectiveAddress: 0x0140,
+  });
+  expect(ram.readByte(0x0140)).toBe(0x78);
+  expect(cpu.readRegister("cycles")).toBe(3);
+});
+
+test("STA absolute stores accumulator through the data bank", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("a", 0x89ab_cdef);
+  cpu.writeRegister("drb", 0x02);
+  ram.writeByte(0, 0x8d);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x20);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x8d,
+    mnemonic: "STA",
+    bytes: [0x8d, 0x00, 0x20],
+    pcAfter: 3,
+    cycles: 4,
+    effectiveAddress: 0x022000,
+  });
+  expect(readLong(ram, 0x022000)).toBe(0x89ab_cdef);
+});
+
+test("STX and STY direct store index registers at active index width", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("x", 0xabcd);
+  cpu.writeRegister("y", 0x4567);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("dr", 0x0300);
+  ram.writeByte(0, 0x86);
+  ram.writeByte(1, 0x10);
+  ram.writeByte(2, 0x84);
+  ram.writeByte(3, 0x20);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x86,
+    effectiveAddress: 0x0310,
+  });
+  expect(readWord(ram, 0x0310)).toBe(0xabcd);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x84,
+    effectiveAddress: 0x0320,
+  });
+  expect(readWord(ram, 0x0320)).toBe(0x4567);
+  expect(cpu.readRegister("cycles")).toBe(6);
+});
+
+test("STX and STY absolute store index registers through the data bank", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("x", 0xdead_beef);
+  cpu.writeRegister("y", 0x80);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("drb", 0x03);
+  ram.writeByte(0, 0x8e);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x40);
+  ram.writeByte(3, 0x8c);
+  ram.writeByte(4, 0x10);
+  ram.writeByte(5, 0x40);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x8e,
+    bytes: [0x8e, 0x00, 0x40],
+    effectiveAddress: 0x034000,
+  });
+  expect(readLong(ram, 0x034000)).toBe(0xdead_beef);
+
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("e8", true);
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x8c,
+    bytes: [0x8c, 0x10, 0x40],
+    effectiveAddress: 0x034010,
+  });
+  expect(ram.readByte(0x034010)).toBe(0x80);
 });
 
 test("LDA immediate loads accumulator and updates N/Z in 8-bit mode", () => {

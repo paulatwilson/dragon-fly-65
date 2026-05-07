@@ -27,7 +27,7 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 - [x] [Chunk 1: Execution core shape](docs/emulator-roadmap.md#chunk-1-execution-core-shape).
 - [x] [Chunk 2: Fetch helpers and immediate addressing](docs/emulator-roadmap.md#chunk-2-fetch-helpers-and-immediate-addressing).
 - [x] [Chunk 3: Load instructions](docs/emulator-roadmap.md#chunk-3-load-instructions).
-- [ ] [Chunk 4: Store instructions](docs/emulator-roadmap.md#chunk-4-store-instructions).
+- [x] [Chunk 4: Store instructions](docs/emulator-roadmap.md#chunk-4-store-instructions).
 - [ ] [Chunk 5: Transfers and register operations](docs/emulator-roadmap.md#chunk-5-transfers-and-register-operations).
 - [ ] [Chunk 6: Stack basics](docs/emulator-roadmap.md#chunk-6-stack-basics).
 - [ ] [Chunk 7: Branches and jumps](docs/emulator-roadmap.md#chunk-7-branches-and-jumps).
