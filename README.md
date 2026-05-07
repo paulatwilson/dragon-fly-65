@@ -35,6 +35,8 @@ bun run typecheck
 
 Dragon Fly 65 is released under the MIT License. Contributions are welcome once the project direction and architecture settle.
 
+Third-party attribution and license notes are tracked in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ## Reusable Emulator
 
 The W65C832 emulator is being built as a standalone TypeScript library inside the project. Dragon Fly 65-specific machine, operating system, SSH, and deployment code should live outside the emulator boundary so other projects can reuse the processor model.
@@ -54,4 +56,4 @@ The reusable emulator accepts a `clockHz` option and enforces a minimum of 4 MHz
 Dragon Fly 65 is informed by Michael Kohn's open-source projects:
 
 - [W65C832 FPGA core](https://github.com/mikeakohn/w65c832), an important practical reference for building a W65C832-inspired processor.
-- [naken_asm](https://github.com/mikeakohn/naken_asm), which will inform the direction of the Dragon Fly 65 W65C832 assembler work.
+- [naken_asm](https://github.com/mikeakohn/naken_asm), which will inform the direction of the Dragon Fly 65 W65C832 assembler work. `naken_asm` is GPL-3.0 licensed, so Dragon Fly 65 treats it as a compatibility reference unless a separate licensing decision is made.

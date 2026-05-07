@@ -7,8 +7,11 @@ This document records the processor direction for Dragon Fly 65. The aim is to b
 - WDC preliminary datasheet: `docs/wdc_w65c832_preliminary_mar_1991.pdf`
 - Mike Kohn FPGA core: <https://github.com/mikeakohn/w65c832>
 - Mike Kohn project notes: <https://www.mikekohn.net/micro/w65c832_fpga.php>
+- Compliance notes: `docs/compliance.md`
 
 The WDC datasheet is the architectural reference. Mike Kohn's FPGA core is the practical implementation reference. When the two disagree, Dragon Fly 65 should document the disagreement before choosing behavior.
+
+The FPGA core is MIT licensed, so direct ports are allowed when attribution and license notices are preserved. Even so, Dragon Fly 65 should prefer original TypeScript structure over line-by-line Verilog translation.
 
 ## Implementation Stance
 
