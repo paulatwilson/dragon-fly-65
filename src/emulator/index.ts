@@ -2,12 +2,16 @@ export {
   ADDRESS_BITS,
   ADDRESS_MASK,
   BYTE_MASK,
+  DF65_DEFAULT_CLOCK_HZ,
   LONG_MASK,
   StatusFlag,
+  WDC_MAX_CLOCK_HZ,
+  WDC_MIN_CLOCK_HZ,
   WORD_MASK,
   W65C02_RESET_STATUS,
   type RegisterWidth,
 } from "./constants";
+export { createClockConfig, type ClockConfig } from "./clock";
 export { createCpu, UnsupportedOpcodeError, W65C832Cpu } from "./cpu";
 export {
   createRam,
@@ -38,4 +42,3 @@ export type {
   StepResult,
   WidthMode,
 } from "./types";
-

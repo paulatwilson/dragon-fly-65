@@ -1,3 +1,4 @@
+import { createClockConfig, type ClockConfig } from "./clock";
 import { BYTE_MASK, WORD_MASK } from "./constants";
 import { makeProgramAddress } from "./memory";
 import { createInitialCpuState } from "./state";
@@ -12,10 +13,12 @@ export class UnsupportedOpcodeError extends Error {
 
 export class W65C832Cpu {
   readonly memory: CpuOptions["memory"];
+  readonly clock: ClockConfig;
   readonly state: CpuState;
 
   constructor(options: CpuOptions) {
     this.memory = options.memory;
+    this.clock = createClockConfig(options.clockHz);
     this.state = createInitialCpuState();
   }
 

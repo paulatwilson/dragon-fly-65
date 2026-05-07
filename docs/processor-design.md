@@ -38,6 +38,19 @@ Project boundaries:
 
 The emulator may use TypeScript and standard JavaScript APIs. It should avoid direct dependencies on Bun runtime APIs unless a Bun-specific adapter is kept outside `src/emulator/`.
 
+## Clock Configuration
+
+The WDC datasheet describes 4 MHz to 10 MHz parts. Dragon Fly 65 deliberately models a fictional 1998-era 40 MHz variant.
+
+Emulator clock rules:
+
+- Minimum accepted CPU clock: 4 MHz.
+- WDC reference maximum: 10 MHz.
+- Dragon Fly 65 default clock: 40 MHz.
+- Clock speed is configuration data, not real-time pacing. Instruction execution still advances by emulator steps and cycle counts.
+
+The reusable emulator should expose clock metadata without coupling itself to a scheduler. Any real-time throttling, wall-clock pacing, or SSH session timing belongs outside `src/emulator/`.
+
 ## Register Model
 
 The core CPU state should include:

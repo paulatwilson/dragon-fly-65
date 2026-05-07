@@ -47,6 +47,8 @@ const cpu = createCpu({ memory });
 cpu.step();
 ```
 
+Dragon Fly 65 defaults the emulator to a fictional 1998-era 40 MHz W65C832 variant. The emulator enforces a minimum clock of 4 MHz and exposes WDC's 10 MHz value as a reference constant, but does not treat it as the DF65 ceiling.
+
 ## Credits
 
 Dragon Fly 65 is informed by Michael Kohn's open-source projects:

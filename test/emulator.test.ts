@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
 import {
+  createClockConfig,
   createCpu,
   createInitialCpuState,
   createRam,
+  DF65_DEFAULT_CLOCK_HZ,
   makeDataAddress,
   makeDirectAddress,
   makeProgramAddress,
@@ -14,6 +16,18 @@ import {
   writeLong,
   writeWord,
 } from "../src/emulator";
+
+test("clock config defaults to the DF65 40 MHz variant", () => {
+  const clock = createClockConfig();
+
+  expect(clock.hz).toBe(DF65_DEFAULT_CLOCK_HZ);
+  expect(clock.mhz).toBe(40);
+  expect(clock.nanosecondsPerCycle).toBe(25);
+});
+
+test("clock config rejects frequencies below 4 MHz", () => {
+  expect(() => createClockConfig(3_999_999)).toThrow(RangeError);
+});
 
 test("initial CPU state boots in W65C02 emulation shape", () => {
   const state = createInitialCpuState();
@@ -85,6 +99,14 @@ test("CPU can step a NOP through injected memory", () => {
   expect(cpu.readRegister("cycles")).toBe(2);
 });
 
+test("CPU exposes configured clock speed", () => {
+  const cpu = createCpu({ memory: createRam(32), clockHz: 8_000_000 });
+
+  expect(cpu.clock.hz).toBe(8_000_000);
+  expect(cpu.clock.mhz).toBe(8);
+  expect(cpu.clock.nanosecondsPerCycle).toBe(125);
+});
+
 test("CPU can execute STP and report stopped state", () => {
   const ram = createRam(32);
   const cpu = createCpu({ memory: ram });
@@ -95,4 +117,3 @@ test("CPU can execute STP and report stopped state", () => {
   expect(result.stopped).toBe(true);
   expect(cpu.readRegister("stopped")).toBe(true);
 });
-

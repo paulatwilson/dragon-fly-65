@@ -29,6 +29,7 @@ The project is intended to become an open-source system that can run on Fly.io.
 
 - Prefer small, focused changes that match the existing project structure.
 - Keep the W65C832 emulator reusable as an independent TypeScript library. Do not couple `src/emulator/` to Dragon Fly 65 OS, SSH, Fly.io, or server concerns.
+- Keep CPU clock behavior configurable. Dragon Fly 65 defaults to a fictional 40 MHz variant, while the WDC reference range starts at 4 MHz and tops out at 10 MHz.
 - Keep TypeScript strict and explicit around CPU, memory, operating system, and network state.
 - Add tests for emulator, operating system, SSH, and protocol behavior as those areas are introduced.
 - Document invented architecture decisions in `docs/`.

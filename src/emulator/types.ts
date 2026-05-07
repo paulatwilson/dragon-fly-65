@@ -56,5 +56,5 @@ export interface StepResult {
 
 export interface CpuOptions {
   memory: ByteMemory;
+  clockHz?: number;
 }
-
