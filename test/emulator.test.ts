@@ -4,7 +4,6 @@ import {
   createCpu,
   createInitialCpuState,
   createRam,
-  DF65_DEFAULT_CLOCK_HZ,
   makeDataAddress,
   makeDirectAddress,
   makeProgramAddress,
@@ -17,12 +16,12 @@ import {
   writeWord,
 } from "../src/emulator";
 
-test("clock config defaults to the DF65 40 MHz variant", () => {
+test("clock config defaults to the WDC 4 MHz minimum", () => {
   const clock = createClockConfig();
 
-  expect(clock.hz).toBe(DF65_DEFAULT_CLOCK_HZ);
-  expect(clock.mhz).toBe(40);
-  expect(clock.nanosecondsPerCycle).toBe(25);
+  expect(clock.hz).toBe(4_000_000);
+  expect(clock.mhz).toBe(4);
+  expect(clock.nanosecondsPerCycle).toBe(250);
 });
 
 test("clock config rejects frequencies below 4 MHz", () => {

@@ -1,4 +1,4 @@
-import { DF65_DEFAULT_CLOCK_HZ, WDC_MIN_CLOCK_HZ } from "./constants";
+import { WDC_MIN_CLOCK_HZ } from "./constants";
 
 export interface ClockConfig {
   hz: number;
@@ -6,7 +6,7 @@ export interface ClockConfig {
   nanosecondsPerCycle: number;
 }
 
-export function createClockConfig(clockHz = DF65_DEFAULT_CLOCK_HZ): ClockConfig {
+export function createClockConfig(clockHz = WDC_MIN_CLOCK_HZ): ClockConfig {
   if (!Number.isInteger(clockHz) || clockHz < WDC_MIN_CLOCK_HZ) {
     throw new RangeError("CPU clock must be an integer frequency of at least 4 MHz");
   }
@@ -17,4 +17,3 @@ export function createClockConfig(clockHz = DF65_DEFAULT_CLOCK_HZ): ClockConfig 
     nanosecondsPerCycle: 1_000_000_000 / clockHz,
   };
 }
-

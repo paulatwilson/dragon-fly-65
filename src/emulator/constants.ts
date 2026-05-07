@@ -6,7 +6,6 @@ export const LONG_MASK = 0xffff_ffff;
 
 export const WDC_MIN_CLOCK_HZ = 4_000_000;
 export const WDC_MAX_CLOCK_HZ = 10_000_000;
-export const DF65_DEFAULT_CLOCK_HZ = 40_000_000;
 
 export enum StatusFlag {
   Carry = 0x01,

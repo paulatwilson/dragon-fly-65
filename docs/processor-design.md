@@ -40,16 +40,17 @@ The emulator may use TypeScript and standard JavaScript APIs. It should avoid di
 
 ## Clock Configuration
 
-The WDC datasheet describes 4 MHz to 10 MHz parts. Dragon Fly 65 deliberately models a fictional 1998-era 40 MHz variant.
+The WDC datasheet describes 4 MHz to 10 MHz parts. Dragon Fly 65 deliberately models a fictional 1998-era 40 MHz variant, but that choice belongs outside the reusable emulator.
 
-Emulator clock rules:
+Clock rules:
 
-- Minimum accepted CPU clock: 4 MHz.
+- Minimum accepted emulator CPU clock: 4 MHz.
 - WDC reference maximum: 10 MHz.
-- Dragon Fly 65 default clock: 40 MHz.
+- Dragon Fly 65 default clock: 40 MHz, set in external Dragon Fly config.
+- Environment override: `DF65_CPU_CLOCK_HZ`.
 - Clock speed is configuration data, not real-time pacing. Instruction execution still advances by emulator steps and cycle counts.
 
-The reusable emulator should expose clock metadata without coupling itself to a scheduler. Any real-time throttling, wall-clock pacing, or SSH session timing belongs outside `src/emulator/`.
+The reusable emulator should expose clock metadata without coupling itself to Dragon Fly 65 config or to a scheduler. Any real-time throttling, wall-clock pacing, machine profile, or SSH session timing belongs outside `src/emulator/`.
 
 ## Register Model
 
