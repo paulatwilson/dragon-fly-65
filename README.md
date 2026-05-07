@@ -37,4 +37,7 @@ Dragon Fly 65 is released under the MIT License. Contributions are welcome once 
 
 ## Credits
 
-Dragon Fly 65 is informed by Michael Kohn's open-source [W65C832 FPGA core](https://github.com/mikeakohn/w65c832). His work provides an important practical reference for building a W65C832-inspired processor.
+Dragon Fly 65 is informed by Michael Kohn's open-source projects:
+
+- [W65C832 FPGA core](https://github.com/mikeakohn/w65c832), an important practical reference for building a W65C832-inspired processor.
+- [naken_asm](https://github.com/mikeakohn/naken_asm), which will inform the direction of the Dragon Fly 65 W65C832 assembler work.
