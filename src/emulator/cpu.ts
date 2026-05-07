@@ -617,6 +617,33 @@ export class W65C832Cpu {
     return this.completeIndexMathInstruction(context, "y", -1);
   }
 
+  completeJumpToSubroutine(context: InstructionContext): StepResult {
+    const target = this.readBytesValue(context.operandBytes) & WORD_MASK;
+    // Push PC-1 (last byte of JSR instruction) high byte first — WDC convention.
+    // By the time execute() runs, PC has already advanced past all 3 bytes.
+    const returnAddress = (this.state.pc - 1) & WORD_MASK;
+    const stackBefore = this.state.sp;
+
+    this.pushByte(returnAddress >> 8);
+    this.pushByte(returnAddress & BYTE_MASK);
+    this.state.pc = target;
+    this.state.cycles += 6;
+
+    return this.completeStackInstruction(context, stackBefore, 6);
+  }
+
+  completeReturnFromSubroutine(context: InstructionContext): StepResult {
+    const stackBefore = this.state.sp;
+    const low = this.pullByte();
+    const high = this.pullByte();
+    const returnAddress = ((high << 8) | low) & WORD_MASK;
+
+    this.state.pc = (returnAddress + 1) & WORD_MASK;
+    this.state.cycles += 6;
+
+    return this.completeStackInstruction(context, stackBefore, 6);
+  }
+
   completeBranch(
     context: InstructionContext,
     flag: StatusFlag,

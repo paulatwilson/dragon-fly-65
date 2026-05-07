@@ -116,6 +116,12 @@ const relative = (
 
 export const OPCODES = new Map<number, OpcodeDefinition>(
   [
+    absolute(0x20, "JSR", 6, (cpu, context) =>
+      cpu.completeJumpToSubroutine(context),
+    ),
+    implied(0x60, "RTS", 6, (cpu, context) =>
+      cpu.completeReturnFromSubroutine(context),
+    ),
     relative(0x10, "BPL", (cpu, context) =>
       cpu.completeBranch(context, StatusFlag.Negative, false),
     ),

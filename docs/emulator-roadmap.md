@@ -156,6 +156,8 @@ Definition of done:
 
 ## Chunk 8: Subroutines
 
+Status: done.
+
 Goal: support monitor-style code organization.
 
 Tasks:

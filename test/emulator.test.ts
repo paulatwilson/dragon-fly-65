@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(41);
+  expect(OPCODES.size).toBe(43);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -1228,4 +1228,134 @@ test("JMP absolute does not affect flags or registers", () => {
   expect(Number(cpu.readRegister("p")) & (StatusFlag.Carry | StatusFlag.Zero)).toBe(
     StatusFlag.Carry | StatusFlag.Zero,
   );
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 8: Subroutines
+// ---------------------------------------------------------------------------
+
+test("JSR pushes return address and jumps to target", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  // JSR $1000 at address 0x0200
+  cpu.writeRegister("pc", 0x0200);
+  ram.writeByte(0x0200, 0x20);
+  ram.writeByte(0x0201, 0x00);
+  ram.writeByte(0x0202, 0x10); // target = 0x1000
+
+  const spBefore = Number(cpu.readRegister("sp")); // 0x01ff
+  const result = cpu.step();
+
+  // PC should now be at the subroutine
+  expect(cpu.readRegister("pc")).toBe(0x1000);
+
+  // Return address pushed is PC-1 = 0x0202 (last byte of JSR)
+  const spAfter = Number(cpu.readRegister("sp"));
+  expect(spAfter).toBe(spBefore - 2);
+
+  // High byte at spBefore, low byte at spBefore-1
+  expect(ram.readByte(0x01ff)).toBe(0x02); // high byte of 0x0202
+  expect(ram.readByte(0x01fe)).toBe(0x02); // low byte of 0x0202
+
+  expect(result).toMatchObject({
+    opcode: 0x20,
+    mnemonic: "JSR",
+    bytes: [0x20, 0x00, 0x10],
+    pcBefore: 0x0200,
+    pcAfter: 0x1000,
+    cycles: 6,
+    stopped: false,
+  });
+});
+
+test("RTS returns to instruction after JSR", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  // JSR $1000 at address 0x0200
+  cpu.writeRegister("pc", 0x0200);
+  ram.writeByte(0x0200, 0x20);
+  ram.writeByte(0x0201, 0x00);
+  ram.writeByte(0x0202, 0x10);
+
+  // RTS at subroutine
+  ram.writeByte(0x1000, 0x60);
+
+  cpu.step(); // JSR
+  expect(cpu.readRegister("pc")).toBe(0x1000);
+
+  const spBeforeRts = Number(cpu.readRegister("sp"));
+  const result = cpu.step(); // RTS
+
+  // Should land at 0x0203 (byte after JSR instruction)
+  expect(cpu.readRegister("pc")).toBe(0x0203);
+
+  // SP restored to pre-JSR value
+  expect(Number(cpu.readRegister("sp"))).toBe(spBeforeRts + 2);
+
+  expect(result).toMatchObject({
+    opcode: 0x60,
+    mnemonic: "RTS",
+    pcBefore: 0x1000,
+    pcAfter: 0x0203,
+    cycles: 6,
+    stopped: false,
+  });
+});
+
+test("JSR and RTS round-trip executes a small subroutine", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  // Main: LDA #$42, JSR $0300, STP
+  ram.writeByte(0x0200, 0xa9); // LDA #$42
+  ram.writeByte(0x0201, 0x42);
+  ram.writeByte(0x0202, 0x20); // JSR $0300
+  ram.writeByte(0x0203, 0x00);
+  ram.writeByte(0x0204, 0x03);
+  ram.writeByte(0x0205, 0xdb); // STP
+
+  // Subroutine at $0300: LDA #$ff, RTS
+  ram.writeByte(0x0300, 0xa9); // LDA #$ff
+  ram.writeByte(0x0301, 0xff);
+  ram.writeByte(0x0302, 0x60); // RTS
+
+  cpu.writeRegister("pc", 0x0200);
+  // Switch to native mode so accumulator is 8-bit via Memory flag
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+
+  cpu.step(); // LDA #$42
+  expect(cpu.readRegister("a")).toBe(0x42);
+
+  cpu.step(); // JSR $0300
+  expect(cpu.readRegister("pc")).toBe(0x0300);
+
+  cpu.step(); // LDA #$ff
+  expect(cpu.readRegister("a")).toBe(0xff);
+
+  cpu.step(); // RTS
+  expect(cpu.readRegister("pc")).toBe(0x0205); // next instruction after JSR
+
+  cpu.step(); // STP
+  expect(cpu.readRegister("stopped")).toBe(true);
+});
+
+test("JSR stack contents are correct in W65C02 emulation mode", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  // JSR $ABCD at address 0x0010
+  cpu.writeRegister("pc", 0x0010);
+  ram.writeByte(0x0010, 0x20);
+  ram.writeByte(0x0011, 0xcd);
+  ram.writeByte(0x0012, 0xab); // target = 0xABCD
+
+  const spBefore = Number(cpu.readRegister("sp")); // 0x01ff in emulation mode
+  cpu.step();
+
+  // Return address = 0x0012 (last byte of JSR)
+  expect(ram.readByte(spBefore)).toBe(0x00);      // high byte
+  expect(ram.readByte(spBefore - 1)).toBe(0x12);  // low byte
+  expect(cpu.readRegister("sp")).toBe(spBefore - 2);
 });
