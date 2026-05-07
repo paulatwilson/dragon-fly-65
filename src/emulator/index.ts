@@ -25,6 +25,7 @@ export {
   writeLong,
   writeWord,
 } from "./memory";
+export { getOpcodeDefinition, OPCODES, type OpcodeDefinition } from "./opcodes";
 export {
   createInitialCpuState,
   hasStatusFlag,
@@ -34,10 +35,12 @@ export {
   setStatusFlag,
 } from "./state";
 export type {
+  AddressingMode,
   ByteMemory,
   CpuMode,
   CpuOptions,
   CpuState,
+  RegisterChange,
   RegisterName,
   StepResult,
   WidthMode,

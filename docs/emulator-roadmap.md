@@ -36,6 +36,8 @@ Definition of done:
 
 ## Chunk 1: Execution Core Shape
 
+Status: done.
+
 Goal: make instruction execution scalable before adding many opcodes.
 
 Tasks:
@@ -285,4 +287,3 @@ Definition of done:
 
 - Public API is documented.
 - External import smoke tests still pass.
-

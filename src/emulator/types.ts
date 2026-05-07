@@ -49,12 +49,24 @@ export interface WidthMode {
 
 export interface StepResult {
   pcBefore: number;
+  pcAfter: number;
   opcode: number;
+  mnemonic: string;
+  bytes: number[];
   cycles: number;
   stopped: boolean;
+  effectiveAddress?: number;
+  registerChanges?: Record<string, RegisterChange>;
+}
+
+export interface RegisterChange {
+  before: number | boolean;
+  after: number | boolean;
 }
 
 export interface CpuOptions {
   memory: ByteMemory;
   clockHz?: number;
 }
+
+export type AddressingMode = "implied";

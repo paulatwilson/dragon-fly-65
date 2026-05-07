@@ -4,10 +4,12 @@ import {
   createCpu,
   createInitialCpuState,
   createRam,
+  getOpcodeDefinition,
   makeDataAddress,
   makeDirectAddress,
   makeProgramAddress,
   maskToWidth,
+  OPCODES,
   readLong,
   readWord,
   RESET_VECTOR_ADDRESS,
@@ -91,7 +93,10 @@ test("CPU can step a NOP through injected memory", () => {
 
   expect(result).toEqual({
     pcBefore: 0,
+    pcAfter: 1,
     opcode: 0xea,
+    mnemonic: "NOP",
+    bytes: [0xea],
     cycles: 2,
     stopped: false,
   });
@@ -105,6 +110,47 @@ test("CPU exposes configured clock speed", () => {
   expect(cpu.clock.hz).toBe(8_000_000);
   expect(cpu.clock.mhz).toBe(8);
   expect(cpu.clock.nanosecondsPerCycle).toBe(125);
+});
+
+test("opcode metadata describes implemented implied instructions", () => {
+  expect(OPCODES.size).toBe(9);
+  expect(getOpcodeDefinition(0xea)).toMatchObject({
+    opcode: 0xea,
+    mnemonic: "NOP",
+    bytes: 1,
+    cycles: 2,
+    addressingMode: "implied",
+  });
+  expect(getOpcodeDefinition(0xdb)).toMatchObject({
+    opcode: 0xdb,
+    mnemonic: "STP",
+    bytes: 1,
+    cycles: 3,
+    addressingMode: "implied",
+  });
+  expect(getOpcodeDefinition(0xff)).toBeUndefined();
+});
+
+test("flag instruction result includes trace metadata and register changes", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x38);
+  cpu.writeRegister("p", StatusFlag.Overflow);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x38,
+    mnemonic: "SEC",
+    bytes: [0x38],
+    pcBefore: 0,
+    pcAfter: 1,
+    registerChanges: {
+      p: {
+        before: StatusFlag.Overflow,
+        after: StatusFlag.Overflow | StatusFlag.Carry,
+      },
+    },
+  });
 });
 
 test("CPU reset loads PC from the reset vector", () => {
@@ -177,6 +223,19 @@ test("CPU can execute STP and report stopped state", () => {
   ram.writeByte(0, 0xdb);
   const result = cpu.step();
 
+  expect(result).toMatchObject({
+    opcode: 0xdb,
+    mnemonic: "STP",
+    bytes: [0xdb],
+    cycles: 3,
+    stopped: true,
+    registerChanges: {
+      stopped: {
+        before: false,
+        after: true,
+      },
+    },
+  });
   expect(result.stopped).toBe(true);
   expect(cpu.readRegister("stopped")).toBe(true);
 });

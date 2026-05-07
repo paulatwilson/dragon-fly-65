@@ -6,6 +6,7 @@ import {
   WORD_MASK,
 } from "./constants";
 import { makeProgramAddress, readWord } from "./memory";
+import { getOpcodeDefinition, type InstructionContext } from "./opcodes";
 import { createInitialCpuState, setStatusFlag } from "./state";
 import type { CpuOptions, CpuState, RegisterName, StepResult } from "./types";
 
@@ -67,7 +68,10 @@ export class W65C832Cpu {
     if (this.state.stopped) {
       return {
         pcBefore: makeProgramAddress(this.state.prb, this.state.pc),
+        pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
         opcode: 0,
+        mnemonic: "STOPPED",
+        bytes: [],
         cycles: 0,
         stopped: true,
       };
@@ -75,94 +79,85 @@ export class W65C832Cpu {
 
     const pcBefore = makeProgramAddress(this.state.prb, this.state.pc);
     const opcode = this.memory.readByte(pcBefore);
+    const definition = getOpcodeDefinition(opcode);
+
+    if (definition === undefined) {
+      throw new UnsupportedOpcodeError(opcode);
+    }
+
+    const bytes = [opcode];
     this.state.pc = (this.state.pc + 1) & WORD_MASK;
 
-    switch (opcode) {
-      case 0x18:
-        return this.completeFlagInstruction(
-          pcBefore,
-          opcode,
-          StatusFlag.Carry,
-          false,
-        );
-      case 0x38:
-        return this.completeFlagInstruction(
-          pcBefore,
-          opcode,
-          StatusFlag.Carry,
-          true,
-        );
-      case 0x58:
-        return this.completeFlagInstruction(
-          pcBefore,
-          opcode,
-          StatusFlag.InterruptDisable,
-          false,
-        );
-      case 0x78:
-        return this.completeFlagInstruction(
-          pcBefore,
-          opcode,
-          StatusFlag.InterruptDisable,
-          true,
-        );
-      case 0xb8:
-        return this.completeFlagInstruction(
-          pcBefore,
-          opcode,
-          StatusFlag.Overflow,
-          false,
-        );
-      case 0xd8:
-        return this.completeFlagInstruction(
-          pcBefore,
-          opcode,
-          StatusFlag.Decimal,
-          false,
-        );
-      case 0xea:
-        this.state.cycles += 2;
-        return {
-          pcBefore,
-          opcode,
-          cycles: 2,
-          stopped: false,
-        };
-      case 0xf8:
-        return this.completeFlagInstruction(
-          pcBefore,
-          opcode,
-          StatusFlag.Decimal,
-          true,
-        );
-      case 0xdb:
-        this.state.stopped = true;
-        this.state.cycles += 3;
-        return {
-          pcBefore,
-          opcode,
-          cycles: 3,
-          stopped: true,
-        };
-      default:
-        throw new UnsupportedOpcodeError(opcode);
-    }
+    return definition.execute(this, {
+      pcBefore,
+      opcode,
+      bytes,
+    });
   }
 
-  private completeFlagInstruction(
-    pcBefore: number,
-    opcode: number,
+  completeFlagInstruction(
+    context: InstructionContext,
     flag: StatusFlag,
     enabled: boolean,
   ): StepResult {
+    const statusBefore = this.state.p;
     setStatusFlag(this.state, flag, enabled);
+    const statusAfter = this.state.p;
     this.state.cycles += 2;
 
     return {
-      pcBefore,
-      opcode,
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: getOpcodeDefinition(context.opcode)?.mnemonic ?? "???",
+      bytes: context.bytes,
       cycles: 2,
       stopped: false,
+      registerChanges:
+        statusBefore === statusAfter
+          ? {}
+          : {
+              p: {
+                before: statusBefore,
+                after: statusAfter,
+              },
+            },
+    };
+  }
+
+  completeNoopInstruction(context: InstructionContext): StepResult {
+    this.state.cycles += 2;
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "NOP",
+      bytes: context.bytes,
+      cycles: 2,
+      stopped: false,
+    };
+  }
+
+  completeStopInstruction(context: InstructionContext): StepResult {
+    const stoppedBefore = this.state.stopped;
+    this.state.stopped = true;
+    this.state.cycles += 3;
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "STP",
+      bytes: context.bytes,
+      cycles: 3,
+      stopped: true,
+      registerChanges: {
+        stopped: {
+          before: stoppedBefore,
+          after: true,
+        },
+      },
     };
   }
 }

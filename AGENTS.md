@@ -24,7 +24,7 @@ The project is intended to become an open-source system that can run on Fly.io.
 Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 
 - [x] [Chunk 0: Foundation](docs/emulator-roadmap.md#chunk-0-foundation).
-- [ ] [Chunk 1: Execution core shape](docs/emulator-roadmap.md#chunk-1-execution-core-shape).
+- [x] [Chunk 1: Execution core shape](docs/emulator-roadmap.md#chunk-1-execution-core-shape).
 - [ ] [Chunk 2: Fetch helpers and immediate addressing](docs/emulator-roadmap.md#chunk-2-fetch-helpers-and-immediate-addressing).
 - [ ] [Chunk 3: Load instructions](docs/emulator-roadmap.md#chunk-3-load-instructions).
 - [ ] [Chunk 4: Store instructions](docs/emulator-roadmap.md#chunk-4-store-instructions).
