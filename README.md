@@ -35,6 +35,18 @@ bun run typecheck
 
 Dragon Fly 65 is released under the MIT License. Contributions are welcome once the project direction and architecture settle.
 
+## Reusable Emulator
+
+The W65C832 emulator is being built as a standalone TypeScript library inside the project. Dragon Fly 65-specific machine, operating system, SSH, and deployment code should live outside the emulator boundary so other projects can reuse the processor model.
+
+```ts
+import { createCpu, createRam } from "dragon-fly-65/emulator";
+
+const memory = createRam();
+const cpu = createCpu({ memory });
+cpu.step();
+```
+
 ## Credits
 
 Dragon Fly 65 is informed by Michael Kohn's open-source projects:

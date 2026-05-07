@@ -24,6 +24,20 @@ Initial implementation priorities:
 
 Cycle timing can be introduced later as a separate concern once functional behavior is stable.
 
+## Reusable Library Boundary
+
+The W65C832 emulator must remain useful outside Dragon Fly 65. It should be possible for another TypeScript project to import the CPU, provide memory, step instructions, and inspect state without depending on DF65/OS, the SSH server, Fly.io deployment code, or Bun-specific server APIs.
+
+Project boundaries:
+
+- `src/emulator/`: reusable W65C832 CPU, state, memory interfaces, opcode logic, and tests.
+- `src/assembler/`: reusable W65C832 assembler work, when introduced.
+- `src/machine/`: Dragon Fly 65 hardware profile and memory map.
+- `src/os/`: DF65/OS work.
+- `src/server/`: SSH, HTTP, and deployment entry points.
+
+The emulator may use TypeScript and standard JavaScript APIs. It should avoid direct dependencies on Bun runtime APIs unless a Bun-specific adapter is kept outside `src/emulator/`.
+
 ## Register Model
 
 The core CPU state should include:

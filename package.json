@@ -4,6 +4,9 @@
   "description": "A hypothetical W65C832-based computer and operating system written in TypeScript for Bun.",
   "type": "module",
   "private": false,
+  "exports": {
+    "./emulator": "./src/emulator/index.ts"
+  },
   "license": "MIT",
   "author": "Paul Wilson",
   "repository": {
