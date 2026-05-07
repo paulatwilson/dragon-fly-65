@@ -202,7 +202,13 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(9);
+  expect(OPCODES.size).toBe(12);
+  expect(getOpcodeDefinition(0xa9)).toMatchObject({
+    opcode: 0xa9,
+    mnemonic: "LDA",
+    cycles: 2,
+    addressingMode: "immediate",
+  });
   expect(getOpcodeDefinition(0xea)).toMatchObject({
     opcode: 0xea,
     mnemonic: "NOP",
@@ -218,6 +224,163 @@ test("opcode metadata describes implemented implied instructions", () => {
     addressingMode: "implied",
   });
   expect(getOpcodeDefinition(0xff)).toBeUndefined();
+});
+
+test("LDA immediate loads accumulator and updates N/Z in 8-bit mode", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0xa9);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0xa9);
+  ram.writeByte(3, 0x80);
+
+  const zeroResult = cpu.step();
+  expect(zeroResult).toMatchObject({
+    opcode: 0xa9,
+    mnemonic: "LDA",
+    bytes: [0xa9, 0x00],
+    pcAfter: 2,
+    registerChanges: {
+      p: {
+        before: StatusFlag.Memory | StatusFlag.Index | StatusFlag.InterruptDisable,
+        after:
+          StatusFlag.Memory |
+          StatusFlag.Index |
+          StatusFlag.InterruptDisable |
+          StatusFlag.Zero,
+      },
+    },
+  });
+  expect(cpu.readRegister("a")).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+
+  const negativeResult = cpu.step();
+  expect(negativeResult).toMatchObject({
+    opcode: 0xa9,
+    bytes: [0xa9, 0x80],
+    pcAfter: 4,
+    registerChanges: {
+      a: {
+        before: 0,
+        after: 0x80,
+      },
+    },
+  });
+  expect(cpu.readRegister("a")).toBe(0x80);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+});
+
+test("LDA immediate supports 16-bit and 32-bit accumulator widths", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(0, 0xa9);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x80);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xa9,
+    bytes: [0xa9, 0x00, 0x80],
+    pcAfter: 3,
+  });
+  expect(cpu.readRegister("a")).toBe(0x8000);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+
+  cpu.writeRegister("pc", 8);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(8, 0xa9);
+  ram.writeByte(9, 0x00);
+  ram.writeByte(10, 0x00);
+  ram.writeByte(11, 0x00);
+  ram.writeByte(12, 0x80);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xa9,
+    bytes: [0xa9, 0x00, 0x00, 0x00, 0x80],
+    pcAfter: 13,
+  });
+  expect(cpu.readRegister("a")).toBe(0x8000_0000);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+});
+
+test("LDX and LDY immediate follow index width and update flags", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0xa2);
+  ram.writeByte(1, 0x7f);
+  ram.writeByte(2, 0xa0);
+  ram.writeByte(3, 0x00);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xa2,
+    mnemonic: "LDX",
+    bytes: [0xa2, 0x7f],
+    pcAfter: 2,
+  });
+  expect(cpu.readRegister("x")).toBe(0x7f);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xa0,
+    mnemonic: "LDY",
+    bytes: [0xa0, 0x00],
+    pcAfter: 4,
+  });
+  expect(cpu.readRegister("y")).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+
+  cpu.writeRegister("pc", 8);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(8, 0xa2);
+  ram.writeByte(9, 0x00);
+  ram.writeByte(10, 0x00);
+  ram.writeByte(11, 0x00);
+  ram.writeByte(12, 0x80);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xa2,
+    bytes: [0xa2, 0x00, 0x00, 0x00, 0x80],
+    pcAfter: 13,
+  });
+  expect(cpu.readRegister("x")).toBe(0x8000_0000);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+
+  cpu.writeRegister("pc", 16);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(16, 0xa0);
+  ram.writeByte(17, 0x00);
+  ram.writeByte(18, 0x80);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xa0,
+    bytes: [0xa0, 0x00, 0x80],
+    pcAfter: 19,
+  });
+  expect(cpu.readRegister("y")).toBe(0x8000);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
 });
 
 test("flag instruction result includes trace metadata and register changes", () => {

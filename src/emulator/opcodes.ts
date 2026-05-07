@@ -6,6 +6,7 @@ export interface InstructionContext {
   pcBefore: number;
   opcode: number;
   bytes: number[];
+  operandBytes: number[];
 }
 
 export interface OpcodeDefinition {
@@ -14,6 +15,7 @@ export interface OpcodeDefinition {
   bytes: number;
   cycles: number;
   addressingMode: AddressingMode;
+  byteLength(cpu: W65C832Cpu): number;
   execute(cpu: W65C832Cpu, context: InstructionContext): StepResult;
 }
 
@@ -28,11 +30,57 @@ const implied = (
   bytes: 1,
   cycles,
   addressingMode: "implied",
+  byteLength: () => 1,
+  execute,
+});
+
+const accumulatorImmediate = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 0,
+  cycles,
+  addressingMode: "immediate",
+  byteLength: (cpu) => {
+    const { accumulator } = cpu.getWidthMode();
+    return accumulator / 8 + 1;
+  },
+  execute,
+});
+
+const indexImmediate = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 0,
+  cycles,
+  addressingMode: "immediate",
+  byteLength: (cpu) => {
+    const { index } = cpu.getWidthMode();
+    return index / 8 + 1;
+  },
   execute,
 });
 
 export const OPCODES = new Map<number, OpcodeDefinition>(
   [
+    accumulatorImmediate(0xa9, "LDA", 2, (cpu, context) =>
+      cpu.completeLoadAccumulatorImmediate(context),
+    ),
+    indexImmediate(0xa0, "LDY", 2, (cpu, context) =>
+      cpu.completeLoadYImmediate(context),
+    ),
+    indexImmediate(0xa2, "LDX", 2, (cpu, context) =>
+      cpu.completeLoadXImmediate(context),
+    ),
     implied(0x18, "CLC", 2, (cpu, context) =>
       cpu.completeFlagInstruction(context, StatusFlag.Carry, false),
     ),
@@ -68,4 +116,3 @@ export function getOpcodeDefinition(
 ): OpcodeDefinition | undefined {
   return OPCODES.get(opcode);
 }
-

@@ -7,8 +7,20 @@ import {
 } from "./constants";
 import { makeProgramAddress, readWord } from "./memory";
 import { getOpcodeDefinition, type InstructionContext } from "./opcodes";
-import { createInitialCpuState, resolveWidthMode, setStatusFlag } from "./state";
-import type { CpuOptions, CpuState, RegisterName, StepResult } from "./types";
+import {
+  createInitialCpuState,
+  maskToWidth,
+  resolveWidthMode,
+  setStatusFlag,
+  updateNegativeZeroFlags,
+} from "./state";
+import type {
+  CpuOptions,
+  CpuState,
+  RegisterName,
+  StepResult,
+  WidthMode,
+} from "./types";
 
 export class UnsupportedOpcodeError extends Error {
   constructor(opcode: number) {
@@ -64,6 +76,10 @@ export class W65C832Cpu {
     }
   }
 
+  getWidthMode(): WidthMode {
+    return resolveWidthMode(this.state);
+  }
+
   step(): StepResult {
     if (this.state.stopped) {
       return {
@@ -86,7 +102,8 @@ export class W65C832Cpu {
     }
 
     const bytes = [opcode];
-    for (let index = 1; index < definition.bytes; index += 1) {
+    const byteLength = definition.byteLength(this);
+    for (let index = 1; index < byteLength; index += 1) {
       bytes.push(this.fetchByte());
     }
 
@@ -94,7 +111,18 @@ export class W65C832Cpu {
       pcBefore,
       opcode,
       bytes,
+      operandBytes: bytes.slice(1),
     });
+  }
+
+  readBytesValue(bytes: number[]): number {
+    let value = 0;
+
+    for (const [index, byte] of bytes.entries()) {
+      value |= (byte & BYTE_MASK) << (index * 8);
+    }
+
+    return value >>> 0;
   }
 
   fetchByte(): number {
@@ -177,6 +205,71 @@ export class W65C832Cpu {
     };
   }
 
+  completeLoadAccumulatorImmediate(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const value = maskToWidth(
+      this.readBytesValue(context.operandBytes),
+      accumulator,
+    ) >>> 0;
+    const before = this.state.a;
+    const statusBefore = this.state.p;
+
+    this.state.a = value;
+    updateNegativeZeroFlags(this.state, value, accumulator);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "a",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeLoadXImmediate(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const value =
+      maskToWidth(this.readBytesValue(context.operandBytes), index) >>> 0;
+    const before = this.state.x;
+    const statusBefore = this.state.p;
+
+    this.state.x = value;
+    updateNegativeZeroFlags(this.state, value, index);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "x",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeLoadYImmediate(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const value =
+      maskToWidth(this.readBytesValue(context.operandBytes), index) >>> 0;
+    const before = this.state.y;
+    const statusBefore = this.state.p;
+
+    this.state.y = value;
+    updateNegativeZeroFlags(this.state, value, index);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "y",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
   completeNoopInstruction(context: InstructionContext): StepResult {
     this.state.cycles += 2;
 
@@ -210,6 +303,36 @@ export class W65C832Cpu {
           after: true,
         },
       },
+    };
+  }
+
+  private completeRegisterInstruction(
+    context: InstructionContext,
+    register: "a" | "x" | "y",
+    before: number,
+    after: number,
+    statusBefore: number,
+    cycles: number,
+  ): StepResult {
+    const registerChanges: StepResult["registerChanges"] = {};
+
+    if (before !== after) {
+      registerChanges[register] = { before, after };
+    }
+
+    if (statusBefore !== this.state.p) {
+      registerChanges.p = { before: statusBefore, after: this.state.p };
+    }
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: getOpcodeDefinition(context.opcode)?.mnemonic ?? "???",
+      bytes: context.bytes,
+      cycles,
+      stopped: false,
+      registerChanges,
     };
   }
 }

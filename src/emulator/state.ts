@@ -86,6 +86,17 @@ export function maskForWidth(width: RegisterWidth): number {
 }
 
 export function maskToWidth(value: number, width: RegisterWidth): number {
-  return value & maskForWidth(width);
+  return (value & maskForWidth(width)) >>> 0;
 }
 
+export function updateNegativeZeroFlags(
+  state: CpuState,
+  value: number,
+  width: RegisterWidth,
+): void {
+  const masked = maskToWidth(value, width);
+  const negativeBit = width === 32 ? 0x8000_0000 : 1 << (width - 1);
+
+  setStatusFlag(state, StatusFlag.Zero, masked === 0);
+  setStatusFlag(state, StatusFlag.Negative, (masked & negativeBit) !== 0);
+}

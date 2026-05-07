@@ -33,6 +33,7 @@ export {
   maskToWidth,
   resolveWidthMode,
   setStatusFlag,
+  updateNegativeZeroFlags,
 } from "./state";
 export type {
   AddressingMode,

@@ -72,6 +72,8 @@ Definition of done:
 
 ## Chunk 3: Load Instructions
 
+Status: done.
+
 Goal: implement the first useful register-mutating instructions.
 
 Tasks:
