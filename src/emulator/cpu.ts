@@ -7,7 +7,7 @@ import {
 } from "./constants";
 import { makeProgramAddress, readWord } from "./memory";
 import { getOpcodeDefinition, type InstructionContext } from "./opcodes";
-import { createInitialCpuState, setStatusFlag } from "./state";
+import { createInitialCpuState, resolveWidthMode, setStatusFlag } from "./state";
 import type { CpuOptions, CpuState, RegisterName, StepResult } from "./types";
 
 export class UnsupportedOpcodeError extends Error {
@@ -78,7 +78,7 @@ export class W65C832Cpu {
     }
 
     const pcBefore = makeProgramAddress(this.state.prb, this.state.pc);
-    const opcode = this.memory.readByte(pcBefore);
+    const opcode = this.fetchByte();
     const definition = getOpcodeDefinition(opcode);
 
     if (definition === undefined) {
@@ -86,13 +86,65 @@ export class W65C832Cpu {
     }
 
     const bytes = [opcode];
-    this.state.pc = (this.state.pc + 1) & WORD_MASK;
+    for (let index = 1; index < definition.bytes; index += 1) {
+      bytes.push(this.fetchByte());
+    }
 
     return definition.execute(this, {
       pcBefore,
       opcode,
       bytes,
     });
+  }
+
+  fetchByte(): number {
+    const address = makeProgramAddress(this.state.prb, this.state.pc);
+    const value = this.memory.readByte(address);
+    this.state.pc = (this.state.pc + 1) & WORD_MASK;
+
+    return value & BYTE_MASK;
+  }
+
+  fetchWord(): number {
+    const low = this.fetchByte();
+    const high = this.fetchByte();
+
+    return ((high << 8) | low) & WORD_MASK;
+  }
+
+  fetchLong(): number {
+    const byte0 = this.fetchByte();
+    const byte1 = this.fetchByte();
+    const byte2 = this.fetchByte();
+    const byte3 = this.fetchByte();
+
+    return (byte0 | (byte1 << 8) | (byte2 << 16) | (byte3 << 24)) >>> 0;
+  }
+
+  fetchAccumulatorImmediate(): number {
+    const { accumulator } = resolveWidthMode(this.state);
+
+    switch (accumulator) {
+      case 8:
+        return this.fetchByte();
+      case 16:
+        return this.fetchWord();
+      case 32:
+        return this.fetchLong();
+    }
+  }
+
+  fetchIndexImmediate(): number {
+    const { index } = resolveWidthMode(this.state);
+
+    switch (index) {
+      case 8:
+        return this.fetchByte();
+      case 16:
+        return this.fetchWord();
+      case 32:
+        return this.fetchLong();
+    }
   }
 
   completeFlagInstruction(

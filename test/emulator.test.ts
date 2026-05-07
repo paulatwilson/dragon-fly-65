@@ -112,6 +112,76 @@ test("CPU exposes configured clock speed", () => {
   expect(cpu.clock.nanosecondsPerCycle).toBe(125);
 });
 
+test("CPU fetch helpers read through PRB:PC and advance PC", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("prb", 0x12);
+  cpu.writeRegister("pc", 0xfffe);
+  ram.writeByte(0x12fffe, 0x34);
+  ram.writeByte(0x12ffff, 0x12);
+  ram.writeByte(0x120000, 0x78);
+  ram.writeByte(0x120001, 0x56);
+
+  expect(cpu.fetchWord()).toBe(0x1234);
+  expect(cpu.readRegister("pc")).toBe(0);
+  expect(cpu.fetchWord()).toBe(0x5678);
+  expect(cpu.readRegister("pc")).toBe(2);
+});
+
+test("CPU fetchLong reads little-endian values from program space", () => {
+  const ram = createRam();
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("prb", 0x01);
+  cpu.writeRegister("pc", 0x2000);
+  ram.writeByte(0x012000, 0xef);
+  ram.writeByte(0x012001, 0xcd);
+  ram.writeByte(0x012002, 0xab);
+  ram.writeByte(0x012003, 0x89);
+
+  expect(cpu.fetchLong()).toBe(0x89ab_cdef);
+  expect(cpu.readRegister("pc")).toBe(0x2004);
+});
+
+test("CPU immediate fetch helpers follow active accumulator and index widths", () => {
+  const ram = createRam(64);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x7f);
+  expect(cpu.fetchAccumulatorImmediate()).toBe(0x7f);
+  expect(cpu.readRegister("pc")).toBe(1);
+
+  cpu.writeRegister("pc", 4);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(4, 0x34);
+  ram.writeByte(5, 0x12);
+  expect(cpu.fetchAccumulatorImmediate()).toBe(0x1234);
+  expect(cpu.readRegister("pc")).toBe(6);
+
+  cpu.writeRegister("pc", 8);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(8, 0x78);
+  ram.writeByte(9, 0x56);
+  ram.writeByte(10, 0x34);
+  ram.writeByte(11, 0x12);
+  expect(cpu.fetchAccumulatorImmediate()).toBe(0x1234_5678);
+  expect(cpu.readRegister("pc")).toBe(12);
+
+  cpu.writeRegister("pc", 16);
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(16, 0xcd);
+  ram.writeByte(17, 0xab);
+  expect(cpu.fetchIndexImmediate()).toBe(0xabcd);
+  expect(cpu.readRegister("pc")).toBe(18);
+});
+
 test("opcode metadata describes implemented implied instructions", () => {
   expect(OPCODES.size).toBe(9);
   expect(getOpcodeDefinition(0xea)).toMatchObject({

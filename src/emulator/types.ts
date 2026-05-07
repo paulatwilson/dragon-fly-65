@@ -69,4 +69,4 @@ export interface CpuOptions {
   clockHz?: number;
 }
 
-export type AddressingMode = "implied";
+export type AddressingMode = "immediate" | "implied";

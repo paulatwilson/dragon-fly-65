@@ -55,6 +55,8 @@ Definition of done:
 
 ## Chunk 2: Fetch Helpers And Immediate Addressing
 
+Status: done.
+
 Goal: make operand fetching width-aware.
 
 Tasks:
