@@ -139,6 +139,8 @@ Definition of done:
 
 ## Chunk 7: Branches And Jumps
 
+Status: done.
+
 Goal: support basic control flow.
 
 Tasks:

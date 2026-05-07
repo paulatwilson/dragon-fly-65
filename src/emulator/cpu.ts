@@ -617,6 +617,57 @@ export class W65C832Cpu {
     return this.completeIndexMathInstruction(context, "y", -1);
   }
 
+  completeBranch(
+    context: InstructionContext,
+    flag: StatusFlag,
+    flagMustBeSet: boolean,
+  ): StepResult {
+    const offset = context.operandBytes[0] ?? 0;
+    const signed = offset >= 0x80 ? offset - 0x100 : offset;
+    const flagIsSet = (this.state.p & flag) !== 0;
+    const taken = flagIsSet === flagMustBeSet;
+
+    let cycles = 2;
+    if (taken) {
+      const newPc = (this.state.pc + signed) & WORD_MASK;
+      const pageCross =
+        this.state.e8 &&
+        this.state.e16 &&
+        (newPc & 0xff00) !== (this.state.pc & 0xff00);
+      cycles = pageCross ? 4 : 3;
+      this.state.pc = newPc;
+    }
+
+    this.state.cycles += cycles;
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: getOpcodeDefinition(context.opcode)?.mnemonic ?? "???",
+      bytes: context.bytes,
+      cycles,
+      stopped: false,
+    };
+  }
+
+  completeJumpAbsolute(context: InstructionContext): StepResult {
+    const address = this.readBytesValue(context.operandBytes) & WORD_MASK;
+
+    this.state.pc = address;
+    this.state.cycles += 3;
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "JMP",
+      bytes: context.bytes,
+      cycles: 3,
+      stopped: false,
+    };
+  }
+
   completeNoopInstruction(context: InstructionContext): StepResult {
     this.state.cycles += 2;
 

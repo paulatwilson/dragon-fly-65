@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(32);
+  expect(OPCODES.size).toBe(41);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -996,4 +996,236 @@ test("CPU can execute STP and report stopped state", () => {
   });
   expect(result.stopped).toBe(true);
   expect(cpu.readRegister("stopped")).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 7: Branches and Jumps
+// ---------------------------------------------------------------------------
+
+test("BEQ taken when Zero flag is set", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // BEQ +4 (forward branch)
+  ram.writeByte(0, 0xf0);
+  ram.writeByte(1, 0x04);
+  cpu.writeRegister("p", StatusFlag.Zero);
+
+  const result = cpu.step();
+
+  expect(result).toMatchObject({
+    opcode: 0xf0,
+    mnemonic: "BEQ",
+    bytes: [0xf0, 0x04],
+    pcBefore: 0,
+    pcAfter: 6, // 2 (instruction length) + 4 (offset)
+    cycles: 3,
+    stopped: false,
+  });
+  expect(cpu.readRegister("pc")).toBe(6);
+});
+
+test("BEQ not taken when Zero flag is clear", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0xf0);
+  ram.writeByte(1, 0x04);
+  cpu.writeRegister("p", 0);
+
+  const result = cpu.step();
+
+  expect(result).toMatchObject({
+    opcode: 0xf0,
+    mnemonic: "BEQ",
+    pcAfter: 2,
+    cycles: 2,
+  });
+  expect(cpu.readRegister("pc")).toBe(2);
+});
+
+test("BNE taken when Zero flag is clear", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0xd0);
+  ram.writeByte(1, 0x02);
+  cpu.writeRegister("p", 0);
+
+  const result = cpu.step();
+
+  expect(result).toMatchObject({
+    opcode: 0xd0,
+    mnemonic: "BNE",
+    pcAfter: 4,
+    cycles: 3,
+  });
+});
+
+test("BNE not taken when Zero flag is set", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0xd0);
+  ram.writeByte(1, 0x02);
+  cpu.writeRegister("p", StatusFlag.Zero);
+
+  expect(cpu.step()).toMatchObject({ pcAfter: 2, cycles: 2 });
+});
+
+test("BCC taken when Carry is clear", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x90);
+  ram.writeByte(1, 0x03);
+  cpu.writeRegister("p", 0);
+
+  expect(cpu.step()).toMatchObject({ mnemonic: "BCC", pcAfter: 5, cycles: 3 });
+});
+
+test("BCS taken when Carry is set", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0xb0);
+  ram.writeByte(1, 0x01);
+  cpu.writeRegister("p", StatusFlag.Carry);
+
+  expect(cpu.step()).toMatchObject({ mnemonic: "BCS", pcAfter: 3, cycles: 3 });
+});
+
+test("BMI taken when Negative is set", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x30);
+  ram.writeByte(1, 0x05);
+  cpu.writeRegister("p", StatusFlag.Negative);
+
+  expect(cpu.step()).toMatchObject({ mnemonic: "BMI", pcAfter: 7, cycles: 3 });
+});
+
+test("BPL taken when Negative is clear", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x10);
+  ram.writeByte(1, 0x05);
+  cpu.writeRegister("p", 0);
+
+  expect(cpu.step()).toMatchObject({ mnemonic: "BPL", pcAfter: 7, cycles: 3 });
+});
+
+test("BVC taken when Overflow is clear", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x50);
+  ram.writeByte(1, 0x01);
+  cpu.writeRegister("p", 0);
+
+  expect(cpu.step()).toMatchObject({ mnemonic: "BVC", pcAfter: 3, cycles: 3 });
+});
+
+test("BVS taken when Overflow is set", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x70);
+  ram.writeByte(1, 0x01);
+  cpu.writeRegister("p", StatusFlag.Overflow);
+
+  expect(cpu.step()).toMatchObject({ mnemonic: "BVS", pcAfter: 3, cycles: 3 });
+});
+
+test("branch backward using signed offset", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // Start at PC=10, BEQ with offset -4 (0xFC = 252 unsigned = -4 signed)
+  cpu.writeRegister("pc", 10);
+  ram.writeByte(10, 0xf0);
+  ram.writeByte(11, 0xfc); // -4 signed
+  cpu.writeRegister("p", StatusFlag.Zero);
+
+  const result = cpu.step();
+
+  // PC after fetch = 12, then 12 + (-4) = 8
+  expect(result).toMatchObject({ pcAfter: 8, cycles: 3 });
+  expect(cpu.readRegister("pc")).toBe(8);
+});
+
+test("branch taken in W65C02 emulation mode adds page-cross cycle", () => {
+  const ram = createRam(512);
+  const cpu = createCpu({ memory: ram });
+
+  // BEQ at 0x00FC, offset +8: PC after fetch = 0x00FE, target = 0x0106 (page cross 0x00->0x01)
+  cpu.writeRegister("pc", 0x00fc);
+  ram.writeByte(0x00fc, 0xf0);
+  ram.writeByte(0x00fd, 0x08);
+  // e8 and e16 are true by default (W65C02 emulation mode)
+  cpu.writeRegister("p", StatusFlag.Zero);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(4);
+  expect(cpu.readRegister("pc")).toBe(0x0106);
+});
+
+test("branch taken in native mode does not add page-cross cycle", () => {
+  const ram = createRam(512);
+  const cpu = createCpu({ memory: ram });
+
+  // Same address and offset but in W65C832 native mode (e8=false, e16=false)
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("pc", 0x00fc);
+  ram.writeByte(0x00fc, 0xf0);
+  ram.writeByte(0x00fd, 0x08);
+  cpu.writeRegister("p", StatusFlag.Zero);
+
+  const result = cpu.step();
+
+  expect(result.cycles).toBe(3);
+  expect(cpu.readRegister("pc")).toBe(0x0106);
+});
+
+test("JMP absolute sets PC to target address", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  ram.writeByte(0, 0x4c);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x20); // target = 0x2000
+
+  const result = cpu.step();
+
+  expect(result).toMatchObject({
+    opcode: 0x4c,
+    mnemonic: "JMP",
+    bytes: [0x4c, 0x00, 0x20],
+    pcBefore: 0,
+    pcAfter: 0x2000,
+    cycles: 3,
+    stopped: false,
+  });
+  expect(cpu.readRegister("pc")).toBe(0x2000);
+});
+
+test("JMP absolute does not affect flags or registers", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Carry | StatusFlag.Zero);
+  ram.writeByte(0, 0x4c);
+  ram.writeByte(1, 0x34);
+  ram.writeByte(2, 0x12); // target = 0x1234
+
+  cpu.step();
+
+  expect(cpu.readRegister("pc")).toBe(0x1234);
+  expect(Number(cpu.readRegister("p")) & (StatusFlag.Carry | StatusFlag.Zero)).toBe(
+    StatusFlag.Carry | StatusFlag.Zero,
+  );
 });

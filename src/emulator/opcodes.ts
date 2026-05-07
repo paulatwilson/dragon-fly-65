@@ -100,8 +100,49 @@ const absolute = (
   execute,
 });
 
+const relative = (
+  opcode: number,
+  mnemonic: string,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles: 2,
+  addressingMode: "relative",
+  byteLength: () => 2,
+  execute,
+});
+
 export const OPCODES = new Map<number, OpcodeDefinition>(
   [
+    relative(0x10, "BPL", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Negative, false),
+    ),
+    relative(0x30, "BMI", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Negative, true),
+    ),
+    relative(0x50, "BVC", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Overflow, false),
+    ),
+    relative(0x70, "BVS", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Overflow, true),
+    ),
+    relative(0x90, "BCC", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Carry, false),
+    ),
+    relative(0xb0, "BCS", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Carry, true),
+    ),
+    relative(0xd0, "BNE", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Zero, false),
+    ),
+    relative(0xf0, "BEQ", (cpu, context) =>
+      cpu.completeBranch(context, StatusFlag.Zero, true),
+    ),
+    absolute(0x4c, "JMP", 3, (cpu, context) =>
+      cpu.completeJumpAbsolute(context),
+    ),
     accumulatorImmediate(0xa9, "LDA", 2, (cpu, context) =>
       cpu.completeLoadAccumulatorImmediate(context),
     ),
