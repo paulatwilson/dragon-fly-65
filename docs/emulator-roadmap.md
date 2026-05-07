@@ -190,6 +190,8 @@ Definition of done:
 
 ## Chunk 10: Addressing Modes
 
+Status: done.
+
 Goal: complete the addressing machinery.
 
 Tasks:

@@ -71,7 +71,14 @@ export interface CpuOptions {
 
 export type AddressingMode =
   | "absolute"
+  | "absolute-indexed-x"
+  | "absolute-indexed-y"
   | "direct"
+  | "direct-indexed-x"
+  | "direct-indexed-y"
   | "immediate"
   | "implied"
-  | "relative";
+  | "indirect"
+  | "long"
+  | "relative"
+  | "stack-relative";

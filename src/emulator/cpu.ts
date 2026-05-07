@@ -183,6 +183,76 @@ export class W65C832Cpu {
     }
   }
 
+  readMemoryValue(address: number, width: RegisterWidth): number {
+    let value = this.memory.readByte(address);
+    if (width >= 16) value |= this.memory.readByte(address + 1) << 8;
+    if (width === 32) {
+      value |= this.memory.readByte(address + 2) << 16;
+      value |= this.memory.readByte(address + 3) << 24;
+    }
+    return maskToWidth(value, width);
+  }
+
+  resolveDirectAddress(operandBytes: number[]): number {
+    return makeDirectAddress(this.state.dr, operandBytes[0] ?? 0);
+  }
+
+  resolveDirectIndexedXAddress(operandBytes: number[]): number {
+    const { index } = resolveWidthMode(this.state);
+    return (
+      (this.state.dr & WORD_MASK) +
+      (operandBytes[0] ?? 0) +
+      maskToWidth(this.state.x, index)
+    ) & WORD_MASK;
+  }
+
+  resolveDirectIndexedYAddress(operandBytes: number[]): number {
+    const { index } = resolveWidthMode(this.state);
+    return (
+      (this.state.dr & WORD_MASK) +
+      (operandBytes[0] ?? 0) +
+      maskToWidth(this.state.y, index)
+    ) & WORD_MASK;
+  }
+
+  resolveAbsoluteAddress(operandBytes: number[]): number {
+    return makeDataAddress(this.state.drb, this.readBytesValue(operandBytes));
+  }
+
+  resolveAbsoluteIndexedXAddress(operandBytes: number[]): number {
+    const { index } = resolveWidthMode(this.state);
+    const base = this.readBytesValue(operandBytes);
+    return makeDataAddress(
+      this.state.drb,
+      (base + maskToWidth(this.state.x, index)) & WORD_MASK,
+    );
+  }
+
+  resolveAbsoluteIndexedYAddress(operandBytes: number[]): number {
+    const { index } = resolveWidthMode(this.state);
+    const base = this.readBytesValue(operandBytes);
+    return makeDataAddress(
+      this.state.drb,
+      (base + maskToWidth(this.state.y, index)) & WORD_MASK,
+    );
+  }
+
+  resolveLongAbsoluteAddress(operandBytes: number[]): number {
+    const word = (operandBytes[0] ?? 0) | ((operandBytes[1] ?? 0) << 8);
+    const bank = operandBytes[2] ?? 0;
+    return makeDataAddress(bank, word);
+  }
+
+  resolveIndirectAddress(operandBytes: number[]): number {
+    const pointer = makeDirectAddress(this.state.dr, operandBytes[0] ?? 0);
+    const word = readWord(this.memory, pointer);
+    return makeDataAddress(this.state.drb, word);
+  }
+
+  resolveStackRelativeAddress(operandBytes: number[]): number {
+    return (this.state.sp + (operandBytes[0] ?? 0)) & WORD_MASK;
+  }
+
   writeMemoryValue(address: number, value: number, width: 8 | 16 | 32): void {
     const normalized = maskToWidth(value, width);
 
@@ -332,97 +402,169 @@ export class W65C832Cpu {
 
   completeStoreAccumulatorDirect(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
-    const effectiveAddress = makeDirectAddress(
-      this.state.dr,
-      context.operandBytes[0] ?? 0,
-    );
-
     return this.completeStoreInstruction(
-      context,
-      effectiveAddress,
-      this.state.a,
-      accumulator,
-      3,
+      context, this.resolveDirectAddress(context.operandBytes), this.state.a, accumulator, 3,
     );
   }
 
   completeStoreAccumulatorAbsolute(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
-    const effectiveAddress = makeDataAddress(
-      this.state.drb,
-      this.readBytesValue(context.operandBytes),
-    );
-
     return this.completeStoreInstruction(
-      context,
-      effectiveAddress,
-      this.state.a,
-      accumulator,
-      4,
+      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.a, accumulator, 4,
+    );
+  }
+
+  completeStoreAccumulatorDirectIndexedX(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeStoreInstruction(
+      context, this.resolveDirectIndexedXAddress(context.operandBytes), this.state.a, accumulator, 4,
+    );
+  }
+
+  completeStoreAccumulatorAbsoluteIndexedX(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeStoreInstruction(
+      context, this.resolveAbsoluteIndexedXAddress(context.operandBytes), this.state.a, accumulator, 5,
+    );
+  }
+
+  completeStoreAccumulatorAbsoluteIndexedY(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeStoreInstruction(
+      context, this.resolveAbsoluteIndexedYAddress(context.operandBytes), this.state.a, accumulator, 5,
+    );
+  }
+
+  completeStoreAccumulatorLong(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeStoreInstruction(
+      context, this.resolveLongAbsoluteAddress(context.operandBytes), this.state.a, accumulator, 5,
+    );
+  }
+
+  completeStoreAccumulatorIndirect(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeStoreInstruction(
+      context, this.resolveIndirectAddress(context.operandBytes), this.state.a, accumulator, 5,
+    );
+  }
+
+  completeStoreAccumulatorStackRelative(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeStoreInstruction(
+      context, this.resolveStackRelativeAddress(context.operandBytes), this.state.a, accumulator, 4,
     );
   }
 
   completeStoreXDirect(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
-    const effectiveAddress = makeDirectAddress(
-      this.state.dr,
-      context.operandBytes[0] ?? 0,
-    );
-
     return this.completeStoreInstruction(
-      context,
-      effectiveAddress,
-      this.state.x,
-      index,
-      3,
+      context, this.resolveDirectAddress(context.operandBytes), this.state.x, index, 3,
     );
   }
 
   completeStoreXAbsolute(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
-    const effectiveAddress = makeDataAddress(
-      this.state.drb,
-      this.readBytesValue(context.operandBytes),
-    );
-
     return this.completeStoreInstruction(
-      context,
-      effectiveAddress,
-      this.state.x,
-      index,
-      4,
+      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.x, index, 4,
     );
   }
 
   completeStoreYDirect(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
-    const effectiveAddress = makeDirectAddress(
-      this.state.dr,
-      context.operandBytes[0] ?? 0,
-    );
-
     return this.completeStoreInstruction(
-      context,
-      effectiveAddress,
-      this.state.y,
-      index,
-      3,
+      context, this.resolveDirectAddress(context.operandBytes), this.state.y, index, 3,
     );
   }
 
   completeStoreYAbsolute(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
-    const effectiveAddress = makeDataAddress(
-      this.state.drb,
-      this.readBytesValue(context.operandBytes),
-    );
-
     return this.completeStoreInstruction(
-      context,
-      effectiveAddress,
-      this.state.y,
-      index,
-      4,
+      context, this.resolveAbsoluteAddress(context.operandBytes), this.state.y, index, 4,
+    );
+  }
+
+  completeLoadAccumulatorDirect(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveDirectAddress(context.operandBytes), 3,
+    );
+  }
+
+  completeLoadAccumulatorAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveAbsoluteAddress(context.operandBytes), 4,
+    );
+  }
+
+  completeLoadAccumulatorDirectIndexedX(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveDirectIndexedXAddress(context.operandBytes), 4,
+    );
+  }
+
+  completeLoadAccumulatorAbsoluteIndexedX(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveAbsoluteIndexedXAddress(context.operandBytes), 4,
+    );
+  }
+
+  completeLoadAccumulatorAbsoluteIndexedY(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveAbsoluteIndexedYAddress(context.operandBytes), 4,
+    );
+  }
+
+  completeLoadAccumulatorLong(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveLongAbsoluteAddress(context.operandBytes), 5,
+    );
+  }
+
+  completeLoadAccumulatorIndirect(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveIndirectAddress(context.operandBytes), 5,
+    );
+  }
+
+  completeLoadAccumulatorStackRelative(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveStackRelativeAddress(context.operandBytes), 4,
+    );
+  }
+
+  completeLoadXDirect(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "x", index, this.resolveDirectAddress(context.operandBytes), 3,
+    );
+  }
+
+  completeLoadXAbsolute(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "x", index, this.resolveAbsoluteAddress(context.operandBytes), 4,
+    );
+  }
+
+  completeLoadYDirect(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "y", index, this.resolveDirectAddress(context.operandBytes), 3,
+    );
+  }
+
+  completeLoadYAbsolute(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "y", index, this.resolveAbsoluteAddress(context.operandBytes), 4,
     );
   }
 
@@ -777,6 +919,40 @@ export class W65C832Cpu {
   completeCompareYImmediate(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     return this.completeCompareInstruction(context, "y", index);
+  }
+
+  private completeLoadFromAddress(
+    context: InstructionContext,
+    register: "a" | "x" | "y",
+    width: RegisterWidth,
+    address: number,
+    cycles: number,
+  ): StepResult {
+    const value = this.readMemoryValue(address, width);
+    const before = this.state[register];
+    const statusBefore = this.state.p;
+    const registerChanges: StepResult["registerChanges"] = {};
+
+    this.state[register] = value;
+    updateNegativeZeroFlags(this.state, value, width);
+    this.state.cycles += cycles;
+
+    if (before !== value) registerChanges[register] = { before, after: value };
+    if (statusBefore !== this.state.p) {
+      registerChanges.p = { before: statusBefore, after: this.state.p };
+    }
+
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: getOpcodeDefinition(context.opcode)?.mnemonic ?? "???",
+      bytes: context.bytes,
+      cycles,
+      stopped: false,
+      effectiveAddress: address,
+      registerChanges,
+    };
   }
 
   private completeBitwiseImmediateInstruction(

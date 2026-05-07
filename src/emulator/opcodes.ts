@@ -100,6 +100,111 @@ const absolute = (
   execute,
 });
 
+const directIndexedX = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles,
+  addressingMode: "direct-indexed-x",
+  byteLength: () => 2,
+  execute,
+});
+
+const directIndexedY = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles,
+  addressingMode: "direct-indexed-y",
+  byteLength: () => 2,
+  execute,
+});
+
+const absoluteIndexedX = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 3,
+  cycles,
+  addressingMode: "absolute-indexed-x",
+  byteLength: () => 3,
+  execute,
+});
+
+const absoluteIndexedY = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 3,
+  cycles,
+  addressingMode: "absolute-indexed-y",
+  byteLength: () => 3,
+  execute,
+});
+
+const longAbsolute = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 4,
+  cycles,
+  addressingMode: "long",
+  byteLength: () => 4,
+  execute,
+});
+
+const indirect = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles,
+  addressingMode: "indirect",
+  byteLength: () => 2,
+  execute,
+});
+
+const stackRelative = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles,
+  addressingMode: "stack-relative",
+  byteLength: () => 2,
+  execute,
+});
+
 const relative = (
   opcode: number,
   mnemonic: string,
@@ -116,6 +221,60 @@ const relative = (
 
 export const OPCODES = new Map<number, OpcodeDefinition>(
   [
+    stackRelative(0x83, "STA", 4, (cpu, context) =>
+      cpu.completeStoreAccumulatorStackRelative(context),
+    ),
+    longAbsolute(0x8f, "STA", 5, (cpu, context) =>
+      cpu.completeStoreAccumulatorLong(context),
+    ),
+    indirect(0x92, "STA", 5, (cpu, context) =>
+      cpu.completeStoreAccumulatorIndirect(context),
+    ),
+    absoluteIndexedY(0x99, "STA", 5, (cpu, context) =>
+      cpu.completeStoreAccumulatorAbsoluteIndexedY(context),
+    ),
+    directIndexedX(0x95, "STA", 4, (cpu, context) =>
+      cpu.completeStoreAccumulatorDirectIndexedX(context),
+    ),
+    absoluteIndexedX(0x9d, "STA", 5, (cpu, context) =>
+      cpu.completeStoreAccumulatorAbsoluteIndexedX(context),
+    ),
+    stackRelative(0xa3, "LDA", 4, (cpu, context) =>
+      cpu.completeLoadAccumulatorStackRelative(context),
+    ),
+    direct(0xa4, "LDY", 3, (cpu, context) =>
+      cpu.completeLoadYDirect(context),
+    ),
+    direct(0xa5, "LDA", 3, (cpu, context) =>
+      cpu.completeLoadAccumulatorDirect(context),
+    ),
+    direct(0xa6, "LDX", 3, (cpu, context) =>
+      cpu.completeLoadXDirect(context),
+    ),
+    absolute(0xac, "LDY", 4, (cpu, context) =>
+      cpu.completeLoadYAbsolute(context),
+    ),
+    absolute(0xad, "LDA", 4, (cpu, context) =>
+      cpu.completeLoadAccumulatorAbsolute(context),
+    ),
+    absolute(0xae, "LDX", 4, (cpu, context) =>
+      cpu.completeLoadXAbsolute(context),
+    ),
+    longAbsolute(0xaf, "LDA", 5, (cpu, context) =>
+      cpu.completeLoadAccumulatorLong(context),
+    ),
+    directIndexedX(0xb5, "LDA", 4, (cpu, context) =>
+      cpu.completeLoadAccumulatorDirectIndexedX(context),
+    ),
+    indirect(0xb2, "LDA", 5, (cpu, context) =>
+      cpu.completeLoadAccumulatorIndirect(context),
+    ),
+    absoluteIndexedY(0xb9, "LDA", 4, (cpu, context) =>
+      cpu.completeLoadAccumulatorAbsoluteIndexedY(context),
+    ),
+    absoluteIndexedX(0xbd, "LDA", 4, (cpu, context) =>
+      cpu.completeLoadAccumulatorAbsoluteIndexedX(context),
+    ),
     accumulatorImmediate(0x09, "ORA", 2, (cpu, context) =>
       cpu.completeOrImmediate(context),
     ),

@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(51);
+  expect(OPCODES.size).toBe(69);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -1633,4 +1633,301 @@ test("CPY immediate compares Y and sets flags correctly", () => {
   expect(cpu.readRegister("y")).toBe(0x10); // Y unchanged
   expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0); // Y < operand
   expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 10: Addressing Modes
+// ---------------------------------------------------------------------------
+
+// --- Address resolver helpers -----------------------------------------------
+
+test("resolveDirectAddress returns DR + offset", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("dr", 0x0020);
+  expect(cpu.resolveDirectAddress([0x10])).toBe(0x0030);
+  expect(cpu.resolveDirectAddress([0x00])).toBe(0x0020);
+  expect(cpu.resolveDirectAddress([0xff])).toBe(0x011f);
+});
+
+test("resolveDirectIndexedXAddress returns DR + offset + X (8-bit index)", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("dr", 0x0010);
+  cpu.writeRegister("x", 0x05);
+  // e8=true, e16=true → 8-bit index
+  expect(cpu.resolveDirectIndexedXAddress([0x10])).toBe(0x0025); // 0x10 + 0x10 + 0x05
+});
+
+test("resolveDirectIndexedYAddress returns DR + offset + Y (8-bit index)", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("dr", 0x0000);
+  cpu.writeRegister("y", 0x08);
+  expect(cpu.resolveDirectIndexedYAddress([0x10])).toBe(0x0018);
+});
+
+test("resolveAbsoluteAddress returns DRB:word", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("drb", 0x02);
+  expect(cpu.resolveAbsoluteAddress([0x00, 0x30])).toBe(0x023000);
+  expect(cpu.resolveAbsoluteAddress([0x34, 0x12])).toBe(0x021234);
+});
+
+test("resolveAbsoluteIndexedXAddress returns DRB:(word + X)", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("drb", 0x00);
+  cpu.writeRegister("x", 0x10);
+  expect(cpu.resolveAbsoluteIndexedXAddress([0x00, 0x20])).toBe(0x002010); // 0x2000 + 0x10
+});
+
+test("resolveAbsoluteIndexedYAddress returns DRB:(word + Y)", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("drb", 0x00);
+  cpu.writeRegister("y", 0x04);
+  expect(cpu.resolveAbsoluteIndexedYAddress([0x00, 0x10])).toBe(0x001004); // 0x1000 + 0x04
+});
+
+test("resolveLongAbsoluteAddress returns bank:word from 3 operand bytes", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  expect(cpu.resolveLongAbsoluteAddress([0x34, 0x12, 0x05])).toBe(0x051234);
+  expect(cpu.resolveLongAbsoluteAddress([0x00, 0x00, 0x01])).toBe(0x010000);
+});
+
+test("resolveIndirectAddress reads word pointer from direct page", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  // DR = 0, dp offset = 0x10 → pointer at address 0x10
+  cpu.writeRegister("dr", 0x00);
+  cpu.writeRegister("drb", 0x00);
+  ram.writeByte(0x10, 0x34);
+  ram.writeByte(0x11, 0x12); // pointer = 0x1234
+  expect(cpu.resolveIndirectAddress([0x10])).toBe(0x001234);
+});
+
+test("resolveStackRelativeAddress returns SP + offset", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("sp", 0x01f0);
+  expect(cpu.resolveStackRelativeAddress([0x04])).toBe(0x01f4);
+  expect(cpu.resolveStackRelativeAddress([0x00])).toBe(0x01f0);
+});
+
+// --- Instruction tests (one per new mode) -----------------------------------
+
+test("LDA direct loads accumulator from direct page address", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0x00);
+  ram.writeByte(0x20, 0xab); // value at dp offset 0x20
+  ram.writeByte(0, 0xa5);
+  ram.writeByte(1, 0x20);
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0xab);
+  expect(result).toMatchObject({ opcode: 0xa5, mnemonic: "LDA", effectiveAddress: 0x20, cycles: 3 });
+});
+
+test("LDA absolute loads accumulator from absolute address", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("drb", 0x00);
+  ram.writeByte(0x2000, 0x55);
+  ram.writeByte(0, 0xad);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x20); // abs = 0x2000
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x55);
+  expect(result).toMatchObject({ opcode: 0xad, effectiveAddress: 0x2000, cycles: 4 });
+});
+
+test("LDA dp,X loads accumulator from direct page indexed by X", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0x00);
+  cpu.writeRegister("x", 0x04);
+  ram.writeByte(0x14, 0x77); // dp offset 0x10 + X(0x04) = 0x14
+  ram.writeByte(0, 0xb5);
+  ram.writeByte(1, 0x10);
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x77);
+  expect(result).toMatchObject({ opcode: 0xb5, effectiveAddress: 0x14, cycles: 4 });
+});
+
+test("LDA abs,X loads accumulator from absolute address indexed by X", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("drb", 0x00);
+  cpu.writeRegister("x", 0x02);
+  ram.writeByte(0x1002, 0x33); // 0x1000 + X(0x02) = 0x1002
+  ram.writeByte(0, 0xbd);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x10);
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x33);
+  expect(result).toMatchObject({ opcode: 0xbd, effectiveAddress: 0x1002, cycles: 4 });
+});
+
+test("LDA abs,Y loads accumulator from absolute address indexed by Y", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("drb", 0x00);
+  cpu.writeRegister("y", 0x08);
+  ram.writeByte(0x1008, 0xcc); // 0x1000 + Y(0x08) = 0x1008
+  ram.writeByte(0, 0xb9);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x10);
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0xcc);
+  expect(result).toMatchObject({ opcode: 0xb9, effectiveAddress: 0x1008, cycles: 4 });
+});
+
+test("LDA long loads accumulator from 24-bit address", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0x013000, 0x99);
+  ram.writeByte(0, 0xaf);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x30);
+  ram.writeByte(3, 0x01); // long = 0x013000
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x99);
+  expect(result).toMatchObject({ opcode: 0xaf, effectiveAddress: 0x013000, cycles: 5 });
+});
+
+test("LDA (dp) loads accumulator via indirect pointer in direct page", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0x00);
+  cpu.writeRegister("drb", 0x00);
+  // Pointer at dp offset 0x10 → 0x2000
+  ram.writeByte(0x10, 0x00);
+  ram.writeByte(0x11, 0x20);
+  // Value at 0x2000
+  ram.writeByte(0x2000, 0x44);
+  ram.writeByte(0, 0xb2);
+  ram.writeByte(1, 0x10);
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x44);
+  expect(result).toMatchObject({ opcode: 0xb2, effectiveAddress: 0x2000, cycles: 5 });
+});
+
+test("LDA sr,S loads accumulator from stack-relative address", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("sp", 0x01f0);
+  ram.writeByte(0x01f4, 0xbe); // SP(0x01f0) + offset(0x04) = 0x01f4
+  ram.writeByte(0, 0xa3);
+  ram.writeByte(1, 0x04);
+
+  const result = cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0xbe);
+  expect(result).toMatchObject({ opcode: 0xa3, effectiveAddress: 0x01f4, cycles: 4 });
+});
+
+test("STA dp,X stores accumulator to direct page indexed address", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0xdd);
+  cpu.writeRegister("dr", 0x00);
+  cpu.writeRegister("x", 0x03);
+  ram.writeByte(0, 0x95);
+  ram.writeByte(1, 0x10); // dp offset 0x10 + X(0x03) = 0x13
+
+  cpu.step();
+
+  expect(ram.readByte(0x13)).toBe(0xdd);
+});
+
+test("STA abs,X stores accumulator to absolute indexed address", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x7e);
+  cpu.writeRegister("drb", 0x00);
+  cpu.writeRegister("x", 0x05);
+  ram.writeByte(0, 0x9d);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x10); // 0x1000 + X(0x05) = 0x1005
+
+  cpu.step();
+
+  expect(ram.readByte(0x1005)).toBe(0x7e);
+});
+
+test("LDX direct loads X from direct page address", () => {
+  const ram = createRam(256);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("dr", 0x00);
+  ram.writeByte(0x30, 0x42);
+  ram.writeByte(0, 0xa6);
+  ram.writeByte(1, 0x30);
+
+  cpu.step();
+
+  expect(cpu.readRegister("x")).toBe(0x42);
+});
+
+test("LDY absolute loads Y from absolute address", () => {
+  const ram = createRam(0x4000);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("drb", 0x00);
+  ram.writeByte(0x3000, 0x11);
+  ram.writeByte(0, 0xac);
+  ram.writeByte(1, 0x00);
+  ram.writeByte(2, 0x30);
+
+  cpu.step();
+
+  expect(cpu.readRegister("y")).toBe(0x11);
 });
