@@ -23,23 +23,23 @@ The project is intended to become an open-source system that can run on Fly.io.
 
 Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 
-- [x] Chunk 0: Foundation.
-- [ ] Chunk 1: Execution core shape.
-- [ ] Chunk 2: Fetch helpers and immediate addressing.
-- [ ] Chunk 3: Load instructions.
-- [ ] Chunk 4: Store instructions.
-- [ ] Chunk 5: Transfers and register operations.
-- [ ] Chunk 6: Stack basics.
-- [ ] Chunk 7: Branches and jumps.
-- [ ] Chunk 8: Subroutines.
-- [ ] Chunk 9: ALU and comparisons.
-- [ ] Chunk 10: Addressing modes.
-- [ ] Chunk 11: Mode switching.
-- [ ] Chunk 12: Interrupts and vectors.
-- [ ] Chunk 13: Opcode family coverage pass.
-- [ ] Chunk 14: Timing metadata.
-- [ ] Chunk 15: Compatibility and validation.
-- [ ] Chunk 16: Public API hardening.
+- [x] [Chunk 0: Foundation](docs/emulator-roadmap.md#chunk-0-foundation).
+- [ ] [Chunk 1: Execution core shape](docs/emulator-roadmap.md#chunk-1-execution-core-shape).
+- [ ] [Chunk 2: Fetch helpers and immediate addressing](docs/emulator-roadmap.md#chunk-2-fetch-helpers-and-immediate-addressing).
+- [ ] [Chunk 3: Load instructions](docs/emulator-roadmap.md#chunk-3-load-instructions).
+- [ ] [Chunk 4: Store instructions](docs/emulator-roadmap.md#chunk-4-store-instructions).
+- [ ] [Chunk 5: Transfers and register operations](docs/emulator-roadmap.md#chunk-5-transfers-and-register-operations).
+- [ ] [Chunk 6: Stack basics](docs/emulator-roadmap.md#chunk-6-stack-basics).
+- [ ] [Chunk 7: Branches and jumps](docs/emulator-roadmap.md#chunk-7-branches-and-jumps).
+- [ ] [Chunk 8: Subroutines](docs/emulator-roadmap.md#chunk-8-subroutines).
+- [ ] [Chunk 9: ALU and comparisons](docs/emulator-roadmap.md#chunk-9-alu-and-comparisons).
+- [ ] [Chunk 10: Addressing modes](docs/emulator-roadmap.md#chunk-10-addressing-modes).
+- [ ] [Chunk 11: Mode switching](docs/emulator-roadmap.md#chunk-11-mode-switching).
+- [ ] [Chunk 12: Interrupts and vectors](docs/emulator-roadmap.md#chunk-12-interrupts-and-vectors).
+- [ ] [Chunk 13: Opcode family coverage pass](docs/emulator-roadmap.md#chunk-13-coverage-pass-for-opcode-families).
+- [ ] [Chunk 14: Timing metadata](docs/emulator-roadmap.md#chunk-14-timing-metadata).
+- [ ] [Chunk 15: Compatibility and validation](docs/emulator-roadmap.md#chunk-15-compatibility-and-validation).
+- [ ] [Chunk 16: Public API hardening](docs/emulator-roadmap.md#chunk-16-public-api-hardening).
 
 ### Create an original W65C832 assembler
 
