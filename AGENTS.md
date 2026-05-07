@@ -44,7 +44,7 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 ### Create an original W65C832 assembler
 
 - informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented
-- Do not copy GPL-3.0 `naken_asm` source into MIT-licensed DragonFly 65 modules without an explicit licensing decision
+- When porting from `naken_asm`, preserve Michael Kohn's copyright notice and document which parts are derived in `THIRD_PARTY_NOTICES.md`
 
 ### Build a test rig to test the assembler
 
@@ -76,6 +76,6 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 ## Open Source
 
 - Keep public-facing files clear and welcoming.
-- Preserve the MIT license unless the project maintainer explicitly changes it.
+- The project is licensed under GPL-3.0-only.
 - Use issues or design documents for large architecture decisions before implementation.
-- Treat Michael Kohn's MIT `w65c832` core as portable with attribution, and GPL-3.0 `naken_asm` as reference-only unless the maintainer explicitly approves GPL-derived code.
+- Treat Michael Kohn's MIT `w65c832` core as portable with attribution. GPL-3.0 `naken_asm` code may be ported into DragonFly 65 with attribution, since both projects are now GPL-3.0.

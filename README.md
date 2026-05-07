@@ -200,8 +200,8 @@ for (const [opcode, def] of OPCODES) {
 
 ## Open Source
 
-DragonFly 65 is released under the MIT License. Contributions are welcome once the project
-direction and architecture settle.
+DragonFly 65 is released under the GNU General Public License v3.0 (GPL-3.0). Contributions
+are welcome once the project direction and architecture settle.
 
 Third-party attribution and license notes are tracked in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
@@ -214,4 +214,5 @@ DragonFly 65 is informed by Michael Kohn's open-source projects:
   for building a W65C832-inspired processor.
 - [naken_asm](https://github.com/mikeakohn/naken_asm), which will inform the direction of the
   DragonFly 65 W65C832 assembler work. `naken_asm` is GPL-3.0 licensed, so DragonFly 65 treats
-  it as a compatibility reference unless a separate licensing decision is made.
+  it as a compatibility and porting reference. DragonFly 65 is GPL-3.0, so naken_asm-derived
+  assembler code may be incorporated with proper attribution.

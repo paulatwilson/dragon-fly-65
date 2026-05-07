@@ -7,7 +7,7 @@
   "exports": {
     "./emulator": "./src/emulator/index.ts"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "author": "Paul Wilson",
   "repository": {
     "type": "git",
