@@ -35,3 +35,6 @@ bun run typecheck
 
 Dragon Fly 65 is released under the MIT License. Contributions are welcome once the project direction and architecture settle.
 
+## Credits
+
+Dragon Fly 65 is informed by Michael Kohn's open-source [W65C832 FPGA core](https://github.com/mikeakohn/w65c832). His work provides an important practical reference for building a W65C832-inspired processor.
