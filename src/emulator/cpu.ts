@@ -386,6 +386,140 @@ export class W65C832Cpu {
     );
   }
 
+  completeTransferAccumulatorToX(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const before = this.state.x;
+    const statusBefore = this.state.p;
+    const value = maskToWidth(this.state.a, index);
+
+    this.state.x = value;
+    updateNegativeZeroFlags(this.state, value, index);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "x",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeTransferAccumulatorToY(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const before = this.state.y;
+    const statusBefore = this.state.p;
+    const value = maskToWidth(this.state.a, index);
+
+    this.state.y = value;
+    updateNegativeZeroFlags(this.state, value, index);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "y",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeTransferXToAccumulator(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const before = this.state.a;
+    const statusBefore = this.state.p;
+    const value = maskToWidth(this.state.x, accumulator);
+
+    this.state.a = value;
+    updateNegativeZeroFlags(this.state, value, accumulator);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "a",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeTransferYToAccumulator(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const before = this.state.a;
+    const statusBefore = this.state.p;
+    const value = maskToWidth(this.state.y, accumulator);
+
+    this.state.a = value;
+    updateNegativeZeroFlags(this.state, value, accumulator);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "a",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeTransferXToStack(context: InstructionContext): StepResult {
+    const before = this.state.sp;
+    const statusBefore = this.state.p;
+    const value = this.state.x & WORD_MASK;
+
+    this.state.sp = value;
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "sp",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeTransferStackToX(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const before = this.state.x;
+    const statusBefore = this.state.p;
+    const value = maskToWidth(this.state.sp, index);
+
+    this.state.x = value;
+    updateNegativeZeroFlags(this.state, value, index);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "x",
+      before,
+      value,
+      statusBefore,
+      2,
+    );
+  }
+
+  completeIncrementX(context: InstructionContext): StepResult {
+    return this.completeIndexMathInstruction(context, "x", 1);
+  }
+
+  completeIncrementY(context: InstructionContext): StepResult {
+    return this.completeIndexMathInstruction(context, "y", 1);
+  }
+
+  completeDecrementX(context: InstructionContext): StepResult {
+    return this.completeIndexMathInstruction(context, "x", -1);
+  }
+
+  completeDecrementY(context: InstructionContext): StepResult {
+    return this.completeIndexMathInstruction(context, "y", -1);
+  }
+
   completeNoopInstruction(context: InstructionContext): StepResult {
     this.state.cycles += 2;
 
@@ -424,7 +558,7 @@ export class W65C832Cpu {
 
   private completeRegisterInstruction(
     context: InstructionContext,
-    register: "a" | "x" | "y",
+    register: "a" | "sp" | "x" | "y",
     before: number,
     after: number,
     statusBefore: number,
@@ -450,6 +584,30 @@ export class W65C832Cpu {
       stopped: false,
       registerChanges,
     };
+  }
+
+  private completeIndexMathInstruction(
+    context: InstructionContext,
+    register: "x" | "y",
+    delta: -1 | 1,
+  ): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    const before = this.state[register];
+    const statusBefore = this.state.p;
+    const value = maskToWidth(before + delta, index);
+
+    this.state[register] = value;
+    updateNegativeZeroFlags(this.state, value, index);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      register,
+      before,
+      value,
+      statusBefore,
+      2,
+    );
   }
 
   private completeStoreInstruction(

@@ -106,6 +106,8 @@ Definition of done:
 
 ## Chunk 5: Transfers And Register Operations
 
+Status: done.
+
 Goal: add instructions needed by simple monitor code.
 
 Tasks:

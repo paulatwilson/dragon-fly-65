@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(18);
+  expect(OPCODES.size).toBe(28);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -229,6 +229,20 @@ test("opcode metadata describes implemented implied instructions", () => {
     bytes: 3,
     cycles: 4,
     addressingMode: "absolute",
+  });
+  expect(getOpcodeDefinition(0xaa)).toMatchObject({
+    opcode: 0xaa,
+    mnemonic: "TAX",
+    bytes: 1,
+    cycles: 2,
+    addressingMode: "implied",
+  });
+  expect(getOpcodeDefinition(0xe8)).toMatchObject({
+    opcode: 0xe8,
+    mnemonic: "INX",
+    bytes: 1,
+    cycles: 2,
+    addressingMode: "implied",
   });
   expect(getOpcodeDefinition(0xdb)).toMatchObject({
     opcode: 0xdb,
@@ -346,6 +360,179 @@ test("STX and STY absolute store index registers through the data bank", () => {
     effectiveAddress: 0x034010,
   });
   expect(ram.readByte(0x034010)).toBe(0x80);
+});
+
+test("TAX and TAY transfer accumulator into index registers with flags", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", true);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("a", 0x8000_0000);
+  ram.writeByte(0, 0xaa);
+  ram.writeByte(1, 0xa8);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xaa,
+    mnemonic: "TAX",
+    registerChanges: {
+      x: {
+        before: 0,
+        after: 0x8000_0000,
+      },
+    },
+  });
+  expect(cpu.readRegister("x")).toBe(0x8000_0000);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+
+  cpu.writeRegister("a", 0);
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xa8,
+    mnemonic: "TAY",
+    registerChanges: {
+      p: {
+        before: StatusFlag.Negative,
+        after: StatusFlag.Zero,
+      },
+    },
+  });
+  expect(cpu.readRegister("y")).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+});
+
+test("TXA and TYA transfer index registers into accumulator width", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("e16", false);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("x", 0x1234_8000);
+  cpu.writeRegister("y", 0);
+  ram.writeByte(0, 0x8a);
+  ram.writeByte(1, 0x98);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x8a,
+    mnemonic: "TXA",
+    registerChanges: {
+      a: {
+        before: 0,
+        after: 0x8000,
+      },
+    },
+  });
+  expect(cpu.readRegister("a")).toBe(0x8000);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x98,
+    mnemonic: "TYA",
+    registerChanges: {
+      a: {
+        before: 0x8000,
+        after: 0,
+      },
+      p: {
+        before: StatusFlag.Negative,
+        after: StatusFlag.Zero,
+      },
+    },
+  });
+  expect(cpu.readRegister("a")).toBe(0);
+});
+
+test("TXS transfers X to stack without flags and TSX updates flags", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("x", 0x1234);
+  cpu.writeRegister("p", StatusFlag.Negative);
+  ram.writeByte(0, 0x9a);
+  ram.writeByte(1, 0xba);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x9a,
+    mnemonic: "TXS",
+    registerChanges: {
+      sp: {
+        before: 0x01ff,
+        after: 0x1234,
+      },
+    },
+  });
+  expect(cpu.readRegister("sp")).toBe(0x1234);
+  expect(cpu.readRegister("p")).toBe(StatusFlag.Negative);
+
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0);
+  cpu.writeRegister("sp", 0x8000);
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xba,
+    mnemonic: "TSX",
+    registerChanges: {
+      x: {
+        before: 0x1234,
+        after: 0x8000,
+      },
+      p: {
+        before: 0,
+        after: StatusFlag.Negative,
+      },
+    },
+  });
+  expect(cpu.readRegister("x")).toBe(0x8000);
+});
+
+test("INX DEX INY and DEY wrap at active index width and update flags", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("x", 0xff);
+  cpu.writeRegister("y", 0);
+  cpu.writeRegister("p", 0);
+  ram.writeByte(0, 0xe8);
+  ram.writeByte(1, 0xca);
+  ram.writeByte(2, 0xc8);
+  ram.writeByte(3, 0x88);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xe8,
+    mnemonic: "INX",
+  });
+  expect(cpu.readRegister("x")).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xca,
+    mnemonic: "DEX",
+  });
+  expect(cpu.readRegister("x")).toBe(0xff);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(
+    StatusFlag.Negative,
+  );
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0xc8,
+    mnemonic: "INY",
+  });
+  expect(cpu.readRegister("y")).toBe(1);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+
+  expect(cpu.step()).toMatchObject({
+    opcode: 0x88,
+    mnemonic: "DEY",
+  });
+  expect(cpu.readRegister("y")).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+  expect(cpu.readRegister("cycles")).toBe(8);
 });
 
 test("LDA immediate loads accumulator and updates N/Z in 8-bit mode", () => {

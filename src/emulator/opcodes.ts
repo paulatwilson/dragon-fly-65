@@ -120,6 +120,12 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     direct(0x86, "STX", 3, (cpu, context) =>
       cpu.completeStoreXDirect(context),
     ),
+    implied(0x88, "DEY", 2, (cpu, context) =>
+      cpu.completeDecrementY(context),
+    ),
+    implied(0x8a, "TXA", 2, (cpu, context) =>
+      cpu.completeTransferXToAccumulator(context),
+    ),
     absolute(0x8c, "STY", 4, (cpu, context) =>
       cpu.completeStoreYAbsolute(context),
     ),
@@ -128,6 +134,30 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     ),
     absolute(0x8e, "STX", 4, (cpu, context) =>
       cpu.completeStoreXAbsolute(context),
+    ),
+    implied(0x98, "TYA", 2, (cpu, context) =>
+      cpu.completeTransferYToAccumulator(context),
+    ),
+    implied(0x9a, "TXS", 2, (cpu, context) =>
+      cpu.completeTransferXToStack(context),
+    ),
+    implied(0xa8, "TAY", 2, (cpu, context) =>
+      cpu.completeTransferAccumulatorToY(context),
+    ),
+    implied(0xaa, "TAX", 2, (cpu, context) =>
+      cpu.completeTransferAccumulatorToX(context),
+    ),
+    implied(0xba, "TSX", 2, (cpu, context) =>
+      cpu.completeTransferStackToX(context),
+    ),
+    implied(0xc8, "INY", 2, (cpu, context) =>
+      cpu.completeIncrementY(context),
+    ),
+    implied(0xca, "DEX", 2, (cpu, context) =>
+      cpu.completeDecrementX(context),
+    ),
+    implied(0xe8, "INX", 2, (cpu, context) =>
+      cpu.completeIncrementX(context),
     ),
     implied(0x18, "CLC", 2, (cpu, context) =>
       cpu.completeFlagInstruction(context, StatusFlag.Carry, false),
