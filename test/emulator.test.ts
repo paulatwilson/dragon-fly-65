@@ -3146,3 +3146,165 @@ test("cycle totals accumulate across steps", () => {
 
   expect(cpu.readRegister("cycles")).toBe(6);
 });
+
+// ---------------------------------------------------------------------------
+// Chunk 15: Compatibility And Validation
+// ---------------------------------------------------------------------------
+
+function runUntilStopped(
+  cpu: ReturnType<typeof createCpu>,
+  maxSteps = 500,
+): void {
+  let steps = 0;
+  while (!cpu.readRegister("stopped") && steps < maxSteps) {
+    cpu.step();
+    steps++;
+  }
+}
+
+// Fixture: sum5_loop
+// Sums [10, 20, 30, 40, 50] from dp 0x0050-0x0054 into dp 0x0070 via a loop.
+// See docs/fixtures.md for full description.
+//
+// Byte layout (8-bit emulation mode, DL=0):
+//   0x0000  A2 00        LDX #0
+//   0x0002  86 70        STX dp 0x70       ; sum = 0
+//   0x0004  B5 50        LDA dp,X (LOOP)   ; load data[X]
+//   0x0006  18           CLC
+//   0x0007  65 70        ADC dp 0x70       ; sum += A
+//   0x0009  85 70        STA dp 0x70
+//   0x000B  E8           INX
+//   0x000C  E0 05        CPX #5
+//   0x000E  D0 F4        BNE LOOP          ; -12 from 0x0010 → 0x0004
+//   0x0010  DB           STP
+test("fixture: sum5_loop — sums five direct-page bytes via an indexed loop", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  const code = [
+    0xa2, 0x00,       // LDX #0
+    0x86, 0x70,       // STX dp 0x70  (sum = 0)
+    // LOOP = 0x0004
+    0xb5, 0x50,       // LDA dp,X (offset 0x50 + X)
+    0x18,             // CLC
+    0x65, 0x70,       // ADC dp 0x70
+    0x85, 0x70,       // STA dp 0x70
+    0xe8,             // INX
+    0xe0, 0x05,       // CPX #5
+    0xd0, 0xf4,       // BNE LOOP (-12 from 0x0010 → 0x0004)
+    0xdb,             // STP
+  ];
+
+  const data = [10, 20, 30, 40, 50];
+
+  for (const [i, byte] of code.entries()) ram.writeByte(i, byte);
+  for (const [i, byte] of data.entries()) ram.writeByte(0x0050 + i, byte);
+  writeWord(ram, RESET_VECTOR_ADDRESS, 0x0000);
+
+  cpu.reset();
+  runUntilStopped(cpu);
+
+  expect(cpu.readRegister("stopped")).toBe(true);
+  expect(ram.readByte(0x0070)).toBe(150); // 10+20+30+40+50 = 150
+  expect(cpu.readRegister("x")).toBe(5);
+});
+
+// Fixture: subroutine
+// Calls a two-instruction subroutine (ASL A, RTS) that doubles A.
+// Confirms JSR pushes correct return address and RTS restores PC.
+// See docs/fixtures.md for full description.
+//
+// Byte layout:
+//   0x0000  A9 07        LDA #7
+//   0x0002  20 10 00     JSR $0010
+//   0x0005  85 80        STA dp 0x80
+//   0x0007  DB           STP
+//   0x0010  0A           ASL A           (subroutine)
+//   0x0011  60           RTS
+test("fixture: subroutine — JSR/RTS doubles accumulator via ASL", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  const main = [
+    0xa9, 0x07,       // LDA #7
+    0x20, 0x10, 0x00, // JSR $0010
+    0x85, 0x80,       // STA dp 0x80
+    0xdb,             // STP
+  ];
+
+  const subroutine = [
+    0x0a,             // ASL A  (A << 1 = 14)
+    0x60,             // RTS
+  ];
+
+  for (const [i, byte] of main.entries()) ram.writeByte(i, byte);
+  for (const [i, byte] of subroutine.entries()) ram.writeByte(0x0010 + i, byte);
+  writeWord(ram, RESET_VECTOR_ADDRESS, 0x0000);
+
+  cpu.reset();
+  runUntilStopped(cpu);
+
+  expect(cpu.readRegister("stopped")).toBe(true);
+  expect(cpu.readRegister("a")).toBe(14);
+  expect(ram.readByte(0x0080)).toBe(14);
+});
+
+// Fixture: dispatch_loop
+// A minimal monitor-like loop: reads commands from a buffer and dispatches.
+// Command 0x01 → INC counter, 0xFF → DEC counter, 0x00 → halt.
+// See docs/fixtures.md for full description.
+//
+// Byte layout:
+//   0x0000  A9 00        LDA #0
+//   0x0002  85 70        STA dp 0x70     ; counter = 0
+//   0x0004  A2 00        LDX #0
+//   0x0006  B5 50        LDA dp,X        (MAIN_LOOP)
+//   0x0008  F0 10        BEQ HALT        ; 0x00 → halt
+//   0x000A  C9 FF        CMP #0xFF
+//   0x000C  F0 06        BEQ DEC         ; 0xFF → dec
+//   0x000E  E6 70        INC dp 0x70     (INC path)
+//   0x0010  E8           INX
+//   0x0011  4C 06 00     JMP MAIN_LOOP
+//   0x0014  C6 70        DEC dp 0x70     (DEC path)
+//   0x0016  E8           INX
+//   0x0017  4C 06 00     JMP MAIN_LOOP
+//   0x001A  DB           STP             (HALT)
+test("fixture: dispatch_loop — monitor-like command dispatch terminates correctly", () => {
+  const ram = createRam(0x10000);
+  const cpu = createCpu({ memory: ram });
+
+  const code = [
+    0xa9, 0x00,          // LDA #0
+    0x85, 0x70,          // STA dp 0x70  (counter = 0)
+    0xa2, 0x00,          // LDX #0
+    // MAIN_LOOP = 0x0006
+    0xb5, 0x50,          // LDA dp,X
+    0xf0, 0x10,          // BEQ HALT   (+16 from 0x000A → 0x001A)
+    0xc9, 0xff,          // CMP #0xFF
+    0xf0, 0x06,          // BEQ DEC    (+6 from 0x000E → 0x0014)
+    // INC path = 0x000E
+    0xe6, 0x70,          // INC dp 0x70
+    0xe8,                // INX
+    0x4c, 0x06, 0x00,    // JMP $0006
+    // DEC path = 0x0014
+    0xc6, 0x70,          // DEC dp 0x70
+    0xe8,                // INX
+    0x4c, 0x06, 0x00,    // JMP $0006
+    // HALT = 0x001A
+    0xdb,                // STP
+  ];
+
+  // Commands: inc, dec, inc, halt
+  const commands = [0x01, 0xff, 0x01, 0x00];
+
+  for (const [i, byte] of code.entries()) ram.writeByte(i, byte);
+  for (const [i, byte] of commands.entries()) ram.writeByte(0x0050 + i, byte);
+  writeWord(ram, RESET_VECTOR_ADDRESS, 0x0000);
+
+  cpu.reset();
+  runUntilStopped(cpu);
+
+  expect(cpu.readRegister("stopped")).toBe(true);
+  expect(ram.readByte(0x0070)).toBe(1); // 0→+1→-1→+1 = 1
+  expect(cpu.readRegister("x")).toBe(3); // halted at index 3 (the 0x00 command)
+});

@@ -286,6 +286,8 @@ Definition of done:
 
 ## Chunk 15: Compatibility And Validation
 
+Status: done.
+
 Goal: prove the emulator can run real programs.
 
 Tasks:
@@ -300,6 +302,8 @@ Definition of done:
 - Test fixtures are documented and attributed.
 
 ## Chunk 16: Public API Hardening
+
+Status: done.
 
 Goal: make the emulator comfortable for other projects to embed.
 

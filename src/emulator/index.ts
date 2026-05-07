@@ -1,12 +1,8 @@
 export {
-  ADDRESS_BITS,
-  ADDRESS_MASK,
-  BYTE_MASK,
   EMU_ABORT_VECTOR,
   EMU_COP_VECTOR,
   EMU_IRQ_BRK_VECTOR,
   EMU_NMI_VECTOR,
-  LONG_MASK,
   NATIVE_ABORT_VECTOR,
   NATIVE_BRK_VECTOR,
   NATIVE_COP_VECTOR,
@@ -16,8 +12,6 @@ export {
   StatusFlag,
   WDC_MAX_CLOCK_HZ,
   WDC_MIN_CLOCK_HZ,
-  WORD_MASK,
-  W65C02_RESET_STATUS,
   type RegisterWidth,
 } from "./constants";
 export { createClockConfig, type ClockConfig } from "./clock";
@@ -41,8 +35,6 @@ export {
   maskForWidth,
   maskToWidth,
   resolveWidthMode,
-  setStatusFlag,
-  updateNegativeZeroFlags,
 } from "./state";
 export type {
   AddressingMode,

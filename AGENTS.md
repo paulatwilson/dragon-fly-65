@@ -38,8 +38,8 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 - [x] [Chunk 12: Interrupts and vectors](docs/emulator-roadmap.md#chunk-12-interrupts-and-vectors).
 - [x] [Chunk 13: Opcode family coverage pass](docs/emulator-roadmap.md#chunk-13-coverage-pass-for-opcode-families).
 - [x] [Chunk 14: Timing metadata](docs/emulator-roadmap.md#chunk-14-timing-metadata).
-- [ ] [Chunk 15: Compatibility and validation](docs/emulator-roadmap.md#chunk-15-compatibility-and-validation).
-- [ ] [Chunk 16: Public API hardening](docs/emulator-roadmap.md#chunk-16-public-api-hardening).
+- [x] [Chunk 15: Compatibility and validation](docs/emulator-roadmap.md#chunk-15-compatibility-and-validation).
+- [x] [Chunk 16: Public API hardening](docs/emulator-roadmap.md#chunk-16-public-api-hardening).
 
 ### Create an original W65C832 assembler
 
