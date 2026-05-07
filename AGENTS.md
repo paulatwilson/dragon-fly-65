@@ -13,6 +13,18 @@ The project is intended to become an open-source system that can run on Fly.io.
 - Run tests: `bun test`
 - Typecheck: `bun run typecheck`
 
+## Roadmap
+
+1. Create the W65C832 emulator.
+2. Create a W65C832 assembler based on Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented.
+3. Build a test rig to test the assembler.
+4. Build a basic monitor in W65C832 assembler.
+5. Build the SSH server for Dragon Fly 65.
+6. Deploy to Fly.io.
+7. Define Dragon Fly 65 (DF65).
+8. Create a custom language for DF65.
+9. Build DF65/OS in W65C832 using the custom language.
+
 ## Guidelines
 
 - Prefer small, focused changes that match the existing project structure.
