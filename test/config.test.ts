@@ -5,14 +5,14 @@ import {
   loadDragonFlyConfig,
 } from "../src/config";
 
-test("Dragon Fly config defaults to the fictional 1998 40 MHz CPU", () => {
+test("NeedleOS config defaults to the fictional 1998 40 MHz CPU", () => {
   const config = loadDragonFlyConfig();
 
   expect(config.cpu.clockHz).toBe(DF65_1998_CLOCK_HZ);
   expect(config.server.port).toBe(DEFAULT_HTTP_PORT);
 });
 
-test("Dragon Fly config accepts external environment overrides", () => {
+test("NeedleOS config accepts external environment overrides", () => {
   const config = loadDragonFlyConfig({
     DF65_CPU_CLOCK_HZ: "8000000",
     PORT: "4242",
@@ -21,4 +21,3 @@ test("Dragon Fly config accepts external environment overrides", () => {
   expect(config.cpu.clockHz).toBe(8_000_000);
   expect(config.server.port).toBe(4242);
 });
-

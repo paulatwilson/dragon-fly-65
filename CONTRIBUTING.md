@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in Dragon Fly 65.
+Thanks for your interest in DragonFly 65.
 
 This project is young, so larger design changes should start as an issue or discussion before implementation. Small fixes, documentation improvements, and focused tests are welcome as pull requests.
 

@@ -1,6 +1,6 @@
 # Processor Design
 
-This document records the processor direction for Dragon Fly 65. The aim is to build a TypeScript model of a W65C832-inspired computer that can run under Bun, host our own operating system, and expose interactive access over SSH.
+This document records the processor direction for DragonFly 65. The aim is to build a TypeScript model of a W65C832-inspired computer that can run under Bun, host our own operating system, and expose interactive access over SSH.
 
 ## Sources
 
@@ -10,13 +10,13 @@ This document records the processor direction for Dragon Fly 65. The aim is to b
 - Compliance notes: `docs/compliance.md`
 - Emulator roadmap: `docs/emulator-roadmap.md`
 
-The WDC datasheet is the architectural reference. Mike Kohn's FPGA core is the practical implementation reference. When the two disagree, Dragon Fly 65 should document the disagreement before choosing behavior.
+The WDC datasheet is the architectural reference. Mike Kohn's FPGA core is the practical implementation reference. When the two disagree, DragonFly 65 should document the disagreement before choosing behavior.
 
-The FPGA core is MIT licensed, so direct ports are allowed when attribution and license notices are preserved. Even so, Dragon Fly 65 should prefer original TypeScript structure over line-by-line Verilog translation.
+The FPGA core is MIT licensed, so direct ports are allowed when attribution and license notices are preserved. Even so, DragonFly 65 should prefer original TypeScript structure over line-by-line Verilog translation.
 
 ## Implementation Stance
 
-Dragon Fly 65 is not an FPGA implementation. It is a software computer and operating environment. The processor model should therefore be deterministic, inspectable, and testable before it is cycle-perfect.
+DragonFly 65 is not an FPGA implementation. It is a software computer and operating environment. The processor model should therefore be deterministic, inspectable, and testable before it is cycle-perfect.
 
 Initial implementation priorities:
 
@@ -32,31 +32,31 @@ Implementation work should follow `docs/emulator-roadmap.md` so processor develo
 
 ## Reusable Library Boundary
 
-The W65C832 emulator must remain useful outside Dragon Fly 65. It should be possible for another TypeScript project to import the CPU, provide memory, step instructions, and inspect state without depending on DF65/OS, the SSH server, Fly.io deployment code, or Bun-specific server APIs.
+The W65C832 emulator must remain useful outside DragonFly 65. It should be possible for another TypeScript project to import the CPU, provide memory, step instructions, and inspect state without depending on NeedleOS, the SSH server, Fly.io deployment code, or Bun-specific server APIs.
 
 Project boundaries:
 
 - `src/emulator/`: reusable W65C832 CPU, state, memory interfaces, opcode logic, and tests.
 - `src/assembler/`: reusable W65C832 assembler work, when introduced.
-- `src/machine/`: Dragon Fly 65 hardware profile and memory map.
-- `src/os/`: DF65/OS work.
+- `src/machine/`: DragonFly 65 hardware profile and memory map.
+- `src/os/`: NeedleOS work.
 - `src/server/`: SSH, HTTP, and deployment entry points.
 
 The emulator may use TypeScript and standard JavaScript APIs. It should avoid direct dependencies on Bun runtime APIs unless a Bun-specific adapter is kept outside `src/emulator/`.
 
 ## Clock Configuration
 
-The WDC datasheet describes 4 MHz to 10 MHz parts. Dragon Fly 65 deliberately models a fictional 1998-era 40 MHz variant, but that choice belongs outside the reusable emulator.
+The WDC datasheet describes 4 MHz to 10 MHz parts. DragonFly 65 deliberately models a fictional 1998-era 40 MHz variant, but that choice belongs outside the reusable emulator.
 
 Clock rules:
 
 - Minimum accepted emulator CPU clock: 4 MHz.
 - WDC reference maximum: 10 MHz.
-- Dragon Fly 65 default clock: 40 MHz, set in external Dragon Fly config.
+- DragonFly 65 default clock: 40 MHz, set in external NeedleOS config.
 - Environment override: `DF65_CPU_CLOCK_HZ`.
 - Clock speed is configuration data, not real-time pacing. Instruction execution still advances by emulator steps and cycle counts.
 
-The reusable emulator should expose clock metadata without coupling itself to Dragon Fly 65 config or to a scheduler. Any real-time throttling, wall-clock pacing, machine profile, or SSH session timing belongs outside `src/emulator/`.
+The reusable emulator should expose clock metadata without coupling itself to DragonFly 65 config or to a scheduler. Any real-time throttling, wall-clock pacing, machine profile, or SSH session timing belongs outside `src/emulator/`.
 
 ## Register Model
 
@@ -124,13 +124,13 @@ There is a source discrepancy to resolve before implementation:
 - The GitHub README shows `clc; clv; xce` for entering 65C832 mode from W65C816 mode.
 - Mike Kohn's project page shows `sec; clv; xce` for the same transition.
 
-Dragon Fly 65 must not encode this behavior until we verify the intended operation from the datasheet, the FPGA Verilog, or a focused executable test.
+DragonFly 65 must not encode this behavior until we verify the intended operation from the datasheet, the FPGA Verilog, or a focused executable test.
 
 ## Addressing Model
 
 The CPU has a 16-bit `PC` extended by `PRB` for 24-bit program addressing. Data movement uses `DRB` for banked data addressing. The datasheet describes 24-bit external address availability, while noting broader 32-bit data-space ambitions for ASIC use.
 
-Initial Dragon Fly 65 memory should expose a simple 24-bit address space:
+Initial DragonFly 65 memory should expose a simple 24-bit address space:
 
 - Address type: unsigned 24-bit integer.
 - Address range: `0x000000` to `0xffffff`.
@@ -156,7 +156,7 @@ Known FPGA-core differences from the WDC spec, from the project notes:
 - Decimal mode is not implemented.
 - W65C02 emulation allows newer instructions to work.
 
-Dragon Fly 65 should decide explicitly whether to follow WDC behavior or FPGA behavior for each of these.
+DragonFly 65 should decide explicitly whether to follow WDC behavior or FPGA behavior for each of these.
 
 ## Testing Strategy
 
@@ -181,9 +181,15 @@ As the emulator grows, tests should include execution traces that show:
 - Status flag changes.
 - Cycle count, once timing exists.
 
+## Decimal Mode
+
+The `D` (Decimal) flag can be set and cleared via `SED` and `CLD`. However, `ADC` and `SBC` always operate in binary mode — the `D` flag is ignored during arithmetic.
+
+This matches the behavior of Mike Kohn's FPGA core, which also omits decimal mode. The WDC datasheet describes BCD arithmetic, but DragonFly 65 has no planned use for it, and implementing it correctly for 8, 16, and 32-bit widths adds complexity with no near-term payoff. If decimal mode is needed in the future, it should be implemented and documented as a separate chunk.
+
 ## Open Decisions
 
-- Whether Dragon Fly 65 should emulate WDC decimal mode or follow the FPGA core's current lack of decimal support.
+- Whether DragonFly 65 should emulate WDC decimal mode or follow the FPGA core's current lack of decimal support. **Decided: binary-only arithmetic; see Decimal Mode section above.**
 - Whether W65C02 emulation should reject newer instructions or allow them as the FPGA core does.
 - Whether the first memory map should mirror the FPGA bank map or use a simpler software-native map.
 - How exact cycle timing needs to be for the first operating system milestone.

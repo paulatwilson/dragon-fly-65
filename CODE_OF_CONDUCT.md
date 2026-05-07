@@ -1,6 +1,6 @@
 # Code of Conduct
 
-Dragon Fly 65 uses the Contributor Covenant Code of Conduct, version 2.1.
+DragonFly 65 uses the Contributor Covenant Code of Conduct, version 2.1.
 
 In short: be respectful, constructive, and welcoming. Harassment, abuse, and discriminatory behavior are not acceptable in this project.
 

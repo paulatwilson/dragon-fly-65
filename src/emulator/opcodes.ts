@@ -116,6 +116,30 @@ const relative = (
 
 export const OPCODES = new Map<number, OpcodeDefinition>(
   [
+    accumulatorImmediate(0x09, "ORA", 2, (cpu, context) =>
+      cpu.completeOrImmediate(context),
+    ),
+    accumulatorImmediate(0x29, "AND", 2, (cpu, context) =>
+      cpu.completeAndImmediate(context),
+    ),
+    accumulatorImmediate(0x49, "EOR", 2, (cpu, context) =>
+      cpu.completeExclusiveOrImmediate(context),
+    ),
+    accumulatorImmediate(0x69, "ADC", 2, (cpu, context) =>
+      cpu.completeAddWithCarryImmediate(context),
+    ),
+    indexImmediate(0xc0, "CPY", 2, (cpu, context) =>
+      cpu.completeCompareYImmediate(context),
+    ),
+    accumulatorImmediate(0xc9, "CMP", 2, (cpu, context) =>
+      cpu.completeCompareAccumulatorImmediate(context),
+    ),
+    indexImmediate(0xe0, "CPX", 2, (cpu, context) =>
+      cpu.completeCompareXImmediate(context),
+    ),
+    accumulatorImmediate(0xe9, "SBC", 2, (cpu, context) =>
+      cpu.completeSubtractWithCarryImmediate(context),
+    ),
     absolute(0x20, "JSR", 6, (cpu, context) =>
       cpu.completeJumpToSubroutine(context),
     ),

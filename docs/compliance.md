@@ -1,10 +1,10 @@
 # Compliance Notes
 
-This document records how Dragon Fly 65 should use upstream W65C832-related projects while keeping our own TypeScript implementation clear, reusable, and open-source friendly.
+This document records how DragonFly 65 should use upstream W65C832-related projects while keeping our own TypeScript implementation clear, reusable, and open-source friendly.
 
 ## Goals
 
-- Keep Dragon Fly 65 itself MIT licensed unless the maintainer explicitly changes that.
+- Keep DragonFly 65 itself MIT licensed unless the maintainer explicitly changes that.
 - Give visible credit to upstream authors.
 - Preserve required notices when using permissively licensed code.
 - Avoid accidentally mixing GPL-derived code into MIT-licensed modules.
@@ -12,7 +12,7 @@ This document records how Dragon Fly 65 should use upstream W65C832-related proj
 
 ## W65C832 FPGA Core
 
-Michael Kohn's `w65c832` FPGA core is MIT licensed. Dragon Fly 65 may use it as a practical implementation reference.
+Michael Kohn's `w65c832` FPGA core is MIT licensed. DragonFly 65 may use it as a practical implementation reference.
 
 Allowed uses:
 
@@ -30,7 +30,7 @@ Required practice:
 
 ## naken_asm
 
-Michael Kohn's `naken_asm` is GPL-3.0 licensed. Dragon Fly 65 can use it as a compatibility and syntax reference, but GPL code must not be copied into the MIT codebase by accident.
+Michael Kohn's `naken_asm` is GPL-3.0 licensed. DragonFly 65 can use it as a compatibility and syntax reference, but GPL code must not be copied into the MIT codebase by accident.
 
 Allowed uses:
 
@@ -51,7 +51,7 @@ Not allowed without an explicit licensing decision:
 For the emulator and assembler, prefer this workflow:
 
 1. Read upstream docs, datasheets, and behavior notes.
-2. Write a Dragon Fly 65 design note describing the behavior in our own words.
+2. Write a DragonFly 65 design note describing the behavior in our own words.
 3. Implement from that design note in TypeScript.
 4. Add focused tests.
 5. Credit any upstream behavior source in docs or comments where useful.

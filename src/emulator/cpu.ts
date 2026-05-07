@@ -15,6 +15,7 @@ import {
 import { getOpcodeDefinition, type InstructionContext } from "./opcodes";
 import {
   createInitialCpuState,
+  maskForWidth,
   maskToWidth,
   resolveWidthMode,
   setStatusFlag,
@@ -729,6 +730,145 @@ export class W65C832Cpu {
         },
       },
     };
+  }
+
+  completeAndImmediate(context: InstructionContext): StepResult {
+    return this.completeBitwiseImmediateInstruction(context, (a, b) => a & b);
+  }
+
+  completeOrImmediate(context: InstructionContext): StepResult {
+    return this.completeBitwiseImmediateInstruction(context, (a, b) => a | b);
+  }
+
+  completeExclusiveOrImmediate(context: InstructionContext): StepResult {
+    return this.completeBitwiseImmediateInstruction(context, (a, b) => a ^ b);
+  }
+
+  completeAddWithCarryImmediate(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const operand = maskToWidth(
+      this.readBytesValue(context.operandBytes),
+      accumulator,
+    );
+    return this.completeAdderInstruction(context, operand, accumulator);
+  }
+
+  completeSubtractWithCarryImmediate(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const rawOperand = maskToWidth(
+      this.readBytesValue(context.operandBytes),
+      accumulator,
+    );
+    // SBC: A - M - (1-C) = A + ~M + C
+    const operand = (~rawOperand) & maskForWidth(accumulator);
+    return this.completeAdderInstruction(context, operand, accumulator);
+  }
+
+  completeCompareAccumulatorImmediate(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeCompareInstruction(context, "a", accumulator);
+  }
+
+  completeCompareXImmediate(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    return this.completeCompareInstruction(context, "x", index);
+  }
+
+  completeCompareYImmediate(context: InstructionContext): StepResult {
+    const { index } = resolveWidthMode(this.state);
+    return this.completeCompareInstruction(context, "y", index);
+  }
+
+  private completeBitwiseImmediateInstruction(
+    context: InstructionContext,
+    fn: (a: number, b: number) => number,
+  ): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const operand = maskToWidth(
+      this.readBytesValue(context.operandBytes),
+      accumulator,
+    );
+    const before = this.state.a;
+    const statusBefore = this.state.p;
+    const result = maskToWidth(
+      fn(maskToWidth(before, accumulator), operand),
+      accumulator,
+    );
+
+    this.state.a = result;
+    updateNegativeZeroFlags(this.state, result, accumulator);
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "a",
+      before,
+      result,
+      statusBefore,
+      2,
+    );
+  }
+
+  private completeAdderInstruction(
+    context: InstructionContext,
+    operand: number,
+    accumulator: RegisterWidth,
+  ): StepResult {
+    const mask = maskForWidth(accumulator);
+    const a = maskToWidth(this.state.a, accumulator);
+    const carryIn = (this.state.p & StatusFlag.Carry) !== 0 ? 1 : 0;
+    const before = this.state.a;
+    const statusBefore = this.state.p;
+
+    const sum = a + operand + carryIn;
+    const result = maskToWidth(sum, accumulator);
+    const signBit = accumulator === 32 ? 0x8000_0000 : 1 << (accumulator - 1);
+
+    this.state.a = result;
+    updateNegativeZeroFlags(this.state, result, accumulator);
+    setStatusFlag(this.state, StatusFlag.Carry, sum > mask);
+    setStatusFlag(
+      this.state,
+      StatusFlag.Overflow,
+      ((~(a ^ operand) & (a ^ result)) & signBit) !== 0,
+    );
+    this.state.cycles += 2;
+
+    return this.completeRegisterInstruction(
+      context,
+      "a",
+      before,
+      result,
+      statusBefore,
+      2,
+    );
+  }
+
+  private completeCompareInstruction(
+    context: InstructionContext,
+    register: "a" | "x" | "y",
+    width: RegisterWidth,
+  ): StepResult {
+    const operand = maskToWidth(
+      this.readBytesValue(context.operandBytes),
+      width,
+    );
+    const regValue = maskToWidth(this.state[register], width);
+    const statusBefore = this.state.p;
+
+    updateNegativeZeroFlags(this.state, maskToWidth(regValue - operand, width), width);
+    setStatusFlag(this.state, StatusFlag.Carry, regValue >= operand);
+    this.state.cycles += 2;
+
+    // Register is unchanged; only status may change
+    return this.completeRegisterInstruction(
+      context,
+      register,
+      this.state[register],
+      this.state[register],
+      statusBefore,
+      2,
+    );
   }
 
   private completeRegisterInstruction(

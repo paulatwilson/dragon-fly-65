@@ -6,7 +6,7 @@ The goal is to avoid large, long-lived branches and keep enough context in the r
 
 ## Rules
 
-- Keep `src/emulator/` reusable and independent of Dragon Fly 65 machine, OS, SSH, and Fly.io code.
+- Keep `src/emulator/` reusable and independent of DragonFly 65 machine, OS, SSH, and Fly.io code.
 - Prefer original TypeScript structure. The MIT-licensed `w65c832` FPGA core may be used as a behavior reference or porting source with attribution.
 - Do not copy GPL-3.0 `naken_asm` implementation code into the MIT emulator or assembler.
 - Every chunk needs focused tests.
@@ -172,6 +172,8 @@ Definition of done:
 - Stack contents are asserted.
 
 ## Chunk 9: ALU And Comparisons
+
+Status: done.
 
 Goal: add arithmetic and logical behavior.
 

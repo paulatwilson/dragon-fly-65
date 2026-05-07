@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
 
-test("project identity is Dragon Fly 65", () => {
-  expect("Dragon Fly 65").toContain("65");
+test("project identity is DragonFly 65", () => {
+  expect("DragonFly 65").toContain("65");
 });
-

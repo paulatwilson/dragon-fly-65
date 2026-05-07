@@ -6,7 +6,7 @@ const server = Bun.serve({
   port: config.server.port,
   fetch() {
     return Response.json({
-      name: "Dragon Fly 65",
+      name: "DragonFly 65",
       status: "booting",
       target: "W65C832-inspired TypeScript computer",
       cpuClockHz: config.cpu.clockHz,
@@ -14,4 +14,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Dragon Fly 65 listening on http://localhost:${server.port}`);
+console.log(`DragonFly 65 listening on http://localhost:${server.port}`);

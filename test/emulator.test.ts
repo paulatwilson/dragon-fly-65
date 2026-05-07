@@ -202,7 +202,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(43);
+  expect(OPCODES.size).toBe(51);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -1358,4 +1358,279 @@ test("JSR stack contents are correct in W65C02 emulation mode", () => {
   expect(ram.readByte(spBefore)).toBe(0x00);      // high byte
   expect(ram.readByte(spBefore - 1)).toBe(0x12);  // low byte
   expect(cpu.readRegister("sp")).toBe(spBefore - 2);
+});
+
+// ---------------------------------------------------------------------------
+// Chunk 9: ALU and Comparisons
+// ---------------------------------------------------------------------------
+
+// --- AND / ORA / EOR --------------------------------------------------------
+
+test("AND immediate clears bits and sets N/Z flags", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // 8-bit mode: A = 0xFF AND 0x0F = 0x0F (N clear, Z clear)
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0xff);
+  ram.writeByte(0, 0x29);
+  ram.writeByte(1, 0x0f);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x0f);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+});
+
+test("AND immediate sets Zero flag when result is zero", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0xf0);
+  ram.writeByte(0, 0x29);
+  ram.writeByte(1, 0x0f);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+});
+
+test("ORA immediate sets bits and Negative flag", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x01);
+  ram.writeByte(0, 0x09);
+  ram.writeByte(1, 0x80);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x81);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(StatusFlag.Negative);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+});
+
+test("EOR immediate toggles bits and sets Zero flag", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0xaa);
+  ram.writeByte(0, 0x49);
+  ram.writeByte(1, 0xaa);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+});
+
+// --- ADC --------------------------------------------------------------------
+
+test("ADC immediate adds operand to accumulator", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x10);
+  ram.writeByte(0, 0x69);
+  ram.writeByte(1, 0x05);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x15);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(0);
+});
+
+test("ADC immediate sets Carry on unsigned overflow", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0xff);
+  ram.writeByte(0, 0x69);
+  ram.writeByte(1, 0x01);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x00);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+});
+
+test("ADC immediate sets Overflow on signed overflow (positive + positive = negative)", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // 0x50 + 0x50 = 0xA0 — both positive, result is negative in 8-bit signed
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x50);
+  ram.writeByte(0, 0x69);
+  ram.writeByte(1, 0x50);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0xa0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(StatusFlag.Overflow);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(StatusFlag.Negative);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+});
+
+test("ADC immediate uses carry-in from status register", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+  cpu.writeRegister("a", 0x10);
+  ram.writeByte(0, 0x69);
+  ram.writeByte(1, 0x05);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x16); // 0x10 + 0x05 + carry(1)
+});
+
+test("ADC immediate works in 16-bit accumulator mode", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // W65C816 emulation, M=0 → 16-bit accumulator
+  cpu.writeRegister("e16", true);
+  cpu.writeRegister("e8", false);
+  cpu.writeRegister("p", 0); // M=0, X=0 → 16-bit accumulator
+  cpu.writeRegister("a", 0x00ff);
+  ram.writeByte(0, 0x69);
+  ram.writeByte(1, 0x01);
+  ram.writeByte(2, 0x00);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x0100);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+});
+
+// --- SBC --------------------------------------------------------------------
+
+test("SBC immediate subtracts operand from accumulator (carry set = no borrow)", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+  cpu.writeRegister("a", 0x10);
+  ram.writeByte(0, 0xe9);
+  ram.writeByte(1, 0x05);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x0b);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry); // no borrow
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(0);
+});
+
+test("SBC immediate clears Carry when result borrows", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+  cpu.writeRegister("a", 0x05);
+  ram.writeByte(0, 0xe9);
+  ram.writeByte(1, 0x10);
+
+  cpu.step();
+  // 0x05 - 0x10 = -0x0B → 0xF5 in 8-bit unsigned; borrow → C clear
+  expect(cpu.readRegister("a")).toBe(0xf5);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(StatusFlag.Negative);
+});
+
+test("SBC immediate sets Overflow on signed overflow (positive - negative = positive overflow)", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  // 0x50 (+80) - 0x80 (-128) = +208, overflows 8-bit signed range → V set
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index | StatusFlag.Carry);
+  cpu.writeRegister("a", 0x50);
+  ram.writeByte(0, 0xe9);
+  ram.writeByte(1, 0x80);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0xd0); // 0x50 + ~0x80 + 1 = 0x50 + 0x7f + 1 = 0xd0
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Overflow).toBe(StatusFlag.Overflow);
+});
+
+// --- CMP --------------------------------------------------------------------
+
+test("CMP immediate sets Zero and Carry when equal", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x42);
+  ram.writeByte(0, 0xc9);
+  ram.writeByte(1, 0x42);
+
+  cpu.step();
+  expect(cpu.readRegister("a")).toBe(0x42); // A unchanged
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+});
+
+test("CMP immediate sets Carry and clears Zero when A greater than operand", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x50);
+  ram.writeByte(0, 0xc9);
+  ram.writeByte(1, 0x10);
+
+  cpu.step();
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(0);
+});
+
+test("CMP immediate clears Carry when A less than operand", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("a", 0x10);
+  ram.writeByte(0, 0xc9);
+  ram.writeByte(1, 0x50);
+
+  cpu.step();
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Negative).toBe(StatusFlag.Negative);
+});
+
+// --- CPX / CPY --------------------------------------------------------------
+
+test("CPX immediate compares X and sets flags correctly", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("x", 0x20);
+  ram.writeByte(0, 0xe0);
+  ram.writeByte(1, 0x20);
+
+  cpu.step();
+  expect(cpu.readRegister("x")).toBe(0x20); // X unchanged
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+});
+
+test("CPY immediate compares Y and sets flags correctly", () => {
+  const ram = createRam(32);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  cpu.writeRegister("y", 0x10);
+  ram.writeByte(0, 0xc0);
+  ram.writeByte(1, 0x20);
+
+  cpu.step();
+  expect(cpu.readRegister("y")).toBe(0x10); // Y unchanged
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(0); // Y < operand
+  expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(0);
 });
