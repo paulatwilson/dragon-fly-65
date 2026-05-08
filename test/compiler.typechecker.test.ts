@@ -145,11 +145,6 @@ const READY = 1
 
   it("tracks the implicit result/error pair model for call destructuring", () => {
     const model = check(`
-type Error = struct
-    code: int
-    description: string
-end
-
 func readFile(path: string): string
     return "data"
 end
@@ -161,6 +156,22 @@ end
 
     expect(model.functions.get("readFile")).toMatchObject({
       returnType: { name: "string" },
+    });
+  });
+
+  it("types runtime seed built-ins and memory helpers", () => {
+    const model = check(`
+func boot(): int
+    const length = len("DF65")
+    const value = memory.read8($1000)
+    memory.write8($1000, value)
+    return length
+end
+`);
+
+    const boot = model.functions.get("boot");
+    expect(boot).toMatchObject({
+      returnType: { name: "int" },
     });
   });
 

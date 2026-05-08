@@ -47,6 +47,8 @@ end
     expect(model.globalScope.symbols.get("Block")).toMatchObject({ kind: "type" });
     expect(model.globalScope.symbols.get("boot")).toMatchObject({ kind: "function" });
     expect(model.globalScope.symbols.get("print")).toMatchObject({ kind: "builtin" });
+    expect(model.globalScope.symbols.get("Error")).toMatchObject({ kind: "builtin" });
+    expect(model.globalScope.symbols.get("memory")).toMatchObject({ kind: "builtin" });
   });
 
   it("rejects global mutable variables", () => {

@@ -137,10 +137,11 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - `bun run lace input.lace -o output.bin`
   - Optional assembly output for debugging
   - Diagnostics formatted for terminal use
-- [ ] Chunk 9 — Runtime and standard-library seed
+- [x] Chunk 9 — Runtime and standard-library seed
   - Minimal runtime symbols required by compiled programs
   - Built-ins such as `len()`, `Error()`, and basic memory helpers
   - Clear boundary between compiler built-ins and Lovelace standard library
+  - Details in `docs/lovelace-runtime.md`
 - [ ] Chunk 10 — Emulator execution tests
   - Compile small Lovelace programs
   - Assemble and load them into the emulator

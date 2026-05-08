@@ -131,4 +131,39 @@ end
       sourcePath: "boot.lace",
     });
   });
+
+  it("emits only runtime seed stubs used by the program", () => {
+    const output = generate(`
+func boot(): int
+    print("ready")
+    const length = len("ready")
+    return length
+end
+`);
+
+    expect(output.assembly).toContain("; Runtime seed");
+    expect(output.assembly).toContain("lace_fn_print:");
+    expect(output.assembly).toContain("lace_fn_len:");
+    expect(output.assembly).not.toContain("lace_fn_halt:");
+
+    const assembled = assemble(output.assembly);
+    expect(assembled.errors).toEqual([]);
+  });
+
+  it("emits runtime seed stubs for memory helpers and halt", () => {
+    const output = generate(`
+func boot()
+    const value = memory.read8($1000)
+    memory.write8($1000, value)
+    halt()
+end
+`);
+
+    expect(output.assembly).toContain("lace_fn_memory_read8:");
+    expect(output.assembly).toContain("lace_fn_memory_write8:");
+    expect(output.assembly).toContain("lace_fn_halt:");
+
+    const assembled = assemble(output.assembly);
+    expect(assembled.errors).toEqual([]);
+  });
 });

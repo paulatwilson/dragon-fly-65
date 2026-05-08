@@ -1,6 +1,7 @@
 import { compilerError, compilerOk } from "./result";
 import { createDiagnostic } from "./diagnostics";
 import { lowerLovelaceToIr } from "./ir";
+import { getLovelaceRuntimeFunction, LOVELACE_RUNTIME_FUNCTION_NAMES } from "./runtime";
 import type {
   CompilerResult,
   LovelaceAssemblyOutput,
@@ -46,6 +47,7 @@ class LovelaceCodeGenerator {
   private readonly dataLines: string[] = [];
   private readonly slots = new Map<string, string>();
   private readonly strings = new Map<string, string>();
+  private readonly usedRuntimeFunctions = new Set<string>();
   private labelId = 0;
 
   public constructor(
@@ -64,6 +66,7 @@ class LovelaceCodeGenerator {
       this.emitFunction(fn);
     }
 
+    this.emitRuntime();
     this.emitData();
 
     return {
@@ -260,6 +263,10 @@ class LovelaceCodeGenerator {
     instruction: Extract<LovelaceIrInstruction, { op: "call" }>,
     scope: string,
   ): void {
+    if (LOVELACE_RUNTIME_FUNCTION_NAMES.has(instruction.callee)) {
+      this.usedRuntimeFunctions.add(instruction.callee);
+    }
+
     for (let index = instruction.args.length - 1; index >= 1; index -= 1) {
       const argument = instruction.args[index];
       if (argument !== undefined) {
@@ -275,6 +282,25 @@ class LovelaceCodeGenerator {
     this.emit(`  jsr ${functionLabel(instruction.callee)}`);
     if (instruction.target !== undefined) {
       this.storeValue(instruction.target, scope);
+    }
+  }
+
+  private emitRuntime(): void {
+    if (this.usedRuntimeFunctions.size === 0) {
+      return;
+    }
+
+    this.emit("; Runtime seed");
+    for (const name of [...this.usedRuntimeFunctions].sort()) {
+      const runtimeFunction = getLovelaceRuntimeFunction(name);
+      if (runtimeFunction === undefined) {
+        continue;
+      }
+      this.emit(`${functionLabel(runtimeFunction.name)}:`);
+      for (const line of runtimeFunction.assembly) {
+        this.emit(line);
+      }
+      this.emit("");
     }
   }
 

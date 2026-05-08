@@ -1,6 +1,7 @@
 import { createDiagnostic } from "./diagnostics";
 import { parseLovelace } from "./parser";
 import { compilerError, compilerOk } from "./result";
+import { LOVELACE_RUNTIME_GLOBALS } from "./runtime";
 import type {
   CompilerResult,
   LovelaceBinaryExpression,
@@ -25,12 +26,7 @@ import type {
   SourceSpan,
 } from "./types";
 
-export const LOVELACE_BUILTINS = new Set([
-  "halt",
-  "len",
-  "memory",
-  "print",
-]);
+export const LOVELACE_BUILTINS = LOVELACE_RUNTIME_GLOBALS;
 
 const PRIMITIVE_TYPES = new Set([
   "array",

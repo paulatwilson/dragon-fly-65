@@ -1,6 +1,7 @@
 import { createDiagnostic } from "./diagnostics";
 import { analyzeLovelace } from "./semantic";
 import { compilerError, compilerOk } from "./result";
+import { LOVELACE_RUNTIME_FUNCTIONS } from "./runtime";
 import type {
   CompilerResult,
   LovelaceArgument,
@@ -57,12 +58,16 @@ const INTEGER_TYPES = new Set([
   "uint32",
 ]);
 
-const BUILTIN_FUNCTIONS = new Map<string, LovelaceFunctionType>([
-  ["print", functionType("print", [UNKNOWN], NO_RETURN)],
-  ["halt", functionType("halt", [], NO_RETURN)],
-  ["len", functionType("len", [UNKNOWN], INT)],
-  ["Error", functionType("Error", [INT, STRING], ERROR)],
-]);
+const BUILTIN_FUNCTIONS = new Map(
+  LOVELACE_RUNTIME_FUNCTIONS.map(fn => [
+    fn.name,
+    functionType(
+      fn.name,
+      fn.parameters.map(typeName => runtimeType(typeName)),
+      runtimeType(fn.returnType),
+    ),
+  ]),
+);
 
 export function checkLovelaceTypes(
   source: string,
@@ -594,6 +599,37 @@ function functionType(
   returnType: LovelaceCheckedType,
 ): LovelaceFunctionType {
   return { kind: "function", name, parameters, returnType };
+}
+
+function runtimeType(name: string): LovelaceCheckedType {
+  switch (name) {
+    case "unknown":
+      return UNKNOWN;
+    case "<none>":
+      return NO_RETURN;
+    case "int":
+      return INT;
+    case "uint":
+      return UINT;
+    case "float32":
+      return FLOAT;
+    case "bool":
+      return BOOL;
+    case "string":
+      return STRING;
+    case "char":
+      return CHAR;
+    case "byte":
+    case "uint8":
+      return BYTE;
+    case "Error":
+      return ERROR;
+    default:
+      if (name.startsWith("uint") || name.startsWith("int")) {
+        return primitive(name);
+      }
+      return structType(name);
+  }
 }
 
 function inferNumberType(value: string): LovelaceCheckedType {

@@ -8,6 +8,13 @@ export {
 export { LOVELACE_KEYWORDS, lexLovelace } from "./lexer";
 export { parseLovelace } from "./parser";
 export { compilerError, compilerOk } from "./result";
+export {
+  getLovelaceRuntimeFunction,
+  LOVELACE_RUNTIME_FUNCTION_NAMES,
+  LOVELACE_RUNTIME_FUNCTIONS,
+  LOVELACE_RUNTIME_GLOBALS,
+} from "./runtime";
+export type { LovelaceRuntimeFunction } from "./runtime";
 export { analyzeLovelace, LOVELACE_BUILTINS } from "./semantic";
 export { checkLovelaceTypes } from "./typechecker";
 export { lowerLovelaceToIr } from "./ir";
