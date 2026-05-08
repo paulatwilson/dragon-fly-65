@@ -121,7 +121,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Type inference for obvious `const` and `var` initializers
   - Cast validation and type-strict comparisons
   - Function result/error pair model
-- [ ] Chunk 5 — Intermediate representation
+- [x] Chunk 5 — Intermediate representation
   - Lower AST into a simple typed IR before assembly generation
   - Normalize control flow, temporary values, labels, calls, and returns
   - Keep the IR small enough to later port to Lovelace v2

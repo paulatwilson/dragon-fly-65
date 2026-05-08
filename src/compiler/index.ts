@@ -10,6 +10,7 @@ export { parseLovelace } from "./parser";
 export { compilerError, compilerOk } from "./result";
 export { analyzeLovelace, LOVELACE_BUILTINS } from "./semantic";
 export { checkLovelaceTypes } from "./typechecker";
+export { lowerLovelaceToIr } from "./ir";
 export type {
   CompilerResult,
   LovelaceCheckedType,
@@ -34,6 +35,13 @@ export type {
   LovelaceIfStatement,
   LovelaceImportDeclaration,
   LovelaceIndexExpression,
+  LovelaceIrFunction,
+  LovelaceIrGlobal,
+  LovelaceIrInstruction,
+  LovelaceIrModule,
+  LovelaceIrOptions,
+  LovelaceIrParameter,
+  LovelaceIrValue,
   LovelaceLexOptions,
   LovelaceLiteralExpression,
   LovelaceMemberExpression,

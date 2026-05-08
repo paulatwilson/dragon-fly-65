@@ -69,6 +69,8 @@ export interface LovelaceSemanticOptions extends LovelaceParseOptions {}
 
 export interface LovelaceTypeCheckOptions extends LovelaceSemanticOptions {}
 
+export interface LovelaceIrOptions extends LovelaceTypeCheckOptions {}
+
 export interface LovelaceProgram {
   kind: "Program";
   body: LovelaceTopLevelNode[];
@@ -385,6 +387,57 @@ export interface LovelaceTypeCheckModel {
   globalValues: Map<string, LovelaceCheckedType>;
   functions: Map<string, LovelaceFunctionType>;
 }
+
+export interface LovelaceIrModule {
+  kind: "IrModule";
+  globals: LovelaceIrGlobal[];
+  functions: LovelaceIrFunction[];
+  initializers: LovelaceIrInstruction[];
+}
+
+export interface LovelaceIrGlobal {
+  name: string;
+  mutable: boolean;
+  type: LovelaceCheckedType;
+  initializer?: LovelaceIrValue;
+  span: SourceSpan;
+}
+
+export interface LovelaceIrFunction {
+  name: string;
+  visibility: "public" | "private";
+  parameters: LovelaceIrParameter[];
+  returnType: LovelaceCheckedType;
+  body: LovelaceIrInstruction[];
+  span: SourceSpan;
+}
+
+export interface LovelaceIrParameter {
+  name: string;
+  type: LovelaceCheckedType;
+}
+
+export type LovelaceIrValue =
+  | { kind: "temp"; name: string; type: LovelaceCheckedType }
+  | { kind: "local"; name: string; type: LovelaceCheckedType }
+  | { kind: "global"; name: string; type: LovelaceCheckedType }
+  | { kind: "literal"; value: string; literalKind: "number" | "string" | "boolean" | "null"; type: LovelaceCheckedType };
+
+export type LovelaceIrInstruction =
+  | { op: "declare"; target: LovelaceIrValue; mutable: boolean; span: SourceSpan }
+  | { op: "assign"; target: LovelaceIrValue; value: LovelaceIrValue; span: SourceSpan }
+  | { op: "binary"; target: LovelaceIrValue; operator: string; left: LovelaceIrValue; right: LovelaceIrValue; span: SourceSpan }
+  | { op: "unary"; target: LovelaceIrValue; operator: string; argument: LovelaceIrValue; span: SourceSpan }
+  | { op: "call"; target?: LovelaceIrValue; callee: string; args: LovelaceIrValue[]; span: SourceSpan }
+  | { op: "cast"; target: LovelaceIrValue; value: LovelaceIrValue; toType: LovelaceCheckedType; span: SourceSpan }
+  | { op: "index"; target: LovelaceIrValue; object: LovelaceIrValue; index: LovelaceIrValue; span: SourceSpan }
+  | { op: "member"; target: LovelaceIrValue; object: LovelaceIrValue; property: string; span: SourceSpan }
+  | { op: "struct"; target: LovelaceIrValue; typeName: string; fields: Array<{ name: string; value: LovelaceIrValue }>; span: SourceSpan }
+  | { op: "return"; values: LovelaceIrValue[]; span: SourceSpan }
+  | { op: "label"; name: string; span: SourceSpan }
+  | { op: "jump"; label: string; span: SourceSpan }
+  | { op: "jumpIfFalse"; test: LovelaceIrValue; label: string; span: SourceSpan }
+  | { op: "asm"; body: string; span: SourceSpan };
 
 export type CompilerResult<T> =
   | { ok: true; value: T; diagnostics: LovelaceDiagnostic[] }
