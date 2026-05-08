@@ -133,7 +133,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Feed generated assembly into `src/assembler/`
   - Select entry point at build/link time
   - Emit binary images suitable for emulator loading
-- [ ] Chunk 8 — Compiler CLI
+- [x] Chunk 8 — Compiler CLI
   - `bun run lace input.lace -o output.bin`
   - Optional assembly output for debugging
   - Diagnostics formatted for terminal use
