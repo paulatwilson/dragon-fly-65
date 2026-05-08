@@ -82,7 +82,7 @@ const SINGLE_CHAR_OPERATORS = new Set([
   "~",
 ]);
 
-const PUNCTUATION = new Set(["(", ")", "{", "}", "[", "]", ",", ":", "."]);
+const PUNCTUATION = new Set(["(", ")", "{", "}", "[", "]", ",", ":", ".", "#"]);
 
 export function lexLovelace(
   source: string,

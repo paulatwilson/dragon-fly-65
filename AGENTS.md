@@ -97,7 +97,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Tokenize keywords, identifiers, literals, operators, comments, punctuation, and newlines
   - Preserve source spans for useful compiler diagnostics
   - Cover examples from `docs/lovelace-language-design.md`
-- [ ] Chunk 2 — Parser
+- [x] Chunk 2 — Parser
   - Build an AST for modules, constants, variables, functions, blocks, statements, and expressions
   - Support `end`-terminated syntax, typed parameters, return types, and nested control flow
   - Report clear parse errors with line/column information
