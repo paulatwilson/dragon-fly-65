@@ -1,0 +1,627 @@
+; =============================================================================
+; DragonFly 65 Monitor
+;
+; A basic machine monitor for the W65C832 emulator.
+;
+; Memory map
+; ----------
+;   $0000–$01FF   Zero page + hardware stack
+;   $0200–$0260   Monitor work RAM (input buffer, register save area)
+;   $0300–$BFFF   Free RAM (user programs)
+;   $C000–$DFFF   Free RAM (user programs, continued)
+;   $E000–$EFFF   Monitor ROM  ← loaded here
+;   $F000–$F002   Memory-mapped I/O
+;   $FFFA–$FFFF   Interrupt vectors
+;
+; I/O registers
+; -------------
+;   $F000  CHAR_OUT   write: send byte to terminal
+;   $F001  CHAR_IN    read:  next input byte ($FF if none queued)
+;   $F002  CHAR_STS   read:  1 if input available, 0 otherwise
+;
+; Commands  (no spaces — address and data packed as hex digits)
+; --------
+;   H              Help
+;   MAAAA          Memory dump — 16 bytes starting at address AAAA
+;   SAAAADD...     Set memory  — store bytes DD… at address AAAA
+;   GAAAA          Go          — JSR to address AAAA; program returns with RTS
+;   R              Registers   — show registers saved from last G execution
+;
+; CPU conventions used in this monitor
+; -------------------------------------
+;   Accumulator  : 8-bit  (M flag = 1, SEP #$20 at boot)
+;   Index (X, Y) : 16-bit (X flag = 0, REP #$10 at boot)
+;   Data bank    : 0
+;   Stack        : $0100–$01FF
+;
+; Zero-page layout
+;   $00–$01  ZP_PTR   16-bit pointer used by PRINT_ZP
+;   $02–$03  ZP_ADDR  16-bit working address (PARSE_HEX4 target, dump address)
+;   $04      ZP_TMP   temporary byte
+;
+; Register save area (written by DO_GO_RETURNED)
+;   $0250    A_SAVE    A register from last G return
+;   $0251    X_SAVE+0  X register low byte
+;   $0252    X_SAVE+1  X register high byte
+;   $0253    Y_SAVE+0  Y register low byte
+;   $0254    Y_SAVE+1  Y register high byte
+;   $0255    P_SAVE    processor status byte
+;   $0256    REG_VALID 0 = no program run yet, 1 = valid
+; =============================================================================
+
+    .65816
+    .org $E000
+
+; ---------------------------------------------------------------------------
+; I/O addresses
+; ---------------------------------------------------------------------------
+CHAR_OUT    .equ $F000
+CHAR_IN     .equ $F001
+CHAR_STS    .equ $F002
+
+; ---------------------------------------------------------------------------
+; Zero-page variables
+; ---------------------------------------------------------------------------
+ZP_PTR      .equ $00
+ZP_ADDR     .equ $02
+ZP_TMP      .equ $04
+
+; ---------------------------------------------------------------------------
+; RAM buffers
+; ---------------------------------------------------------------------------
+INBUF       .equ $0200          ; 64-byte input line buffer
+INBUF_LEN   .equ $0240          ; length of last input line (1 byte)
+
+; Register save area
+A_SAVE      .equ $0250
+X_SAVE      .equ $0251          ; 2 bytes
+Y_SAVE      .equ $0253          ; 2 bytes
+P_SAVE      .equ $0255
+REG_VALID   .equ $0256
+
+; ---------------------------------------------------------------------------
+; Boot / monitor entry
+;
+; Called at reset.  Switches to native mode, sets register widths, initialises
+; stack and data bank, then falls into MAIN_LOOP.
+; ---------------------------------------------------------------------------
+MONITOR_ENTRY:
+    clc
+    xce                         ; switch to W65C816 native mode
+
+    rep     #$30                ; A=16, I=16 (needed to load 16-bit SP)
+    .a16
+    .i16
+    lda     #$01FF
+    tcs                         ; SP = $01FF
+
+    sep     #$20                ; A=8 (keep I=16 for the rest of the monitor)
+    .a8
+    lda     #$00
+    pha
+    plb                         ; data bank = 0
+
+    ldx     #STR_BANNER
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+
+; ---------------------------------------------------------------------------
+; Main loop
+; ---------------------------------------------------------------------------
+MAIN_LOOP:
+    ldx     #STR_PROMPT
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+
+    jsr     READLINE            ; fill INBUF, set INBUF_LEN
+
+    lda     INBUF_LEN
+    beq     MAIN_LOOP           ; empty line — re-prompt
+
+    ; Point X at INBUF; read command char, advance past it
+    ldx     #INBUF
+    lda     $0000,x
+    inx                         ; X now points to char after command
+
+    ; Upcase the command character
+    cmp     #$61                ; < 'a' → already upper (or non-alpha)
+    bcc     DISPATCH
+    and     #$DF                ; clear bit 5 → upper case
+
+DISPATCH:
+    cmp     #'H'
+    beq     DO_HELP
+    cmp     #'M'
+    beq     DO_MEMORY
+    cmp     #'S'
+    bne     DISPATCH_NOT_S
+    jmp     DO_SET
+DISPATCH_NOT_S:
+    cmp     #'G'
+    bne     DISPATCH_NOT_G
+    jmp     DO_GO
+DISPATCH_NOT_G:
+    cmp     #'R'
+    bne     DISPATCH_UNKNOWN
+    jmp     DO_REGS
+DISPATCH_UNKNOWN:
+    ldx     #STR_UNKNOWN
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     MAIN_LOOP
+
+; ---------------------------------------------------------------------------
+; H — Help
+; ---------------------------------------------------------------------------
+DO_HELP:
+    ldx     #STR_HELP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     MAIN_LOOP
+
+; ---------------------------------------------------------------------------
+; MAAAA — Memory dump, 16 bytes at address AAAA
+; On entry: X = INBUF+1 (parse pointer)
+; ---------------------------------------------------------------------------
+DO_MEMORY:
+    jsr     PARSE_HEX4          ; ZP_ADDR ← address, X consumed
+
+    jsr     CRLF
+
+    ; Print "AAAA: " address label
+    rep     #$20
+    .a16
+    lda     ZP_ADDR
+    tax
+    sep     #$20
+    .a8
+    jsr     PUT_HEX4_X
+    lda     #':'
+    sta     CHAR_OUT
+    lda     #' '
+    sta     CHAR_OUT
+
+    ; Print 16 hex bytes
+    ldy     #0
+MEM_HEX_LOOP:
+    lda     (ZP_ADDR),y
+    jsr     PUT_HEX2
+    lda     #' '
+    sta     CHAR_OUT
+    iny
+    cpy     #16
+    bcc     MEM_HEX_LOOP
+
+    ; Print " |" separator before ASCII
+    lda     #' '
+    sta     CHAR_OUT
+    lda     #'|'
+    sta     CHAR_OUT
+
+    ; Print 16 ASCII chars (dot for non-printable)
+    ldy     #0
+MEM_ASCII_LOOP:
+    lda     (ZP_ADDR),y
+    cmp     #$20
+    bcc     MEM_ASCII_DOT
+    cmp     #$7F
+    bcs     MEM_ASCII_DOT
+    sta     CHAR_OUT
+    bra     MEM_ASCII_NEXT
+MEM_ASCII_DOT:
+    lda     #'.'
+    sta     CHAR_OUT
+MEM_ASCII_NEXT:
+    iny
+    cpy     #16
+    bcc     MEM_ASCII_LOOP
+
+    lda     #'|'
+    sta     CHAR_OUT
+    jsr     CRLF
+    jmp     MAIN_LOOP
+
+; ---------------------------------------------------------------------------
+; SAAAADD... — Set memory, store bytes at address AAAA
+; On entry: X = INBUF+1 (parse pointer)
+; ---------------------------------------------------------------------------
+DO_SET:
+    jsr     PARSE_HEX4          ; ZP_ADDR ← address, X advanced by 4
+
+    ldy     #0                  ; Y = byte store offset
+
+DO_SET_LOOP:
+    ; Remaining input chars = INBUF_LEN - (X - INBUF)
+    rep     #$20
+    .a16
+    txa
+    sec
+    sbc     #INBUF              ; A = chars consumed
+    sep     #$20
+    .a8
+    sta     ZP_TMP
+    lda     INBUF_LEN
+    sec
+    sbc     ZP_TMP              ; A = chars remaining
+    cmp     #2
+    bcc     DO_SET_DONE         ; < 2 chars left — nothing more to parse
+
+    jsr     PARSE_HEX2          ; A ← next byte
+    sta     (ZP_ADDR),y
+    iny
+    bra     DO_SET_LOOP
+
+DO_SET_DONE:
+    ldx     #STR_OK
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     MAIN_LOOP
+
+; ---------------------------------------------------------------------------
+; GAAAA — Run user code at address AAAA via RTS-stack trick
+;
+; The stack is arranged so that:
+;   1. RTS here jumps to user code (AAAA)
+;   2. When user code does RTS, execution continues at DO_GO_RETURNED
+;
+; On entry: X = INBUF+1 (parse pointer)
+; ---------------------------------------------------------------------------
+DO_GO:
+    jsr     PARSE_HEX4          ; ZP_ADDR ← address
+
+    ; Push (DO_GO_RETURNED - 1) — where user RTS will land
+    rep     #$20
+    .a16
+    lda     #DO_GO_RETURNED-1
+    sta     ZP_TMP              ; ZP_TMP = lo, ZP_TMP+1 = hi
+    sep     #$20
+    .a8
+    lda     ZP_TMP+1            ; high byte first
+    pha
+    lda     ZP_TMP              ; low byte
+    pha
+
+    ; Push (target - 1) — where our RTS will jump
+    rep     #$20
+    .a16
+    lda     ZP_ADDR
+    dec
+    sta     ZP_TMP              ; ZP_TMP = lo, ZP_TMP+1 = hi
+    sep     #$20
+    .a8
+    lda     ZP_TMP+1
+    pha
+    lda     ZP_TMP
+    pha
+
+    rts                         ; "jump" to user code
+
+DO_GO_RETURNED:
+    ; Save the user program's registers before touching anything
+    sta     A_SAVE
+    rep     #$20
+    .a16
+    stx     X_SAVE
+    sty     Y_SAVE
+    sep     #$20
+    .a8
+    php
+    pla
+    sta     P_SAVE
+    lda     #1
+    sta     REG_VALID
+
+    ldx     #STR_RETURNED
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     MAIN_LOOP
+
+; ---------------------------------------------------------------------------
+; R — Show registers saved from last G run
+; ---------------------------------------------------------------------------
+DO_REGS:
+    lda     REG_VALID
+    bne     DO_REGS_SHOW
+
+    ldx     #STR_NO_PROG
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     MAIN_LOOP
+
+DO_REGS_SHOW:
+    ; A=XX  X=XXXX  Y=XXXX  P=XX
+    ldx     #STR_REG_A
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     A_SAVE
+    jsr     PUT_HEX2
+
+    ldx     #STR_REG_X
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    rep     #$20
+    .a16
+    ldx     X_SAVE
+    sep     #$20
+    .a8
+    jsr     PUT_HEX4_X
+
+    ldx     #STR_REG_Y
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    rep     #$20
+    .a16
+    ldx     Y_SAVE
+    sep     #$20
+    .a8
+    jsr     PUT_HEX4_X
+
+    ldx     #STR_REG_P
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     P_SAVE
+    jsr     PUT_HEX2
+
+    jsr     CRLF
+    jmp     MAIN_LOOP
+
+; =============================================================================
+; Subroutines
+; =============================================================================
+
+; ---------------------------------------------------------------------------
+; READLINE — Read one line from terminal into INBUF, set INBUF_LEN.
+; Echoes characters.  Handles backspace ($08 or $7F).
+; Terminated by CR ($0D); LF ($0A) is ignored.
+; ---------------------------------------------------------------------------
+READLINE:
+    ldx     #0                  ; X = char count
+READLINE_LOOP:
+    jsr     GETCHAR
+    cmp     #$0D                ; CR → done
+    beq     READLINE_DONE
+    cmp     #$0A                ; LF → ignore
+    beq     READLINE_LOOP
+    cmp     #$08                ; backspace
+    beq     READLINE_BS
+    cmp     #$7F                ; DEL (also backspace)
+    beq     READLINE_BS
+
+    cpx     #63                 ; buffer full?
+    bcs     READLINE_LOOP       ; yes — discard char
+    sta     INBUF,x             ; store char in buffer
+    inx
+    sta     CHAR_OUT            ; echo
+    bra     READLINE_LOOP
+
+READLINE_BS:
+    cpx     #0                  ; nothing to delete?
+    beq     READLINE_LOOP
+    dex
+    lda     #$08
+    sta     CHAR_OUT            ; backspace
+    lda     #' '
+    sta     CHAR_OUT            ; erase
+    lda     #$08
+    sta     CHAR_OUT            ; backspace again
+    bra     READLINE_LOOP
+
+READLINE_DONE:
+    txa                         ; X (count) → A low byte (fits in 8 bits)
+    sta     INBUF_LEN
+    jsr     CRLF
+    rts
+
+; ---------------------------------------------------------------------------
+; GETCHAR — Blocking read of one character.  Returns char in A.
+; ---------------------------------------------------------------------------
+GETCHAR:
+    lda     CHAR_STS
+    and     #$01
+    beq     GETCHAR
+    lda     CHAR_IN
+    rts
+
+; ---------------------------------------------------------------------------
+; CRLF — Print carriage-return + line-feed.
+; ---------------------------------------------------------------------------
+CRLF:
+    lda     #$0D
+    sta     CHAR_OUT
+    lda     #$0A
+    sta     CHAR_OUT
+    rts
+
+; ---------------------------------------------------------------------------
+; PRINT_ZP — Print null-terminated string whose address is in ZP_PTR ($00–$01).
+; ---------------------------------------------------------------------------
+PRINT_ZP:
+    ldy     #0
+PRINT_ZP_LOOP:
+    lda     (ZP_PTR),y
+    beq     PRINT_ZP_DONE
+    sta     CHAR_OUT
+    iny
+    bra     PRINT_ZP_LOOP
+PRINT_ZP_DONE:
+    rts
+
+; ---------------------------------------------------------------------------
+; PUT_HEX2 — Print accumulator as two hex digits.  A=8, I=16.
+; ---------------------------------------------------------------------------
+PUT_HEX2:
+    pha                         ; save original byte
+    lsr
+    lsr
+    lsr
+    lsr
+    jsr     PUT_NIBBLE          ; high nibble
+    pla
+    and     #$0F
+    jsr     PUT_NIBBLE          ; low nibble
+    rts
+
+; PUT_NIBBLE — Print low 4 bits of A as a single hex digit.
+PUT_NIBBLE:
+    cmp     #10
+    bcc     PUT_NIBBLE_DIGIT
+    ; carry is set (A >= 10), adc #$36 → adc #($37-1) + carry
+    adc     #$36                ; 10→'A' (adc adds $36 + 1 carry = $37)
+    bra     PUT_NIBBLE_OUT
+PUT_NIBBLE_DIGIT:
+    adc     #'0'                ; carry clear → adds '0' exactly
+PUT_NIBBLE_OUT:
+    sta     CHAR_OUT
+    rts
+
+; ---------------------------------------------------------------------------
+; PUT_HEX4_X — Print X register as four hex digits.  A=8 in/out, I=16.
+; ---------------------------------------------------------------------------
+PUT_HEX4_X:
+    rep     #$20
+    .a16
+    txa                         ; A = X (16-bit)
+    sta     ZP_TMP              ; ZP_TMP = lo byte, ZP_TMP+1 = hi byte
+    sep     #$20
+    .a8
+    lda     ZP_TMP+1            ; high byte first
+    jsr     PUT_HEX2
+    lda     ZP_TMP              ; low byte
+    jsr     PUT_HEX2
+    rts
+
+; ---------------------------------------------------------------------------
+; PARSE_HEX4 — Parse 4 hex chars from INBUF[X..X+3].
+; Result stored in ZP_ADDR ($02–$03).  X advanced by 4.
+; ---------------------------------------------------------------------------
+PARSE_HEX4:
+    jsr     PARSE_HEX2
+    sta     ZP_ADDR+1           ; high byte of address
+    jsr     PARSE_HEX2
+    sta     ZP_ADDR             ; low byte of address
+    rts
+
+; ---------------------------------------------------------------------------
+; PARSE_HEX2 — Parse 2 hex chars from INBUF[X..X+1].
+; Returns byte in A.  X advanced by 2.
+; ---------------------------------------------------------------------------
+PARSE_HEX2:
+    jsr     PARSE_NIBBLE
+    asl
+    asl
+    asl
+    asl
+    sta     ZP_TMP
+    jsr     PARSE_NIBBLE
+    ora     ZP_TMP
+    rts
+
+; ---------------------------------------------------------------------------
+; PARSE_NIBBLE — Read one hex character from $0000[X], advance X.
+; Returns nibble value 0–15 in A.
+; ---------------------------------------------------------------------------
+PARSE_NIBBLE:
+    lda     $0000,x             ; read char at absolute address X
+    inx
+    cmp     #'a'
+    bcc     PN_UPPER
+    and     #$DF                ; to uppercase
+PN_UPPER:
+    cmp     #'A'
+    bcc     PN_DIGIT            ; < 'A' → decimal digit
+    sec
+    sbc     #'A'-10             ; 'A'→10 … 'F'→15  (carry set by cmp, so sbc = sub)
+    rts
+PN_DIGIT:
+    sec
+    sbc     #'0'                ; '0'→0 … '9'→9
+    rts
+
+; =============================================================================
+; String data
+; =============================================================================
+
+STR_BANNER:
+    .byte $0D,$0A
+    .ascii "DragonFly 65 Monitor"
+    .byte $0D,$0A
+    .ascii "Type H for help"
+    .byte $0D,$0A,0
+
+STR_PROMPT:
+    .byte $0D,$0A
+    .ascii "* "
+    .byte 0
+
+STR_HELP:
+    .byte $0D,$0A
+    .ascii "H           help"
+    .byte $0D,$0A
+    .ascii "MAAAA       memory dump (16 bytes at AAAA)"
+    .byte $0D,$0A
+    .ascii "SAAAADD..   set bytes at AAAA"
+    .byte $0D,$0A
+    .ascii "GAAAA       run at AAAA (program returns with RTS)"
+    .byte $0D,$0A
+    .ascii "R           show registers from last G"
+    .byte $0D,$0A,0
+
+STR_UNKNOWN:
+    .ascii "?"
+    .byte $0D,$0A,0
+
+STR_OK:
+    .byte $0D,$0A
+    .ascii "OK"
+    .byte $0D,$0A,0
+
+STR_RETURNED:
+    .byte $0D,$0A
+    .ascii "Returned"
+    .byte $0D,$0A,0
+
+STR_NO_PROG:
+    .byte $0D,$0A
+    .ascii "No program run yet"
+    .byte $0D,$0A,0
+
+STR_REG_A:
+    .byte $0D,$0A
+    .ascii "A="
+    .byte 0
+
+STR_REG_X:
+    .ascii "  X="
+    .byte 0
+
+STR_REG_Y:
+    .ascii "  Y="
+    .byte 0
+
+STR_REG_P:
+    .ascii "  P="
+    .byte 0
+
+
+; =============================================================================
+; Unused-interrupt handler (RTI back to caller)
+; =============================================================================
+DUMMY_IRQ:
+    rti
+
+; =============================================================================
+; Interrupt vectors
+; =============================================================================
+
+    .org $FFE4                  ; native mode vectors
+    .dw DUMMY_IRQ               ; COP
+    .dw DUMMY_IRQ               ; BRK
+    .dw DUMMY_IRQ               ; ABORT
+    .dw DUMMY_IRQ               ; NMI
+    .dw $0000                   ; (reserved)
+    .dw DUMMY_IRQ               ; IRQ
+
+    .org $FFFA                  ; emulation mode vectors
+    .dw DUMMY_IRQ               ; NMI
+    .dw MONITOR_ENTRY           ; RESET
+    .dw DUMMY_IRQ               ; IRQ/BRK

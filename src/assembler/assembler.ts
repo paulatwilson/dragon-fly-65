@@ -71,13 +71,21 @@ class Parser {
     while (this.peekKind() === "plus" || this.peekKind() === "minus") {
       const op = this.consume().kind;
       const right = this.parseMulDiv();
-      const lv = left.kind === "num" ? left.value : 0;
-      const rv = right.kind === "num" ? right.value : 0;
       if (left.kind === "num" && right.kind === "num") {
-        left = { kind: "num", value: op === "plus" ? lv + rv : lv - rv };
+        left = { kind: "num", value: op === "plus" ? left.value + right.value : left.value - right.value };
+      } else if (left.kind === "sym" && right.kind === "num") {
+        const delta = op === "plus" ? right.value : -right.value;
+        left = { kind: "sym+offset", name: left.name, offset: delta };
+      } else if (left.kind === "sym+offset" && right.kind === "num") {
+        const delta = op === "plus" ? right.value : -right.value;
+        left = { kind: "sym+offset", name: left.name, offset: left.offset + delta };
+      } else if (left.kind === "num" && right.kind === "sym") {
+        // num + sym — treat as sym + offset (subtraction from a literal is unusual)
+        const offset = op === "plus" ? left.value : -left.value;
+        left = { kind: "sym+offset", name: right.name, offset };
       } else {
-        // Symbolic arithmetic — keep as the symbol (simplified: first symbol wins)
-        left = left.kind === "sym" ? left : right;
+        // Complex symbolic expression (sym op sym etc.): keep left symbol, ignore right
+        left = left.kind === "sym" || left.kind === "sym+offset" ? left : right;
       }
     }
     return left;
@@ -142,6 +150,11 @@ class Parser {
       // * = current PC (handled at encode time — use a special symbol)
       this.skip();
       return { kind: "sym", name: "*" };
+    }
+
+    if (t.kind === "string" && t.value.length === 1) {
+      this.skip();
+      return { kind: "num", value: t.value.charCodeAt(0) };
     }
 
     this.error(`unexpected token in expression: ${t.kind} (${t.value})`);
@@ -433,16 +446,20 @@ class Parser {
       if (t.kind === "dot") {
         this.skip();
         const name = this.peek();
-        if (name.kind !== "identifier") {
+        // .65816 / .65832 — lexer tokenizes the numeric part as a number token
+        const isNumericDirective =
+          name.kind === "number" && (name.value === "65816" || name.value === "65832");
+        if (name.kind !== "identifier" && !isNumericDirective) {
           this.error("expected directive name after .");
           this.skipNewlines();
           continue;
         }
         this.skip();
-        const stmt = this.parseDirectiveArgs(name.value, line);
+        const directiveName = isNumericDirective ? name.value : (name as { value: string }).value;
+        const stmt = this.parseDirectiveArgs(directiveName, line);
         if (stmt) stmts.push(stmt);
         if (!this.atEOL()) {
-          this.error(`unexpected tokens after directive .${name.value}`);
+          this.error(`unexpected tokens after directive .${directiveName}`);
         }
         continue;
       }
@@ -521,9 +538,14 @@ interface AsmState {
 
 function resolveExpr(expr: Expr, symbols: Map<string, number>, pc: number): number | undefined {
   if (expr.kind === "num") return expr.value;
+  if (expr.kind === "sym+offset") {
+    if (expr.name === "*") return (pc + expr.offset) & 0xffffff;
+    const v = symbols.get(expr.name);
+    return v !== undefined ? v + expr.offset : undefined;
+  }
+  // expr.kind === "sym"
   if (expr.name === "*") return pc;
-  const v = symbols.get(expr.name);
-  return v; // undefined if not yet defined
+  return symbols.get(expr.name);
 }
 
 // ─── Mode selection ───────────────────────────────────────────────────────────
@@ -777,6 +799,7 @@ export function assemble(source: string): AssemblerOutput {
   const symbols = new Map<string, number>();
   const state: AsmState = { pc: 0, accWidth: 8, idxWidth: 8, is832: false };
   let origin = 0;
+  let minOrigin = Infinity;
 
   // Pass 1: collect symbol addresses
   for (const stmt of stmts) {
@@ -801,7 +824,7 @@ export function assemble(source: string): AssemblerOutput {
       case "org":
         if (stmt.value.kind === "num") {
           state.pc = stmt.value.value;
-          origin = stmt.value.value;
+          if (state.pc < minOrigin) minOrigin = state.pc;
         }
         break;
 
@@ -818,6 +841,8 @@ export function assemble(source: string): AssemblerOutput {
         state.pc += estimateSize(stmt, symbols, state.pc, state);
     }
   }
+
+  origin = minOrigin === Infinity ? 0 : minOrigin;
 
   // Pass 2: encode
   const output: number[] = [];
@@ -837,7 +862,14 @@ export function assemble(source: string): AssemblerOutput {
 
       case "org": {
         const v = resolveExpr(stmt.value, symbols, pc);
-        if (v !== undefined) state2.pc = v;
+        if (v !== undefined) {
+          // Pad gap with zeros when jumping forward to a new section
+          if (v > state2.pc) {
+            const gap = v - state2.pc;
+            for (let i = 0; i < gap; i++) output.push(0);
+          }
+          state2.pc = v;
+        }
         break;
       }
 

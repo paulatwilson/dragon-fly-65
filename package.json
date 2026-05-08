@@ -31,6 +31,7 @@
     "start": "bun run src/index.ts",
     "dev": "bun --watch src/index.ts",
     "asm": "bun run src/assembler/cli.ts",
+    "monitor": "bun run src/monitor/index.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

@@ -258,6 +258,12 @@ export class W65C832Cpu {
     return makeDataAddress(this.state.drb, word);
   }
 
+  resolveIndirectIndexedYAddress(operandBytes: number[]): number {
+    const pointer = makeDirectAddress(this.state.dr, operandBytes[0] ?? 0);
+    const base = readWord(this.memory, pointer);
+    return makeDataAddress(this.state.drb, (base + this.state.y) & WORD_MASK);
+  }
+
   resolveStackRelativeAddress(operandBytes: number[]): number {
     return (this.state.sp + (operandBytes[0] ?? 0)) & WORD_MASK;
   }
@@ -461,6 +467,13 @@ export class W65C832Cpu {
     );
   }
 
+  completeStoreAccumulatorIndirectIndexedY(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeStoreInstruction(
+      context, this.resolveIndirectIndexedYAddress(context.operandBytes), this.state.a, accumulator, 6 + this.accWidthPenalty(),
+    );
+  }
+
   completeStoreAccumulatorStackRelative(context: InstructionContext): StepResult {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeStoreInstruction(
@@ -542,6 +555,13 @@ export class W65C832Cpu {
     const { accumulator } = resolveWidthMode(this.state);
     return this.completeLoadFromAddress(
       context, "a", accumulator, this.resolveIndirectAddress(context.operandBytes), 5 + this.accWidthPenalty() + this.dpPenalty(),
+    );
+  }
+
+  completeLoadAccumulatorIndirectIndexedY(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    return this.completeLoadFromAddress(
+      context, "a", accumulator, this.resolveIndirectIndexedYAddress(context.operandBytes), 5 + this.accWidthPenalty(),
     );
   }
 
@@ -720,6 +740,28 @@ export class W65C832Cpu {
     );
   }
 
+  completeTransferCToStack(context: InstructionContext): StepResult {
+    const before = this.state.sp;
+    const statusBefore = this.state.p;
+    // TCS always uses the full 16-bit C register regardless of M flag
+    const value = this.state.a & WORD_MASK;
+    this.state.sp = value;
+    this.state.cycles += 2;
+    return this.completeRegisterInstruction(context, "sp", before, value, statusBefore, 2);
+  }
+
+  completeTransferStackToC(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const before = this.state.a;
+    const statusBefore = this.state.p;
+    // TSC always transfers the full 16-bit SP into C (regardless of M flag)
+    const value = this.state.sp & WORD_MASK;
+    this.state.a = value;
+    updateNegativeZeroFlags(this.state, value, 16);
+    this.state.cycles += 2;
+    return this.completeRegisterInstruction(context, "a", before, maskToWidth(value, accumulator), statusBefore, 2);
+  }
+
   completeTransferXToStack(context: InstructionContext): StepResult {
     const before = this.state.sp;
     const statusBefore = this.state.p;
@@ -804,8 +846,9 @@ export class W65C832Cpu {
   completeResetProcessorStatus(context: InstructionContext): StepResult {
     const mask = context.operandBytes[0] ?? 0;
     const statusBefore = this.state.p;
-    // In emulation mode M and X cannot be cleared — they stay forced to 1.
-    const effectiveMask = this.state.e16
+    // In W65C02 emulation mode (e16 && e8) M and X cannot be cleared.
+    // In W65C816 native mode (e16 && !e8) or W65C832 native mode (!e16), REP clears freely.
+    const effectiveMask = (this.state.e16 && this.state.e8)
       ? mask & ~(StatusFlag.Memory | StatusFlag.Index) & BYTE_MASK
       : mask;
 
@@ -915,6 +958,29 @@ export class W65C832Cpu {
       cycles: 2,
       stopped: false,
       registerChanges,
+    };
+  }
+
+  completeBranchAlways(context: InstructionContext): StepResult {
+    const offset = context.operandBytes[0] ?? 0;
+    const signed = offset >= 0x80 ? offset - 0x100 : offset;
+    const newPc = (this.state.pc + signed) & WORD_MASK;
+    const pageCross =
+      this.state.e8 &&
+      this.state.e16 &&
+      (newPc & 0xff00) !== (this.state.pc & 0xff00);
+    const cycles = pageCross ? 4 : 3;
+    this.state.pc = newPc;
+    this.state.cycles += cycles;
+    return {
+      pcBefore: context.pcBefore,
+      pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode,
+      mnemonic: "BRA",
+      bytes: context.bytes,
+      cycles,
+      stopped: false,
+      registerChanges: {},
     };
   }
 

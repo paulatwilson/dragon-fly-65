@@ -190,6 +190,21 @@ const indirect = (
   execute,
 });
 
+const indirectIndexedY = (
+  opcode: number,
+  mnemonic: string,
+  cycles: number,
+  execute: OpcodeDefinition["execute"],
+): OpcodeDefinition => ({
+  opcode,
+  mnemonic,
+  bytes: 2,
+  cycles,
+  addressingMode: "indirect-indexed-y",
+  byteLength: () => 2,
+  execute,
+});
+
 const stackRelative = (
   opcode: number,
   mnemonic: string,
@@ -289,6 +304,9 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     indirect(0x92, "STA", 5, (cpu, context) =>
       cpu.completeStoreAccumulatorIndirect(context),
     ),
+    indirectIndexedY(0x91, "STA", 6, (cpu, context) =>
+      cpu.completeStoreAccumulatorIndirectIndexedY(context),
+    ),
     absoluteIndexedY(0x99, "STA", 5, (cpu, context) =>
       cpu.completeStoreAccumulatorAbsoluteIndexedY(context),
     ),
@@ -327,6 +345,9 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     ),
     indirect(0xb2, "LDA", 5, (cpu, context) =>
       cpu.completeLoadAccumulatorIndirect(context),
+    ),
+    indirectIndexedY(0xb1, "LDA", 5, (cpu, context) =>
+      cpu.completeLoadAccumulatorIndirectIndexedY(context),
     ),
     absoluteIndexedY(0xb9, "LDA", 4, (cpu, context) =>
       cpu.completeLoadAccumulatorAbsoluteIndexedY(context),
@@ -474,6 +495,7 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     relative(0xd0, "BNE", (cpu, context) =>
       cpu.completeBranch(context, StatusFlag.Zero, false),
     ),
+    relative(0x80, "BRA", (cpu, context) => cpu.completeBranchAlways(context)),
     relative(0xf0, "BEQ", (cpu, context) =>
       cpu.completeBranch(context, StatusFlag.Zero, true),
     ),
@@ -527,6 +549,12 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     ),
     implied(0x98, "TYA", 2, (cpu, context) =>
       cpu.completeTransferYToAccumulator(context),
+    ),
+    implied(0x1b, "TCS", 2, (cpu, context) =>
+      cpu.completeTransferCToStack(context),
+    ),
+    implied(0x3b, "TSC", 2, (cpu, context) =>
+      cpu.completeTransferStackToC(context),
     ),
     implied(0x9a, "TXS", 2, (cpu, context) =>
       cpu.completeTransferXToStack(context),

@@ -27,8 +27,11 @@ export type AsmMode =
   | "sr"         // $nn,s
   | "(sr),y";    // ($nn,s),y
 
-// An operand value: either a resolved number or a symbol reference
-export type Expr = { kind: "num"; value: number } | { kind: "sym"; name: string };
+// An operand value: either a resolved number, a symbol reference, or a symbol+offset
+export type Expr =
+  | { kind: "num"; value: number }
+  | { kind: "sym"; name: string }
+  | { kind: "sym+offset"; name: string; offset: number };
 
 // Syntactic shape of the operand (mode family, before size is resolved)
 export type OperandKind =

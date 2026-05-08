@@ -28,7 +28,7 @@ Layer 1 — Tooling (TypeScript / Bun, runs on host machine)
                               Reads .lace source, emits W65C832 binary
 
 Layer 2 — Monitor (W65C832 assembly, runs in emulator / on hardware)
-  [ ] Basic machine monitor   Written in W65C832 assembly
+  ✅ Basic machine monitor   Written in W65C832 assembly
                               Memory inspect, load, run — minimal shell
 
 Layer 3 — NeedleOS kernel (Lovelace source, compiled by Layer 1 compiler)
@@ -92,10 +92,15 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
 - [ ] Code generator (W65C832 backend)
 - [ ] Linker integration
 
-### Basic machine monitor (W65C832 assembly)
+### ✅ Basic machine monitor (W65C832 assembly)
 
-A minimal interactive monitor written in W65C832 assembly. Runs in the emulator
-and eventually on hardware. Provides memory inspect, load, and run commands.
+Interactive monitor written in W65C832 assembly. Runs in the emulator (and
+eventually on hardware). Commands: H (help), M (memory dump), S (set bytes),
+G (JSR to address, RTS returns to monitor), R (show saved registers).
+
+- `monitor/monitor.asm` — source; `bun run monitor` to run
+- `src/machine/` — Machine class wrapping CPU + memory-mapped I/O
+- 9 integration tests in `test/monitor.test.ts`
 
 ### NeedleOS kernel (Lovelace)
 

@@ -81,6 +81,7 @@ export type AddressingMode =
   | "immediate"
   | "implied"
   | "indirect"
+  | "indirect-indexed-y"
   | "indirect-absolute"
   | "long"
   | "long-absolute"
