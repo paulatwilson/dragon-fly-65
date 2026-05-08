@@ -104,13 +104,13 @@ class LovelaceCodeGenerator {
 
     if (fn.parameters[0] !== undefined) {
       this.emit("  ; first argument arrives in A");
-      this.emit(`  sta ${this.slotForLocal(fn.name, fn.parameters[0].name)}`);
+      this.emit(`  sta !${this.slotForLocal(fn.name, fn.parameters[0].name)}`);
     }
     for (let index = fn.parameters.length - 1; index >= 1; index -= 1) {
       const parameter = fn.parameters[index];
       if (parameter !== undefined) {
         this.emit(`  pla ; argument ${index + 1}`);
-        this.emit(`  sta ${this.slotForLocal(fn.name, parameter.name)}`);
+        this.emit(`  sta !${this.slotForLocal(fn.name, parameter.name)}`);
       }
     }
 
@@ -395,7 +395,7 @@ class LovelaceCodeGenerator {
       case "global":
       case "local":
       case "temp":
-        this.emit(`  lda ${this.slotForValue(value, scope)}`);
+        this.emit(`  lda !${this.slotForValue(value, scope)}`);
         break;
     }
   }
@@ -405,7 +405,7 @@ class LovelaceCodeGenerator {
       case "global":
       case "local":
       case "temp":
-        this.emit(`  sta ${this.slotForValue(value, scope)}`);
+        this.emit(`  sta !${this.slotForValue(value, scope)}`);
         break;
       case "literal":
         break;
@@ -416,7 +416,7 @@ class LovelaceCodeGenerator {
     if (value.kind === "literal") {
       return this.literalOperand(value);
     }
-    return this.slotForValue(value, scope);
+    return `!${this.slotForValue(value, scope)}`;
   }
 
   private literalOperand(value: Extract<LovelaceIrValue, { kind: "literal" }>): string {

@@ -36,8 +36,8 @@ end
 `);
 
     expect(output.assembly).toContain("adc #2.l");
-    expect(output.assembly).toContain("sta lace_local_boot_total");
-    expect(output.assembly).toContain("lda lace_local_boot_total");
+    expect(output.assembly).toContain("sta !lace_local_boot_total");
+    expect(output.assembly).toContain("lda !lace_local_boot_total");
     expect(output.assembly).toContain("rts");
 
     const assembled = assemble(output.assembly);
@@ -59,7 +59,7 @@ end
 
     expect(output.assembly).toContain("lace_fn_id:");
     expect(output.assembly).toContain("; first argument arrives in A");
-    expect(output.assembly).toContain("sta lace_local_id_value");
+    expect(output.assembly).toContain("sta !lace_local_id_value");
     expect(output.assembly).toContain("lda #7.l");
     expect(output.assembly).toContain("jsr lace_fn_id");
 
@@ -98,7 +98,7 @@ end
     expect(output.assembly).toContain("lace_str_0:");
     expect(output.assembly).toContain(".asciiz \"0.1\"");
     expect(output.assembly).toContain("lda #lace_str_0.l");
-    expect(output.assembly).toContain("sta lace_global_version");
+    expect(output.assembly).toContain("sta !lace_global_version");
 
     const assembled = assemble(output.assembly);
     expect(assembled.errors).toEqual([]);

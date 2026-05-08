@@ -142,7 +142,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Built-ins such as `len()`, `Error()`, and basic memory helpers
   - Clear boundary between compiler built-ins and Lovelace standard library
   - Details in `docs/lovelace-runtime.md`
-- [ ] Chunk 10 — Emulator execution tests
+- [x] Chunk 10 — Emulator execution tests
   - Compile small Lovelace programs
   - Assemble and load them into the emulator
   - Verify return values, memory writes, function calls, and control flow
