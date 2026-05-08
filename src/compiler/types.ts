@@ -67,6 +67,8 @@ export interface LovelaceParseOptions extends LovelaceLexOptions {}
 
 export interface LovelaceSemanticOptions extends LovelaceParseOptions {}
 
+export interface LovelaceTypeCheckOptions extends LovelaceSemanticOptions {}
+
 export interface LovelaceProgram {
   kind: "Program";
   body: LovelaceTopLevelNode[];
@@ -354,6 +356,34 @@ export interface LovelaceSemanticModel {
   program: LovelaceProgram;
   globalScope: LovelaceScope;
   scopes: LovelaceScope[];
+}
+
+export type LovelaceCheckedTypeKind =
+  | "primitive"
+  | "struct"
+  | "pointer"
+  | "array"
+  | "function"
+  | "unknown";
+
+export interface LovelaceCheckedType {
+  kind: LovelaceCheckedTypeKind;
+  name: string;
+  parameters: LovelaceCheckedType[];
+}
+
+export interface LovelaceFunctionType {
+  kind: "function";
+  name: string;
+  parameters: LovelaceCheckedType[];
+  returnType: LovelaceCheckedType;
+}
+
+export interface LovelaceTypeCheckModel {
+  semanticModel: LovelaceSemanticModel;
+  expressionTypes: Map<LovelaceExpression, LovelaceCheckedType>;
+  globalValues: Map<string, LovelaceCheckedType>;
+  functions: Map<string, LovelaceFunctionType>;
 }
 
 export type CompilerResult<T> =

@@ -9,8 +9,11 @@ export { LOVELACE_KEYWORDS, lexLovelace } from "./lexer";
 export { parseLovelace } from "./parser";
 export { compilerError, compilerOk } from "./result";
 export { analyzeLovelace, LOVELACE_BUILTINS } from "./semantic";
+export { checkLovelaceTypes } from "./typechecker";
 export type {
   CompilerResult,
+  LovelaceCheckedType,
+  LovelaceCheckedTypeKind,
   LovelaceArgument,
   LovelaceAsmStatement,
   LovelaceBinaryExpression,
@@ -55,6 +58,8 @@ export type {
   LovelaceTokenKind,
   LovelaceTopLevelNode,
   LovelaceTypeDeclaration,
+  LovelaceTypeCheckModel,
+  LovelaceTypeCheckOptions,
   LovelaceTypeReference,
   LovelaceUnaryExpression,
   LovelaceUnsafeStatement,

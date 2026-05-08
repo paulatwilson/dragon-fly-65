@@ -26,7 +26,6 @@ import type {
 } from "./types";
 
 export const LOVELACE_BUILTINS = new Set([
-  "Error",
   "halt",
   "len",
   "memory",

@@ -116,7 +116,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Visibility rules for `pub`
   - Reject global `var`
   - Validate function calls, assignments, returns, `break`, and `continue`
-- [ ] Chunk 4 — Type checker
+- [x] Chunk 4 — Type checker
   - Primitive types, aliases, pointers, arrays, structs, and `void`
   - Type inference for obvious `const` and `var` initializers
   - Cast validation and type-strict comparisons
