@@ -71,6 +71,16 @@ export interface LovelaceTypeCheckOptions extends LovelaceSemanticOptions {}
 
 export interface LovelaceIrOptions extends LovelaceTypeCheckOptions {}
 
+export interface LovelaceCodegenOptions extends LovelaceIrOptions {
+  entryPoint?: string;
+}
+
+export interface LovelaceAssemblyOutput {
+  assembly: string;
+  entryPoint: string;
+  ir: LovelaceIrModule;
+}
+
 export interface LovelaceProgram {
   kind: "Program";
   body: LovelaceTopLevelNode[];

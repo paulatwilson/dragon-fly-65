@@ -125,7 +125,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Lower AST into a simple typed IR before assembly generation
   - Normalize control flow, temporary values, labels, calls, and returns
   - Keep the IR small enough to later port to Lovelace v2
-- [ ] Chunk 6 — W65C832 code generator
+- [x] Chunk 6 — W65C832 code generator
   - Emit W65C832 assembly for expressions, locals, calls, returns, branches, and loops
   - Follow the documented W65C832 calling convention
   - Generate stable labels and data sections
