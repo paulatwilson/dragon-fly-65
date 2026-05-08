@@ -65,6 +65,8 @@ export interface LovelaceLexOptions {
 
 export interface LovelaceParseOptions extends LovelaceLexOptions {}
 
+export interface LovelaceSemanticOptions extends LovelaceParseOptions {}
+
 export interface LovelaceProgram {
   kind: "Program";
   body: LovelaceTopLevelNode[];
@@ -319,6 +321,39 @@ export interface LovelaceStructLiteralField {
   name: string;
   value: LovelaceExpression;
   span: SourceSpan;
+}
+
+export type LovelaceSymbolKind =
+  | "builtin"
+  | "module"
+  | "import"
+  | "function"
+  | "type"
+  | "const"
+  | "var"
+  | "parameter"
+  | "field"
+  | "loop";
+
+export interface LovelaceSymbol {
+  name: string;
+  kind: LovelaceSymbolKind;
+  mutable: boolean;
+  visibility: "public" | "private";
+  span: SourceSpan;
+}
+
+export interface LovelaceScope {
+  id: number;
+  kind: "global" | "function" | "block" | "type";
+  symbols: Map<string, LovelaceSymbol>;
+  parent?: LovelaceScope;
+}
+
+export interface LovelaceSemanticModel {
+  program: LovelaceProgram;
+  globalScope: LovelaceScope;
+  scopes: LovelaceScope[];
 }
 
 export type CompilerResult<T> =

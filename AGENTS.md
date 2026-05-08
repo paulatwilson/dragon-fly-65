@@ -78,6 +78,16 @@ Complete. Details in `docs/emulator-roadmap.md`.
 - Informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented.
 - When porting from `naken_asm`, preserve Michael Kohn's copyright notice and document which parts are derived in `THIRD_PARTY_NOTICES.md`.
 
+### ✅ Basic machine monitor (W65C832 assembly)
+
+Interactive monitor written in W65C832 assembly. Runs in the emulator (and
+eventually on hardware). Commands: H (help), M (memory dump), S (set bytes),
+G (JSR to address, RTS returns to monitor), R (show saved registers).
+
+- `monitor/monitor.asm` — source; `bun run monitor` to run
+- `src/machine/` — Machine class wrapping CPU + memory-mapped I/O
+- 9 integration tests in `test/monitor.test.ts`
+
 ### ✅ Lovelace language design
 
 Complete. Core language decisions documented in `docs/lovelace-language-design.md`.
@@ -101,7 +111,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Build an AST for modules, constants, variables, functions, blocks, statements, and expressions
   - Support `end`-terminated syntax, typed parameters, return types, and nested control flow
   - Report clear parse errors with line/column information
-- [ ] Chunk 3 — Semantic analysis
+- [x] Chunk 3 — Semantic analysis
   - Symbol table and lexical scopes
   - Visibility rules for `pub`
   - Reject global `var`
@@ -182,16 +192,6 @@ parser, and diagnostics instead of maintaining a separate language implementatio
   - Document local extension development
   - Add extension tests
   - Prepare open-source publishing metadata
-
-### ✅ Basic machine monitor (W65C832 assembly)
-
-Interactive monitor written in W65C832 assembly. Runs in the emulator (and
-eventually on hardware). Commands: H (help), M (memory dump), S (set bytes),
-G (JSR to address, RTS returns to monitor), R (show saved registers).
-
-- `monitor/monitor.asm` — source; `bun run monitor` to run
-- `src/machine/` — Machine class wrapping CPU + memory-mapped I/O
-- 9 integration tests in `test/monitor.test.ts`
 
 ### Lovelace compiler v2 (self-hosting)
 

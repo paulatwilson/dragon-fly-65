@@ -8,6 +8,7 @@ export {
 export { LOVELACE_KEYWORDS, lexLovelace } from "./lexer";
 export { parseLovelace } from "./parser";
 export { compilerError, compilerOk } from "./result";
+export { analyzeLovelace, LOVELACE_BUILTINS } from "./semantic";
 export type {
   CompilerResult,
   LovelaceArgument,
@@ -38,6 +39,9 @@ export type {
   LovelaceParseOptions,
   LovelaceProgram,
   LovelaceReturnStatement,
+  LovelaceScope,
+  LovelaceSemanticModel,
+  LovelaceSemanticOptions,
   LovelaceStatement,
   LovelaceStructField,
   LovelaceStructLiteralExpression,
@@ -45,6 +49,8 @@ export type {
   LovelaceStructType,
   LovelaceSwitchCase,
   LovelaceSwitchStatement,
+  LovelaceSymbol,
+  LovelaceSymbolKind,
   LovelaceToken,
   LovelaceTokenKind,
   LovelaceTopLevelNode,
