@@ -117,7 +117,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Reject global `var`
   - Validate function calls, assignments, returns, `break`, and `continue`
 - [x] Chunk 4 — Type checker
-  - Primitive types, aliases, pointers, arrays, structs, and `void`
+  - Primitive types, aliases, pointers, arrays, structs, and implicit no-return functions
   - Type inference for obvious `const` and `var` initializers
   - Cast validation and type-strict comparisons
   - Function result/error pair model

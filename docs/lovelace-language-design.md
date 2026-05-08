@@ -202,11 +202,16 @@ const size = len(buffer)   // 256
 | `pointer<T>`  | Typed pointer — also used for heap arrays (`pointer<byte>`) |
 | `array<T, N>` | Fixed-size stack array                                      |
 
-## Special Types
+## No Return Value
 
-| Type   | Description |
-|--------|-------------|
-| `void` | No value    |
+Functions that do not return a value simply omit the return type. Lovelace does
+not expose a separate no-value type in source code.
+
+```lovelace
+func boot()
+    print("Starting NeedleOS")
+end
+```
 
 `any` and `json` are not language-level types. JSON parsing and dynamic values are
 handled through the standard library.

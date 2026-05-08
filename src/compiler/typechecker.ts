@@ -34,7 +34,7 @@ const UNKNOWN: LovelaceCheckedType = {
   name: "unknown",
   parameters: [],
 };
-const VOID = primitive("void");
+const NO_RETURN = primitive("<none>");
 const INT = primitive("int");
 const UINT = primitive("uint");
 const FLOAT = primitive("float32");
@@ -58,8 +58,8 @@ const INTEGER_TYPES = new Set([
 ]);
 
 const BUILTIN_FUNCTIONS = new Map<string, LovelaceFunctionType>([
-  ["print", functionType("print", [UNKNOWN], VOID)],
-  ["halt", functionType("halt", [], VOID)],
+  ["print", functionType("print", [UNKNOWN], NO_RETURN)],
+  ["halt", functionType("halt", [], NO_RETURN)],
   ["len", functionType("len", [UNKNOWN], INT)],
   ["Error", functionType("Error", [INT, STRING], ERROR)],
 ]);
@@ -100,7 +100,7 @@ class LovelaceTypeChecker {
   private readonly functions = new Map<string, LovelaceFunctionType>(BUILTIN_FUNCTIONS);
   private readonly structs = new Map<string, LovelaceTypeDeclaration>();
   private currentFunction: LovelaceFunctionDeclaration | undefined;
-  private currentReturnType: LovelaceCheckedType = VOID;
+  private currentReturnType: LovelaceCheckedType = NO_RETURN;
 
   public constructor(
     private readonly semanticModel: LovelaceSemanticModel,
@@ -169,7 +169,7 @@ class LovelaceTypeChecker {
     const previousFunction = this.currentFunction;
     const previousReturnType = this.currentReturnType;
     this.currentFunction = node;
-    this.currentReturnType = node.returnType === undefined ? VOID : this.resolveType(node.returnType);
+    this.currentReturnType = node.returnType === undefined ? NO_RETURN : this.resolveType(node.returnType);
     const scope = new TypeScope(parent);
 
     for (const parameter of node.parameters) {
@@ -199,7 +199,7 @@ class LovelaceTypeChecker {
         break;
       case "ReturnStatement":
         if (statement.values.length === 0) {
-          this.expectAssignable(this.currentReturnType, VOID, statement.span);
+          this.expectAssignable(this.currentReturnType, NO_RETURN, statement.span);
         } else {
           this.expectAssignable(
             this.currentReturnType,
@@ -484,7 +484,7 @@ class LovelaceTypeChecker {
     return functionType(
       node.name,
       node.parameters.map(parameter => this.resolveType(parameter.type)),
-      node.returnType === undefined ? VOID : this.resolveType(node.returnType),
+      node.returnType === undefined ? NO_RETURN : this.resolveType(node.returnType),
     );
   }
 
@@ -652,7 +652,6 @@ function isPrimitiveType(name: string): boolean {
     "uint8",
     "uint16",
     "uint32",
-    "void",
   ].includes(name);
 }
 

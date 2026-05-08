@@ -49,7 +49,6 @@ const PRIMITIVE_TYPES = new Set([
   "uint8",
   "uint16",
   "uint32",
-  "void",
 ]);
 
 export function analyzeLovelace(

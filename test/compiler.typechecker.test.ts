@@ -18,7 +18,7 @@ describe("Lovelace type checker", () => {
 
     expect(check(source).functions.get("boot")).toMatchObject({
       name: "boot",
-      returnType: { name: "void" },
+      returnType: { name: "<none>" },
     });
   });
 
@@ -45,7 +45,7 @@ func boot()
 end
 `);
 
-    expect(model.functions.get("boot")).toMatchObject({ returnType: { name: "void" } });
+    expect(model.functions.get("boot")).toMatchObject({ returnType: { name: "<none>" } });
   });
 
   it("rejects explicit initializer type mismatches", () => {
