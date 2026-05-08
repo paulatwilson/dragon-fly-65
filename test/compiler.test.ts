@@ -4,26 +4,70 @@ import {
   compilerError,
   compilerOk,
   createDiagnostic,
-  startOfSourceSpan,
 } from "../src/compiler";
 
-describe("Lovelace compiler scaffold", () => {
-  it("exposes a compile API with structured diagnostics", () => {
+describe("Lovelace compiler", () => {
+  it("assembles Lovelace source into a binary image", () => {
     const result = compileLovelace("pub func boot()\nend\n", {
       sourcePath: "boot.lace",
     });
 
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.diagnostics.map(diagnostic => diagnostic.message).join("; "));
+    }
+    expect(result.value.entryPoint).toBe("boot");
+    expect(result.value.assembly).toContain("lace_start:");
+    expect(result.value.assembly).toContain("jsr lace_fn_boot");
+    expect(result.value.binary).toBeInstanceOf(Uint8Array);
+    expect(result.value.binary.length).toBeGreaterThan(0);
+  });
+
+  it("selects a custom entry point at build time", () => {
+    const result = compileLovelace(`
+pub func start(): int
+    return 7
+end
+`, {
+      entryPoint: "start",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.diagnostics.map(diagnostic => diagnostic.message).join("; "));
+    }
+    expect(result.value.entryPoint).toBe("start");
+    expect(result.value.assembly).toContain("jsr lace_fn_start");
+  });
+
+  it("reports a missing entry point before assembly", () => {
+    const result = compileLovelace("pub func boot()\nend\n", {
+      entryPoint: "start",
+      sourcePath: "boot.lace",
+    });
+
     expect(result.ok).toBe(false);
-    expect(result.diagnostics).toEqual([
-      {
-        code: "LACE0000",
-        message: "Lovelace compiler pipeline is not implemented yet.",
-        severity: "error",
-        stage: "compiler",
-        sourcePath: "boot.lace",
-        span: startOfSourceSpan(),
-      },
-    ]);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: "LACE5001",
+      message: "Entry point 'start' was not found.",
+      severity: "error",
+      stage: "codegen",
+      sourcePath: "boot.lace",
+    });
+  });
+
+  it("preserves earlier compiler diagnostics through the full pipeline", () => {
+    const result = compileLovelace(`
+func boot()
+    const name: string = 1
+end
+`);
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: "LACE4004",
+      stage: "type-checker",
+    });
   });
 
   it("creates diagnostics with one-based source positions", () => {

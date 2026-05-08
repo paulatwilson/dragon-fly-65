@@ -117,4 +117,18 @@ end
       code: "LACE4004",
     });
   });
+
+  it("reports missing entry points before assembly", () => {
+    const result = generateLovelaceAssembly("func boot()\nend\n", {
+      entryPoint: "start",
+      sourcePath: "boot.lace",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({
+      stage: "codegen",
+      code: "LACE5001",
+      sourcePath: "boot.lace",
+    });
+  });
 });

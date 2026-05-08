@@ -1,4 +1,5 @@
 import { compilerError, compilerOk } from "./result";
+import { createDiagnostic } from "./diagnostics";
 import { lowerLovelaceToIr } from "./ir";
 import type {
   CompilerResult,
@@ -21,6 +22,19 @@ export function generateLovelaceAssembly(
   const lowered = lowerLovelaceToIr(source, options);
   if (!lowered.ok) {
     return compilerError(lowered.diagnostics);
+  }
+
+  const entryPoint = options.entryPoint ?? "boot";
+  if (!lowered.value.functions.some(fn => fn.name === entryPoint)) {
+    return compilerError([
+      createDiagnostic({
+        code: "LACE5001",
+        message: `Entry point '${entryPoint}' was not found.`,
+        severity: "error",
+        stage: "codegen",
+        ...(options.sourcePath === undefined ? {} : { sourcePath: options.sourcePath }),
+      }),
+    ]);
   }
 
   const generator = new LovelaceCodeGenerator(lowered.value, options);

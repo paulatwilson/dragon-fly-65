@@ -129,7 +129,7 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Emit W65C832 assembly for expressions, locals, calls, returns, branches, and loops
   - Follow the documented W65C832 calling convention
   - Generate stable labels and data sections
-- [ ] Chunk 7 — Assembler and linker integration
+- [x] Chunk 7 — Assembler and linker integration
   - Feed generated assembly into `src/assembler/`
   - Select entry point at build/link time
   - Emit binary images suitable for emulator loading

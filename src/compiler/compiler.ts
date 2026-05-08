@@ -1,5 +1,7 @@
+import { assemble } from "../assembler";
 import { createDiagnostic } from "./diagnostics";
-import { compilerError } from "./result";
+import { generateLovelaceAssembly } from "./codegen";
+import { compilerError, compilerOk } from "./result";
 import type {
   CompilerResult,
   LovelaceBuildOutput,
@@ -10,16 +12,29 @@ export function compileLovelace(
   source: string,
   options: LovelaceCompileOptions = {},
 ): CompilerResult<LovelaceBuildOutput> {
-  void source;
-  const sourcePath = options.sourcePath;
+  const generated = generateLovelaceAssembly(source, options);
+  if (!generated.ok) {
+    return compilerError(generated.diagnostics);
+  }
 
-  return compilerError([
-    createDiagnostic({
-      code: "LACE0000",
-      message: "Lovelace compiler pipeline is not implemented yet.",
-      severity: "error",
-      stage: "compiler",
-      ...(sourcePath === undefined ? {} : { sourcePath }),
-    }),
-  ]);
+  const assembled = assemble(generated.value.assembly);
+  if (assembled.errors.length > 0) {
+    return compilerError(
+      assembled.errors.map(error =>
+        createDiagnostic({
+          code: "LACE6001",
+          message: `Assembler line ${error.line}: ${error.message}`,
+          severity: "error",
+          stage: "assembler",
+          ...(options.sourcePath === undefined ? {} : { sourcePath: options.sourcePath }),
+        }),
+      ),
+    );
+  }
+
+  return compilerOk({
+    assembly: generated.value.assembly,
+    binary: assembled.bytes,
+    entryPoint: generated.value.entryPoint,
+  });
 }
