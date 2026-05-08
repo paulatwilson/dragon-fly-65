@@ -26,6 +26,9 @@ Layer 1 — Tooling (TypeScript / Bun, runs on host machine)
   [ ] Disassembler
   [ ] Lovelace compiler v1    src/compiler/   (TypeScript cross-compiler)
                               Reads .lace source, emits W65C832 binary
+  [ ] SSH server              First Lovelace pilot project after compiler v1
+  [ ] Lovelace VS Code extension
+                              Syntax highlighting, diagnostics, commands
 
 Layer 2 — Monitor (W65C832 assembly, runs in emulator / on hardware)
   ✅ Basic machine monitor   Written in W65C832 assembly
@@ -41,8 +44,7 @@ Layer 4 — Self-hosting (Lovelace compiler rewritten in Lovelace)
                               Compiled by v1 → produces native W65C832 binary
                               DragonFly 65 can now compile Lovelace on-device
 
-Layer 5 — Platform (SSH server, Fly.io deployment)
-  [ ] SSH server              Lovelace or TypeScript
+Layer 5 — Platform (Fly.io deployment)
   [ ] Deploy to Fly.io
 ```
 
@@ -86,11 +88,100 @@ Source files use the `.lace` extension.
 Reads `.lace` source on the host machine, emits W65C832 binary. Runs on Bun.
 This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
 
-- [ ] Lexer
-- [ ] Parser
-- [ ] Type checker
-- [ ] Code generator (W65C832 backend)
-- [ ] Linker integration
+- [x] Chunk 0 — Compiler project scaffold (`src/compiler/`)
+  - Public compiler API
+  - Shared result/error types
+  - Test fixtures for `.lace` source files
+  - Bun test coverage wired in from the start
+- [x] Chunk 1 — Lexer
+  - Tokenize keywords, identifiers, literals, operators, comments, punctuation, and newlines
+  - Preserve source spans for useful compiler diagnostics
+  - Cover examples from `docs/lovelace-language-design.md`
+- [ ] Chunk 2 — Parser
+  - Build an AST for modules, constants, variables, functions, blocks, statements, and expressions
+  - Support `end`-terminated syntax, typed parameters, return types, and nested control flow
+  - Report clear parse errors with line/column information
+- [ ] Chunk 3 — Semantic analysis
+  - Symbol table and lexical scopes
+  - Visibility rules for `pub`
+  - Reject global `var`
+  - Validate function calls, assignments, returns, `break`, and `continue`
+- [ ] Chunk 4 — Type checker
+  - Primitive types, aliases, pointers, arrays, structs, and `void`
+  - Type inference for obvious `const` and `var` initializers
+  - Cast validation and type-strict comparisons
+  - Function result/error pair model
+- [ ] Chunk 5 — Intermediate representation
+  - Lower AST into a simple typed IR before assembly generation
+  - Normalize control flow, temporary values, labels, calls, and returns
+  - Keep the IR small enough to later port to Lovelace v2
+- [ ] Chunk 6 — W65C832 code generator
+  - Emit W65C832 assembly for expressions, locals, calls, returns, branches, and loops
+  - Follow the documented W65C832 calling convention
+  - Generate stable labels and data sections
+- [ ] Chunk 7 — Assembler and linker integration
+  - Feed generated assembly into `src/assembler/`
+  - Select entry point at build/link time
+  - Emit binary images suitable for emulator loading
+- [ ] Chunk 8 — Compiler CLI
+  - `bun run lace input.lace -o output.bin`
+  - Optional assembly output for debugging
+  - Diagnostics formatted for terminal use
+- [ ] Chunk 9 — Runtime and standard-library seed
+  - Minimal runtime symbols required by compiled programs
+  - Built-ins such as `len()`, `Error()`, and basic memory helpers
+  - Clear boundary between compiler built-ins and Lovelace standard library
+- [ ] Chunk 10 — Emulator execution tests
+  - Compile small Lovelace programs
+  - Assemble and load them into the emulator
+  - Verify return values, memory writes, function calls, and control flow
+- [ ] Chunk 11 — NeedleOS readiness pass
+  - Compile enough Lovelace to start the NeedleOS kernel work
+  - Document unsupported language features
+  - Mark v1 compiler as usable for early OS code
+
+### SSH server and Fly.io deployment
+
+First real Lovelace application after compiler v1. Use this to exercise the
+language, compiler, assembler, emulator, and monitor boundary before starting
+the full NeedleOS kernel.
+
+- [ ] Basic Auth System for Monitor
+- [ ] SSH server in Lovelace
+- [ ] Connect to monitor to allow remote connection to it
+- [ ] Deploy to Fly.io
+
+### Lovelace VS Code extension
+
+Editor support for `.lace` source files. This should reuse the v1 compiler's lexer,
+parser, and diagnostics instead of maintaining a separate language implementation.
+
+- [ ] Extension scaffold
+  - VS Code extension package and activation events
+  - `.lace` language registration
+  - Workspace settings for compiler path and build output
+- [ ] Syntax highlighting
+  - TextMate grammar for Lovelace keywords, literals, comments, types, functions, and inline assembly
+  - Lovelace file icon and language configuration
+  - Bracket, quote, and comment rules
+- [ ] Diagnostics
+  - Surface compiler lexer/parser/type errors in the editor
+  - Preserve line/column spans from `src/compiler/`
+  - Keep diagnostics fast enough for normal editing
+- [ ] Editor commands
+  - Build current `.lace` file
+  - Build project
+  - Emit assembly for current file
+  - Run compiled binary in the DragonFly 65 emulator
+- [ ] Language features
+  - Outline symbols for modules, constants, structs, and functions
+  - Go to definition for local symbols
+  - Hover type information for checked programs
+  - Basic completion for keywords and visible symbols
+- [ ] Packaging
+  - Document local extension development
+  - Add extension tests
+  - Prepare open-source publishing metadata
 
 ### ✅ Basic machine monitor (W65C832 assembly)
 
@@ -102,6 +193,11 @@ G (JSR to address, RTS returns to monitor), R (show saved registers).
 - `src/machine/` — Machine class wrapping CPU + memory-mapped I/O
 - 9 integration tests in `test/monitor.test.ts`
 
+### Lovelace compiler v2 (self-hosting)
+
+The Lovelace compiler rewritten in Lovelace. Compiled by v1 to produce a native
+W65C832 binary. Once complete, DragonFly 65 can compile Lovelace code on-device.
+
 ### NeedleOS kernel (Lovelace)
 
 The operating system for DragonFly 65, written in Lovelace and compiled by v1.
@@ -112,16 +208,6 @@ The operating system for DragonFly 65, written in Lovelace and compiled by v1.
 - [ ] Interrupt handling
 - [ ] Device drivers
 - [ ] NeedleOS shell
-
-### Lovelace compiler v2 (self-hosting)
-
-The Lovelace compiler rewritten in Lovelace. Compiled by v1 to produce a native
-W65C832 binary. Once complete, DragonFly 65 can compile Lovelace code on-device.
-
-### SSH server and Fly.io deployment
-
-- [ ] SSH server
-- [ ] Deploy to Fly.io
 
 ## Guidelines
 

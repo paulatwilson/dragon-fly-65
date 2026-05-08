@@ -1,0 +1,6 @@
+
+boot()
+
+pub func boot()
+  const message = "Hello, DragonFly 65"
+end
