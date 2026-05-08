@@ -22,7 +22,7 @@ This is the authoritative build order for the project.
 Layer 1 — Tooling (TypeScript / Bun, runs on host machine)
   ✅ W65C832 emulator         src/emulator/
   ✅ W65C832 assembler        src/assembler/
-  [ ] Assembler CLI / REPL
+  ✅ Assembler CLI / REPL
   [ ] Disassembler
   [ ] Lovelace compiler v1    src/compiler/   (TypeScript cross-compiler)
                               Reads .lace source, emits W65C832 binary
@@ -67,7 +67,10 @@ Complete. Details in `docs/emulator-roadmap.md`.
   - Two-pass label resolution with forward reference support
   - REP/SEP auto-track accumulator/index width for correct immediate encoding
   - Opcode table derived from Michael Kohn's `naken_asm` (GPL-3.0, with attribution)
-- [ ] Assembler CLI / REPL interface
+- [x] Assembler CLI / REPL interface (`src/assembler/cli.ts`, `bun run asm`)
+  - CLI: `bun run asm input.asm [-o output.bin] [--hex]`
+  - REPL: `bun run asm` or `bun run asm --repl` — interactive, shows bytes per line
+  - REPL commands: `.hex`, `.symbols`, `.list`, `.save`, `.load`, `.origin`, `.reset`
 - [ ] Disassembler
 
 - Informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented.
