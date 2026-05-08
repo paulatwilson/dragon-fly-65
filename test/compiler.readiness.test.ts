@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { compileLovelace } from "../src/compiler";
 
-function compile(source: string, entryPoint = "boot") {
-  return compileLovelace(source, { entryPoint });
+function compile(source: string) {
+  return compileLovelace(source);
 }
 
-function compileOk(source: string, entryPoint = "boot") {
-  const result = compile(source, entryPoint);
+function compileOk(source: string) {
+  const result = compile(source);
   if (!result.ok) {
     throw new Error(result.diagnostics.map(d => d.message).join("; "));
   }
@@ -340,7 +340,7 @@ pub func handleIrq()
         rti
     }
 end
-`, "handleIrq");
+`);
     expect(out.assembly).toContain("pha");
     expect(out.assembly).toContain("rti");
   });

@@ -33,11 +33,11 @@ describe("Lovelace compiler CLI", () => {
     expect(result.stderr).toContain("no input file");
   });
 
-  it("errors when an option value is missing", () => {
-    const result = runCli(["--entry"]);
+  it("errors on an unknown option", () => {
+    const result = runCli(["--unknown-flag"]);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("--entry requires a value");
+    expect(result.stderr).toContain("unknown option");
   });
 
   it("errors when file does not exist", () => {
@@ -58,7 +58,7 @@ describe("Lovelace compiler CLI", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Compiled");
-      expect(result.stdout).toContain("entry boot");
+      expect(result.stdout).toContain("entry lace_start");
       expect(readFileSync(output).length).toBeGreaterThan(0);
     } finally {
       rmSync(dir, { recursive: true });
@@ -129,15 +129,16 @@ describe("Lovelace compiler CLI", () => {
     }
   });
 
-  it("selects a custom entry point", () => {
+  it("always uses lace_start as the binary entry point", () => {
     const dir = mkdtempSync(join(tmpdir(), "lace-cli-"));
     try {
       const source = join(dir, "start.lace");
-      writeFileSync(source, "pub func start()\nend\n");
+      writeFileSync(source, "start()\npub func start()\nend\n");
 
-      const result = runCli([source, "--entry", "start", "--print-asm"]);
+      const result = runCli([source, "--print-asm"]);
 
       expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("lace_start:");
       expect(result.stdout).toContain("jsr lace_fn_start");
     } finally {
       rmSync(dir, { recursive: true });
@@ -148,13 +149,13 @@ describe("Lovelace compiler CLI", () => {
     const dir = mkdtempSync(join(tmpdir(), "lace-cli-"));
     try {
       const source = join(dir, "bad.lace");
-      writeFileSync(source, "pub func boot()\nend\n");
+      writeFileSync(source, "func boot()\n    const name: string = 1\nend\n");
 
-      const result = runCli([source, "--entry", "start"]);
+      const result = runCli([source]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("bad.lace:1:1: error: LACE5001");
-      expect(result.stderr).toContain("Entry point 'start' was not found.");
+      expect(result.stderr).toContain("bad.lace");
+      expect(result.stderr).toContain("error: LACE4004");
     } finally {
       rmSync(dir, { recursive: true });
     }

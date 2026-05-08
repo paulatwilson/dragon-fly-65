@@ -1,5 +1,4 @@
 import { compilerError, compilerOk } from "./result";
-import { createDiagnostic } from "./diagnostics";
 import { lowerLovelaceToIr } from "./ir";
 import { getLovelaceRuntimeFunction, LOVELACE_RUNTIME_FUNCTION_NAMES } from "./runtime";
 import type {
@@ -25,19 +24,6 @@ export function generateLovelaceAssembly(
     return compilerError(lowered.diagnostics);
   }
 
-  const entryPoint = options.entryPoint ?? "boot";
-  if (!lowered.value.functions.some(fn => fn.name === entryPoint)) {
-    return compilerError([
-      createDiagnostic({
-        code: "LACE5001",
-        message: `Entry point '${entryPoint}' was not found.`,
-        severity: "error",
-        stage: "codegen",
-        ...(options.sourcePath === undefined ? {} : { sourcePath: options.sourcePath }),
-      }),
-    ]);
-  }
-
   const generator = new LovelaceCodeGenerator(lowered.value, options);
   return compilerOk(generator.generate());
 }
@@ -56,10 +42,8 @@ class LovelaceCodeGenerator {
   ) {}
 
   public generate(): LovelaceAssemblyOutput {
-    const entryPoint = this.options.entryPoint ?? "boot";
-
     this.collectStorage();
-    this.emitHeader(entryPoint);
+    this.emitHeader();
     this.emitInitializers();
 
     for (const fn of this.ir.functions) {
@@ -71,12 +55,12 @@ class LovelaceCodeGenerator {
 
     return {
       assembly: `${this.lines.join("\n")}\n`,
-      entryPoint,
+      entryPoint: "lace_start",
       ir: this.ir,
     };
   }
 
-  private emitHeader(entryPoint: string): void {
+  private emitHeader(): void {
     this.emit("; DragonFly 65 Lovelace v1 generated assembly");
     this.emit("; Calling convention: first argument in A, remaining arguments on stack, return value in A.");
     this.emit(".65832");
@@ -85,7 +69,6 @@ class LovelaceCodeGenerator {
     this.emit("");
     this.emit("lace_start:");
     this.emit("  jsr lace_init");
-    this.emit(`  jsr ${functionLabel(entryPoint)}`);
     this.emit("  stp");
     this.emit("");
   }

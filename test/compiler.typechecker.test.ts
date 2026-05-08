@@ -132,11 +132,11 @@ type Process = struct
     state: string
 end
 
+const READY = 1
+
 func boot()
     const p = Process { id: "one", state: READY }
 end
-
-const READY = 1
 `);
 
     expect(result.ok).toBe(false);

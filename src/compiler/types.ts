@@ -33,7 +33,6 @@ export interface LovelaceDiagnostic {
 
 export interface LovelaceCompileOptions {
   sourcePath?: string;
-  entryPoint?: string;
   emitAssembly?: boolean;
 }
 
@@ -71,9 +70,7 @@ export interface LovelaceTypeCheckOptions extends LovelaceSemanticOptions {}
 
 export interface LovelaceIrOptions extends LovelaceTypeCheckOptions {}
 
-export interface LovelaceCodegenOptions extends LovelaceIrOptions {
-  entryPoint?: string;
-}
+export interface LovelaceCodegenOptions extends LovelaceIrOptions {}
 
 export interface LovelaceAssemblyOutput {
   assembly: string;

@@ -8,21 +8,22 @@ interface CliOptions {
   inputFile?: string;
   outputFile?: string;
   assemblyFile?: string;
-  entryPoint?: string;
   printAssembly: boolean;
 }
 
 function usage(): string {
   return [
-    "Usage: lace <input.lace> [-o output.bin] [--entry name] [--asm output.asm] [--emit-asm] [--print-asm]",
+    "Usage: lace <input.lace> [-o output.bin] [--asm output.asm] [--emit-asm] [--print-asm]",
     "",
     "Options:",
     "  -o, --output <file>      Write compiled binary to file",
-    "  --entry <name>           Select public entry point at build time (default: boot)",
     "  --asm <file>             Write generated W65C832 assembly to file",
     "  --emit-asm               Write generated assembly beside the input as .asm",
     "  --print-asm              Print generated assembly to stdout instead of writing a binary",
     "  -h, --help               Show this help",
+    "",
+    "The binary entry point is always lace_start. To run a function, call it at",
+    "the top level of your source file (e.g. 'boot()' before 'pub func boot()').",
   ].join("\n");
 }
 
@@ -35,9 +36,6 @@ function parseArgs(args: string[]): CliOptions {
       case "-o":
       case "--output":
         options.outputFile = requireValue(args, ++i, arg);
-        break;
-      case "--entry":
-        options.entryPoint = requireValue(args, ++i, arg);
         break;
       case "--asm":
       case "--assembly":
@@ -94,7 +92,6 @@ function runCli(args: string[]): void {
 
   const result = compileLovelace(source, {
     sourcePath: options.inputFile,
-    ...(options.entryPoint === undefined ? {} : { entryPoint: options.entryPoint }),
   });
 
   if (!result.ok) {

@@ -8,7 +8,7 @@ import {
 
 describe("Lovelace compiler", () => {
   it("assembles Lovelace source into a binary image", () => {
-    const result = compileLovelace("pub func boot()\nend\n", {
+    const result = compileLovelace("boot()\npub func boot()\nend\n", {
       sourcePath: "boot.lace",
     });
 
@@ -16,44 +16,41 @@ describe("Lovelace compiler", () => {
     if (!result.ok) {
       throw new Error(result.diagnostics.map(diagnostic => diagnostic.message).join("; "));
     }
-    expect(result.value.entryPoint).toBe("boot");
+    expect(result.value.entryPoint).toBe("lace_start");
     expect(result.value.assembly).toContain("lace_start:");
     expect(result.value.assembly).toContain("jsr lace_fn_boot");
     expect(result.value.binary).toBeInstanceOf(Uint8Array);
     expect(result.value.binary.length).toBeGreaterThan(0);
   });
 
-  it("selects a custom entry point at build time", () => {
+  it("runs a top-level function call as the program entry", () => {
     const result = compileLovelace(`
+start()
 pub func start(): int
     return 7
 end
-`, {
-      entryPoint: "start",
+`);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.diagnostics.map(diagnostic => diagnostic.message).join("; "));
+    }
+    expect(result.value.entryPoint).toBe("lace_start");
+    expect(result.value.assembly).toContain("jsr lace_fn_start");
+  });
+
+  it("compiles a program with no top-level call (no-op binary)", () => {
+    const result = compileLovelace("pub func boot()\nend\n", {
+      sourcePath: "boot.lace",
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) {
       throw new Error(result.diagnostics.map(diagnostic => diagnostic.message).join("; "));
     }
-    expect(result.value.entryPoint).toBe("start");
-    expect(result.value.assembly).toContain("jsr lace_fn_start");
-  });
-
-  it("reports a missing entry point before assembly", () => {
-    const result = compileLovelace("pub func boot()\nend\n", {
-      entryPoint: "start",
-      sourcePath: "boot.lace",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics[0]).toMatchObject({
-      code: "LACE5001",
-      message: "Entry point 'start' was not found.",
-      severity: "error",
-      stage: "codegen",
-      sourcePath: "boot.lace",
-    });
+    expect(result.value.entryPoint).toBe("lace_start");
+    expect(result.value.assembly).toContain("lace_fn_boot:");
+    expect(result.value.assembly).not.toContain("jsr lace_fn_boot");
   });
 
   it("preserves earlier compiler diagnostics through the full pipeline", () => {

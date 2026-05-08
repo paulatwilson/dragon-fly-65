@@ -1,8 +1,6 @@
 // NeedleOS task scheduler stub — exercises integer constants, while loops,
 // for loops, if/else, function calls, and inline asm for context switching.
 
-module kernel.scheduler
-
 const MAX_TASKS = 8
 const TASK_RUNNING = 1
 const TASK_STOPPED = 0
@@ -41,8 +39,10 @@ pub func findSlot(): int
     return -1
 end
 
-// boot: entry point exercising all the above.
+// Run the scheduler and return the running task count.
 pub func boot(): int
     const slots = tick()
     return slots
 end
+
+const running = boot()

@@ -143,8 +143,6 @@ class LovelaceSemanticAnalyzer {
           });
           break;
         case "VariableDeclaration":
-          this.declareVariableNames(this.globalScope, node, true);
-          break;
         case "ExpressionStatement":
           break;
       }
@@ -323,6 +321,11 @@ class LovelaceSemanticAnalyzer {
     }
     if (node.initializer !== undefined) {
       this.analyzeExpression(node.initializer, scope);
+    }
+    if (isTopLevel) {
+      // Declare after analyzing the initializer so that forward references to
+      // undeclared globals in the initializer are caught as LACE3005 errors.
+      this.declareVariableNames(scope, node, isTopLevel);
     }
   }
 

@@ -136,17 +136,46 @@ end
 
   it("allows break and continue inside loops", () => {
     const model = analyze(`
+const running = true
+
 func boot()
     while running
         break
         continue
     end
 end
-
-const running = true
 `);
 
     expect(model.globalScope.symbols.get("running")).toMatchObject({ kind: "const" });
+  });
+
+  it("rejects a global constant used before it is declared", () => {
+    const result = analyzeLovelace(`
+const x = LIMIT + 1
+const LIMIT = 10
+`);
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: "LACE3005",
+      message: "Unknown symbol 'LIMIT'.",
+    });
+  });
+
+  it("rejects a function body that references a global declared after the function", () => {
+    const result = analyzeLovelace(`
+func boot(): int
+    return BASE
+end
+
+const BASE = $8000
+`);
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: "LACE3005",
+      message: "Unknown symbol 'BASE'.",
+    });
   });
 
   it("reports unknown type references", () => {

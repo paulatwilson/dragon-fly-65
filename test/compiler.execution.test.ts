@@ -56,6 +56,7 @@ function compileAndRun(source: string, maxSteps = 500): ExecutionResult {
 describe("Lovelace compiler emulator execution", () => {
   it("runs a compiled return-value program to STP", () => {
     const { cpu } = compileAndRun(`
+boot()
 pub func boot(): int
     return 7
 end
@@ -67,6 +68,7 @@ end
 
   it("runs compiled function calls and preserves return values", () => {
     const { cpu } = compileAndRun(`
+boot()
 func id(value: int): int
     return value
 end
@@ -82,6 +84,7 @@ end
 
   it("runs compiled control flow", () => {
     const { cpu } = compileAndRun(`
+boot()
 pub func boot(): int
     var i = 0
     while i < 3
@@ -96,6 +99,7 @@ end
 
   it("writes compiled locals to emulator memory", () => {
     const { cpu, ram, symbols } = compileAndRun(`
+boot()
 pub func boot(): int
     var total = 1
     total = total + 2

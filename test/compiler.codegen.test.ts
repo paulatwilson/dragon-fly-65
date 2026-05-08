@@ -18,7 +18,7 @@ describe("Lovelace W65C832 code generator", () => {
     const source = await Bun.file("test/fixtures/lovelace/hello.lace").text();
     const output = generate(source);
 
-    expect(output.entryPoint).toBe("boot");
+    expect(output.entryPoint).toBe("lace_start");
     expect(output.assembly).toContain(".65832");
     expect(output.assembly).toContain(".a32");
     expect(output.assembly).toContain("lace_start:");
@@ -118,18 +118,16 @@ end
     });
   });
 
-  it("reports missing entry points before assembly", () => {
-    const result = generateLovelaceAssembly("func boot()\nend\n", {
-      entryPoint: "start",
-      sourcePath: "boot.lace",
-    });
+  it("compiles a source with no top-level call to a no-op binary", () => {
+    const result = generateLovelaceAssembly("func boot()\nend\n");
 
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics[0]).toMatchObject({
-      stage: "codegen",
-      code: "LACE5001",
-      sourcePath: "boot.lace",
-    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.diagnostics.map(d => d.message).join("; "));
+    }
+    expect(result.value.entryPoint).toBe("lace_start");
+    expect(result.value.assembly).toContain("lace_fn_boot:");
+    expect(result.value.assembly).not.toContain("jsr lace_fn_boot");
   });
 
   it("emits only runtime seed stubs used by the program", () => {
