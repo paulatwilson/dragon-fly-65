@@ -146,9 +146,9 @@ This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
   - Compile small Lovelace programs
   - Assemble and load them into the emulator
   - Verify return values, memory writes, function calls, and control flow
-- [ ] Chunk 11 — NeedleOS readiness pass
+- [x] Chunk 11 — NeedleOS readiness pass
   - Compile enough Lovelace to start the NeedleOS kernel work
-  - Document unsupported language features
+  - Document unsupported language features (`docs/lovelace-unsupported.md`)
   - Mark v1 compiler as usable for early OS code
 
 ### SSH server and Fly.io deployment

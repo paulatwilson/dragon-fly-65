@@ -375,7 +375,17 @@ class LovelaceIrLowerer {
   ): LovelaceIrValue {
     if (isAssignmentOperator(expression.operator)) {
       const target = this.lowerAssignable(expression.left, context);
-      const value = this.lowerExpression(expression.right, context);
+      const right = this.lowerExpression(expression.right, context);
+      let value: LovelaceIrValue;
+      if (expression.operator === "=") {
+        value = right;
+      } else {
+        const baseOp = expression.operator.slice(0, -1);
+        const left = this.lowerExpression(expression.left, context);
+        const result = this.nextTemp(this.expressionType(expression), expression.span);
+        context.instructions.push({ op: "binary", target: result, operator: baseOp, left, right, span: expression.span });
+        value = result;
+      }
       context.instructions.push({ op: "assign", target, value, span: expression.span });
       return target;
     }

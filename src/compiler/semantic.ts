@@ -489,6 +489,10 @@ function lastModuleSegment(name: string): string {
   return name.split(".").at(-1) ?? name;
 }
 
+const ASSIGNMENT_OPERATORS = new Set([
+  "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=",
+]);
+
 function isAssignmentOperator(operator: string): boolean {
-  return operator === "=" || operator.endsWith("=");
+  return ASSIGNMENT_OPERATORS.has(operator);
 }

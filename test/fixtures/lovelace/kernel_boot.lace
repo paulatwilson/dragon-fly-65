@@ -1,0 +1,23 @@
+// NeedleOS kernel entry point — exercises the patterns needed at boot time.
+// This is the canonical test for "does the compiler produce a working boot image".
+
+module kernel.boot
+
+const BANNER = "NeedleOS 0.1"
+const STACK_TOP = $01FF00
+const RESET_VECTOR = $FFFC
+
+// boot is the declared entry point for the kernel binary.
+pub func boot()
+    unsafe(true)
+
+    // Enter W65C832 native mode: CLC + XCE drops the outer E flag.
+    asm {
+        sei
+        clc
+        xce
+        rep #$30
+    }
+
+    print(BANNER)
+end

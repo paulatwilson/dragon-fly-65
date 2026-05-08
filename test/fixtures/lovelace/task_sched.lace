@@ -1,0 +1,48 @@
+// NeedleOS task scheduler stub — exercises integer constants, while loops,
+// for loops, if/else, function calls, and inline asm for context switching.
+
+module kernel.scheduler
+
+const MAX_TASKS = 8
+const TASK_RUNNING = 1
+const TASK_STOPPED = 0
+const TASK_TABLE = $010000
+
+// Round-robin tick: scan the task table and count running tasks.
+// Real implementation will read struct fields via asm once struct memory
+// layout is stable.
+pub func tick(): int
+    var running = 0
+    var i = 0
+    while i < MAX_TASKS
+        i = i + 1
+        running = running + 1
+    end
+    return running
+end
+
+// Yield the current CPU slice. Actual context switch is in assembly.
+pub func yield()
+    unsafe(true)
+    asm {
+        nop
+    }
+end
+
+// find_slot: return the first free task slot index, or -1 if none.
+pub func findSlot(): int
+    var i = 0
+    while i < MAX_TASKS
+        if i == 3 then
+            return i
+        end
+        i = i + 1
+    end
+    return -1
+end
+
+// boot: entry point exercising all the above.
+pub func boot(): int
+    const slots = tick()
+    return slots
+end
