@@ -13,35 +13,52 @@ The project is intended to become an open-source system that can run on Fly.io.
 - Run tests: `bun test`
 - Typecheck: `bun run typecheck`
 
+## Bootstrapping
+
+The full system bootstraps in layers. Each layer depends on the one before it.
+This is the authoritative build order for the project.
+
+```text
+Layer 1 — Tooling (TypeScript / Bun, runs on host machine)
+  ✅ W65C832 emulator         src/emulator/
+  ✅ W65C832 assembler        src/assembler/
+  [ ] Assembler CLI / REPL
+  [ ] Disassembler
+  [ ] Lovelace compiler v1    src/compiler/   (TypeScript cross-compiler)
+                              Reads .lace source, emits W65C832 binary
+
+Layer 2 — Monitor (W65C832 assembly, runs in emulator / on hardware)
+  [ ] Basic machine monitor   Written in W65C832 assembly
+                              Memory inspect, load, run — minimal shell
+
+Layer 3 — NeedleOS kernel (Lovelace source, compiled by Layer 1 compiler)
+  [ ] NeedleOS kernel         Written in Lovelace
+                              Memory management, task scheduler, filesystem,
+                              interrupt handling, device drivers
+
+Layer 4 — Self-hosting (Lovelace compiler rewritten in Lovelace)
+  [ ] Lovelace compiler v2    Written in Lovelace
+                              Compiled by v1 → produces native W65C832 binary
+                              DragonFly 65 can now compile Lovelace on-device
+
+Layer 5 — Platform (SSH server, Fly.io deployment)
+  [ ] SSH server              Lovelace or TypeScript
+  [ ] Deploy to Fly.io
+```
+
+The Lovelace language design is complete — see `docs/lovelace-language-design.md`.
+
 ## Active Plans
 
 - Processor emulator chunks are tracked in `docs/emulator-roadmap.md`.
 
 ## Roadmap
 
-### Create the W65C832 emulator
+### ✅ W65C832 emulator
 
-Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
+Complete. Details in `docs/emulator-roadmap.md`.
 
-- [x] [Chunk 0: Foundation](docs/emulator-roadmap.md#chunk-0-foundation).
-- [x] [Chunk 1: Execution core shape](docs/emulator-roadmap.md#chunk-1-execution-core-shape).
-- [x] [Chunk 2: Fetch helpers and immediate addressing](docs/emulator-roadmap.md#chunk-2-fetch-helpers-and-immediate-addressing).
-- [x] [Chunk 3: Load instructions](docs/emulator-roadmap.md#chunk-3-load-instructions).
-- [x] [Chunk 4: Store instructions](docs/emulator-roadmap.md#chunk-4-store-instructions).
-- [x] [Chunk 5: Transfers and register operations](docs/emulator-roadmap.md#chunk-5-transfers-and-register-operations).
-- [x] [Chunk 6: Stack basics](docs/emulator-roadmap.md#chunk-6-stack-basics).
-- [x] [Chunk 7: Branches and jumps](docs/emulator-roadmap.md#chunk-7-branches-and-jumps).
-- [x] [Chunk 8: Subroutines](docs/emulator-roadmap.md#chunk-8-subroutines).
-- [x] [Chunk 9: ALU and comparisons](docs/emulator-roadmap.md#chunk-9-alu-and-comparisons).
-- [x] [Chunk 10: Addressing modes](docs/emulator-roadmap.md#chunk-10-addressing-modes).
-- [x] [Chunk 11: Mode switching](docs/emulator-roadmap.md#chunk-11-mode-switching).
-- [x] [Chunk 12: Interrupts and vectors](docs/emulator-roadmap.md#chunk-12-interrupts-and-vectors).
-- [x] [Chunk 13: Opcode family coverage pass](docs/emulator-roadmap.md#chunk-13-coverage-pass-for-opcode-families).
-- [x] [Chunk 14: Timing metadata](docs/emulator-roadmap.md#chunk-14-timing-metadata).
-- [x] [Chunk 15: Compatibility and validation](docs/emulator-roadmap.md#chunk-15-compatibility-and-validation).
-- [x] [Chunk 16: Public API hardening](docs/emulator-roadmap.md#chunk-16-public-api-hardening).
-
-### Create an original W65C832 assembler
+### W65C832 assembler
 
 - [x] Core assembler (`src/assembler/`) — two-pass cross-assembler, 138 tests
   - Full W65C816 + W65C832 instruction set (all 256 opcodes)
@@ -53,22 +70,50 @@ Emulator details live in `docs/emulator-roadmap.md`. Glance progress:
 - [ ] Assembler CLI / REPL interface
 - [ ] Disassembler
 
-- informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented
-- When porting from `naken_asm`, preserve Michael Kohn's copyright notice and document which parts are derived in `THIRD_PARTY_NOTICES.md`
+- Informed by Michael Kohn's open-source `naken_asm`: <https://github.com/mikeakohn/naken_asm>. Give full credit to Michael Kohn and the `naken_asm` project wherever this work is documented.
+- When porting from `naken_asm`, preserve Michael Kohn's copyright notice and document which parts are derived in `THIRD_PARTY_NOTICES.md`.
 
-### Build a test rig to test the assembler
+### ✅ Lovelace language design
 
-### Build a basic monitor in W65C832 assembler
+Complete. Core language decisions documented in `docs/lovelace-language-design.md`.
+Source files use the `.lace` extension.
 
-### Build the SSH server for DragonFly 65
+### Lovelace compiler v1 (TypeScript cross-compiler)
 
-### Deploy to Fly.io
+Reads `.lace` source on the host machine, emits W65C832 binary. Runs on Bun.
+This is the compiler used to build NeedleOS and the self-hosting v2 compiler.
 
-### Define DragonFly 65 (DF65)
+- [ ] Lexer
+- [ ] Parser
+- [ ] Type checker
+- [ ] Code generator (W65C832 backend)
+- [ ] Linker integration
 
-### Create a custom language for DF65
+### Basic machine monitor (W65C832 assembly)
 
-### Build NeedleOS in W65C832 using the custom language
+A minimal interactive monitor written in W65C832 assembly. Runs in the emulator
+and eventually on hardware. Provides memory inspect, load, and run commands.
+
+### NeedleOS kernel (Lovelace)
+
+The operating system for DragonFly 65, written in Lovelace and compiled by v1.
+
+- [ ] Memory allocator (`system.allocator`)
+- [ ] Task scheduler
+- [ ] Filesystem
+- [ ] Interrupt handling
+- [ ] Device drivers
+- [ ] NeedleOS shell
+
+### Lovelace compiler v2 (self-hosting)
+
+The Lovelace compiler rewritten in Lovelace. Compiled by v1 to produce a native
+W65C832 binary. Once complete, DragonFly 65 can compile Lovelace code on-device.
+
+### SSH server and Fly.io deployment
+
+- [ ] SSH server
+- [ ] Deploy to Fly.io
 
 ## Guidelines
 
