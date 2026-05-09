@@ -208,7 +208,7 @@ Each chunk should include:
 Suggested order:
 
 ```text
-Chunk N1: Accumulator immediate operations
+Chunk N1: Accumulator immediate operations [done]
   Add cmp #imm8, and #imm8, ora #imm8, eor #imm8, adc #imm8, sbc #imm8.
   Test parsing for hex, decimal, and character immediates where useful.
   Test disassembly renders the same mnemonic and immediate value.

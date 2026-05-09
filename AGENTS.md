@@ -62,7 +62,7 @@ Work through this checklist in order unless the user explicitly redirects:
   coverage in small, tested chunks. Do not add assembler support for an opcode
   without adding matching disassembler support in the same change.
   Work through this in order:
-  - [ ] Add accumulator immediate ops: `cmp #imm8`, `and #imm8`, `ora #imm8`,
+  - [x] Add accumulator immediate ops: `cmp #imm8`, `and #imm8`, `ora #imm8`,
     `eor #imm8`, `adc #imm8`, `sbc #imm8`.
   - [ ] Add accumulator absolute ops: `lda abs`, `cmp abs`, `and abs`,
     `ora abs`, `eor abs`, `adc abs`, `sbc abs`.

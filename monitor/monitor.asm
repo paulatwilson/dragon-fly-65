@@ -394,6 +394,12 @@ DO_REGS_SHOW:
 ;   rep #imm8
 ;   jsr abs
 ;   jmp abs
+;   cmp #imm8
+;   and #imm8
+;   ora #imm8
+;   eor #imm8
+;   adc #imm8
+;   sbc #imm8
 ;
 ; On entry: X = INBUF+1 (parse pointer)
 ; ---------------------------------------------------------------------------
@@ -469,8 +475,34 @@ DISASM_LOOP:
     lda     ZP_OPER
     cmp     #$A9
     beq     DISASM_LDA_IMM
+    cmp     #$C9
+    bne     DISASM_NOT_CMP_IMM
+    jmp     DISASM_CMP_IMM
+DISASM_NOT_CMP_IMM:
+    cmp     #$29
+    bne     DISASM_NOT_AND_IMM
+    jmp     DISASM_AND_IMM
+DISASM_NOT_AND_IMM:
+    cmp     #$09
+    bne     DISASM_NOT_ORA_IMM
+    jmp     DISASM_ORA_IMM
+DISASM_NOT_ORA_IMM:
+    cmp     #$49
+    bne     DISASM_NOT_EOR_IMM
+    jmp     DISASM_EOR_IMM
+DISASM_NOT_EOR_IMM:
+    cmp     #$69
+    bne     DISASM_NOT_ADC_IMM
+    jmp     DISASM_ADC_IMM
+DISASM_NOT_ADC_IMM:
+    cmp     #$E9
+    bne     DISASM_NOT_SBC_IMM
+    jmp     DISASM_SBC_IMM
+DISASM_NOT_SBC_IMM:
     cmp     #$8D
-    beq     DISASM_STA_ABS
+    bne     DISASM_NOT_STA_ABS
+    jmp     DISASM_STA_ABS
+DISASM_NOT_STA_ABS:
     cmp     #$60
     bne     DISASM_NOT_RTS
     jmp     DISASM_RTS
@@ -480,19 +512,87 @@ DISASM_NOT_RTS:
     jmp     DISASM_NOP
 DISASM_NOT_NOP:
     cmp     #$E2
-    beq     DISASM_SEP_IMM
+    bne     DISASM_NOT_SEP_IMM
+    jmp     DISASM_SEP_IMM
+DISASM_NOT_SEP_IMM:
     cmp     #$C2
-    beq     DISASM_REP_IMM
+    bne     DISASM_NOT_REP_IMM
+    jmp     DISASM_REP_IMM
+DISASM_NOT_REP_IMM:
     cmp     #$20
-    beq     DISASM_JSR_ABS
+    bne     DISASM_NOT_JSR_ABS
+    jmp     DISASM_JSR_ABS
+DISASM_NOT_JSR_ABS:
     cmp     #$4C
-    beq     DISASM_JMP_ABS
+    bne     DISASM_NOT_JMP_ABS
+    jmp     DISASM_JMP_ABS
+DISASM_NOT_JMP_ABS:
     jmp     DISASM_UNKNOWN
 
 DISASM_LDA_IMM:
     jsr     DISASM_FETCH_PRINT
     sta     ZP_OPER
     ldx     #STR_D_LDA
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_CMP_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_CMP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_AND_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_AND
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_ORA_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_ORA
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_EOR_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_EOR
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_ADC_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_ADC
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_SBC_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_SBC
     stx     ZP_PTR
     jsr     PRINT_ZP
     lda     ZP_OPER
@@ -707,10 +807,30 @@ ASM_PARSE_LINE:
     sta     ZP_ERR
     jsr     ASM_SKIP_SPACES
     jsr     ASM_READ_UPPER
+    cmp     #'A'
+    bne     ASM_PARSE_LINE_NOT_A
+    jmp     ASM_PARSE_A
+ASM_PARSE_LINE_NOT_A:
+    cmp     #'C'
+    bne     ASM_PARSE_LINE_NOT_C
+    jmp     ASM_PARSE_C
+ASM_PARSE_LINE_NOT_C:
+    cmp     #'E'
+    bne     ASM_PARSE_LINE_NOT_E
+    jmp     ASM_PARSE_E
+ASM_PARSE_LINE_NOT_E:
     cmp     #'L'
-    beq     ASM_PARSE_L
+    bne     ASM_PARSE_LINE_NOT_L
+    jmp     ASM_PARSE_L
+ASM_PARSE_LINE_NOT_L:
+    cmp     #'O'
+    bne     ASM_PARSE_LINE_NOT_O
+    jmp     ASM_PARSE_O
+ASM_PARSE_LINE_NOT_O:
     cmp     #'S'
-    beq     ASM_PARSE_S
+    bne     ASM_PARSE_LINE_NOT_S
+    jmp     ASM_PARSE_S
+ASM_PARSE_LINE_NOT_S:
     cmp     #'R'
     bne     ASM_PARSE_LINE_NOT_R
     jmp     ASM_PARSE_R
@@ -724,6 +844,119 @@ ASM_PARSE_LINE_NOT_N:
     jmp     ASM_PARSE_J
 ASM_PARSE_LINE_NOT_J:
     jmp     ASM_FAIL
+
+ASM_PARSE_A:
+    jsr     ASM_READ_UPPER
+    cmp     #'D'
+    beq     ASM_PARSE_ADC
+    cmp     #'N'
+    beq     ASM_PARSE_AND
+    jmp     ASM_FAIL
+
+ASM_PARSE_ADC:
+    jsr     ASM_READ_UPPER
+    cmp     #'C'
+    beq     ASM_PARSE_ADC_GOT_C
+    jmp     ASM_FAIL
+ASM_PARSE_ADC_GOT_C:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_ADC_OK
+    rts
+ASM_PARSE_ADC_OK:
+    lda     #$69                ; ADC #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_AND:
+    jsr     ASM_READ_UPPER
+    cmp     #'D'
+    beq     ASM_PARSE_AND_GOT_D
+    jmp     ASM_FAIL
+ASM_PARSE_AND_GOT_D:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_AND_OK
+    rts
+ASM_PARSE_AND_OK:
+    lda     #$29                ; AND #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_C:
+    jsr     ASM_READ_UPPER
+    cmp     #'M'
+    beq     ASM_PARSE_C_GOT_M
+    jmp     ASM_FAIL
+ASM_PARSE_C_GOT_M:
+    jsr     ASM_READ_UPPER
+    cmp     #'P'
+    beq     ASM_PARSE_C_GOT_P
+    jmp     ASM_FAIL
+ASM_PARSE_C_GOT_P:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_C_OK
+    rts
+ASM_PARSE_C_OK:
+    lda     #$C9                ; CMP #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_E:
+    jsr     ASM_READ_UPPER
+    cmp     #'O'
+    beq     ASM_PARSE_E_GOT_O
+    jmp     ASM_FAIL
+ASM_PARSE_E_GOT_O:
+    jsr     ASM_READ_UPPER
+    cmp     #'R'
+    beq     ASM_PARSE_E_GOT_R
+    jmp     ASM_FAIL
+ASM_PARSE_E_GOT_R:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_E_OK
+    rts
+ASM_PARSE_E_OK:
+    lda     #$49                ; EOR #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_O:
+    jsr     ASM_READ_UPPER
+    cmp     #'R'
+    beq     ASM_PARSE_O_GOT_R
+    jmp     ASM_FAIL
+ASM_PARSE_O_GOT_R:
+    jsr     ASM_READ_UPPER
+    cmp     #'A'
+    beq     ASM_PARSE_O_GOT_A
+    jmp     ASM_FAIL
+ASM_PARSE_O_GOT_A:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_O_OK
+    rts
+ASM_PARSE_O_OK:
+    lda     #$09                ; ORA #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
 
 ASM_PARSE_L:
     jsr     ASM_READ_UPPER
@@ -750,6 +983,8 @@ ASM_PARSE_L_OK:
 
 ASM_PARSE_S:
     jsr     ASM_READ_UPPER
+    cmp     #'B'
+    beq     ASM_PARSE_SBC
     cmp     #'T'
     beq     ASM_PARSE_STA
     cmp     #'E'
@@ -785,6 +1020,24 @@ ASM_PARSE_SEP_GOT_P:
     rts
 ASM_PARSE_SEP_OK:
     lda     #$E2                ; SEP #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_SBC:
+    jsr     ASM_READ_UPPER
+    cmp     #'C'
+    beq     ASM_PARSE_SBC_GOT_C
+    jmp     ASM_FAIL
+ASM_PARSE_SBC_GOT_C:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_SBC_OK
+    rts
+ASM_PARSE_SBC_OK:
+    lda     #$E9                ; SBC #imm8
     jsr     ASM_EMIT_A
     lda     ZP_OPER
     jsr     ASM_EMIT_A
@@ -1167,6 +1420,30 @@ DEC_TENS:
 
 STR_D_LDA:
     .ascii "LDA #$"
+    .byte 0
+
+STR_D_CMP:
+    .ascii "CMP #$"
+    .byte 0
+
+STR_D_AND:
+    .ascii "AND #$"
+    .byte 0
+
+STR_D_ORA:
+    .ascii "ORA #$"
+    .byte 0
+
+STR_D_EOR:
+    .ascii "EOR #$"
+    .byte 0
+
+STR_D_ADC:
+    .ascii "ADC #$"
+    .byte 0
+
+STR_D_SBC:
+    .ascii "SBC #$"
     .byte 0
 
 STR_D_STA:

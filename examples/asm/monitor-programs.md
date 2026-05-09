@@ -343,7 +343,79 @@ Important:
 - Programs should return with accumulator 8-bit and index registers 16-bit
   until the monitor saves and restores widths explicitly.
 
-## Program 8: Unknown Byte Disassembly
+## Program 8: Accumulator Immediate Operations
+
+Purpose:
+
+- Proves `cmp #imm8`, `and #imm8`, `ora #imm8`, `eor #imm8`, `adc #imm8`,
+  and `sbc #imm8` assemble, disassemble, and run from the monitor.
+- Uses `cmp` to set carry before `adc` and `sbc`, because the monitor does not
+  yet support `clc` or `sec`.
+
+Enter:
+
+```text
+* A0370
+0370> lda #'A'
+0372> and #$0F
+0374> ora #$40
+0376> eor #$00
+0378> sta $F000
+037B> cmp #'A'
+037D> adc #$00
+037F> sta $F000
+0382> lda #$46
+0384> cmp #$46
+0386> sbc #$03
+0388> sta $F000
+038B> rts
+038C> end
+OK
+```
+
+Disassemble the first eight instructions:
+
+```text
+* D0370
+0370 A9 41 LDA #$41
+0372 29 0F AND #$0F
+0374 09 40 ORA #$40
+0376 49 00 EOR #$00
+0378 8D 00 F0 STA $F000
+037B C9 41 CMP #$41
+037D 69 00 ADC #$00
+037F 8D 00 F0 STA $F000
+```
+
+Disassemble the remaining instructions:
+
+```text
+* D0382
+0382 A9 46 LDA #$46
+0384 C9 46 CMP #$46
+0386 E9 03 SBC #$03
+0388 8D 00 F0 STA $F000
+038B 60 RTS
+038C 00 DB $00
+038D 00 DB $00
+038E 00 DB $00
+```
+
+Run:
+
+```text
+* G0370
+ABC
+Returned
+```
+
+Expected:
+
+- Terminal prints `ABC`.
+- Monitor prints `Returned`.
+- `R` shows `A=43`.
+
+## Program 9: Unknown Byte Disassembly
 
 Purpose:
 
@@ -352,27 +424,27 @@ Purpose:
 Enter bytes:
 
 ```text
-* S037002
+* S039002
 OK
 ```
 
 Disassemble:
 
 ```text
-* D0370
-0370 02 DB $02
-0371 00 DB $00
-0372 00 DB $00
-0373 00 DB $00
-0374 00 DB $00
-0375 00 DB $00
-0376 00 DB $00
-0377 00 DB $00
+* D0390
+0390 02 DB $02
+0391 00 DB $00
+0392 00 DB $00
+0393 00 DB $00
+0394 00 DB $00
+0395 00 DB $00
+0396 00 DB $00
+0397 00 DB $00
 ```
 
 Expected:
 
-- The first line is `0370 02 DB $02`.
+- The first line is `0390 02 DB $02`.
 - This program should not be run with `G`.
 
 ## Growth Test Template
