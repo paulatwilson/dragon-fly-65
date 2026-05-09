@@ -1,4 +1,4 @@
-import { bootMonitorComputer, ComputerBootError, runInteractiveComputer } from "../computer/boot";
+import { bootMonitorComputer, ComputerBootError, runInteractiveComputer } from "./boot";
 
 try {
   const { machine } = bootMonitorComputer();
@@ -14,3 +14,5 @@ try {
 
   throw error;
 }
+
+export { bootMonitorComputer, ComputerBootError, runInteractiveComputer } from "./boot";

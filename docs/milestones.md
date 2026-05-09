@@ -31,9 +31,9 @@ W65C832 assembler                 done
 Assembler CLI / REPL              done
 Monitor assembly source           done
 Monitor can run in emulator       done, but not yet a complete computer workflow
-Bootable DragonFly computer       not done
+Bootable DragonFly computer       started: `bun run computer` boots monitor
 Host bootstrapper / loader        not done
-Documented monitor                started
+Documented monitor                done for current monitor ABI
 Assembly examples                 not done
 Lovelace compiler v1              partial / experimental target
 NeedleOS                          not started
@@ -60,7 +60,7 @@ Definition of done:
 Suggested chunks:
 
 ```text
-Chunk 1: Add computer entrypoint
+Chunk 1: Add computer entrypoint [done]
   bun run computer
   Boots the machine into monitor ROM.
 

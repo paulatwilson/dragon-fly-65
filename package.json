@@ -32,6 +32,7 @@
     "start": "bun run src/index.ts",
     "dev": "bun --watch src/index.ts",
     "asm": "bun run src/assembler/cli.ts",
+    "computer": "bun run src/computer/index.ts",
     "lace": "bun run src/compiler/cli.ts",
     "lace:monitor": "bun run scripts/run-lovelace-monitor.ts",
     "monitor": "bun run src/monitor/index.ts",
