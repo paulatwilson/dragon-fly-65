@@ -44,21 +44,28 @@ Work through this checklist in order unless the user explicitly redirects:
 - [x] Add a real computer entrypoint.
   Introduce `bun run computer` as the canonical way to boot DragonFly 65 into
   monitor ROM.
-- [ ] Treat monitor as ROM in the machine workflow.
-  Load monitor at the documented ROM address, set reset vector to monitor entry,
-  and keep user RAM separate from monitor workspace.
-- [ ] Add host-side program loading.
-  Support loading a binary at an address, initially through startup options such
-  as `--load <file>` and `--at <addr>`.
+- [x] Treat monitor as ROM in the machine workflow.
+  Load monitor at the documented ROM address, use the reset vector emitted by
+  the ROM, and keep user RAM separate from monitor workspace.
+- [ ] Add monitor assembly mode.
+  Add a monitor command that accepts assembly source through the monitor prompt.
+  This must be implemented as a monitor-resident mini assembler in W65C832
+  assembly, not by calling the TypeScript host assembler or side-loading bytes.
+  Start with the smallest subset needed for Hello World, write bytes into RAM,
+  and then run the program with `G`.
+- [ ] Grow the native assembler.
+  After monitor assembly mode works, expand the W65C832 assembly implementation
+  toward the TypeScript assembler's instruction/directive coverage in small,
+  tested chunks.
 - [ ] Add optional run-on-boot support.
   Support a development shortcut such as `--go <addr>` while keeping normal boot
   behavior monitor-first.
 - [ ] Add assembly examples.
-  Include small monitor-loadable programs under `examples/asm/`, starting with
-  Hello World output through `$F000`.
+  Include small programs that can be entered through monitor assembly mode,
+  starting with Hello World output through `$F000`.
 - [ ] Add smoke tests for the real workflow.
-  Boot the computer, load a binary, run it through the monitor, and verify
-  output or register state.
+  Boot the computer, enter assembly through the monitor, run it with `G`, and
+  verify output or register state.
 - [ ] Update docs and milestones after each completed chunk.
   Keep `AGENTS.md` short; put longer status/history in `docs/milestones.md`.
 - [ ] Only then adapt Lovelace to the monitor ABI.
@@ -108,8 +115,8 @@ to `$F000`.
 - Keep CPU clock behavior externally configurable.
 - Keep TypeScript strict and explicit around CPU, memory, operating system, and
   network state.
-- Add tests for emulator, monitor, machine, loader, operating system, SSH, and
-  protocol behavior as those areas are introduced.
+- Add tests for emulator, monitor, machine, in-monitor assembly, operating
+  system, SSH, and protocol behavior as those areas are introduced.
 - Document invented architecture decisions in `docs/`.
 - Do not treat real W65C832 behavior as guessed fact. Verify it, cite it in
   docs, or clearly mark it as DragonFly 65-specific design.

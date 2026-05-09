@@ -105,9 +105,8 @@ if (initAddress === undefined) {
 }
 
 const machine = new Machine();
-machine.load(monitor.bytes, monitor.origin);
+machine.loadMonitorRom(monitor.bytes, monitor.origin);
 machine.load(program.bytes, program.origin);
-machine.setResetVector(monitor.origin);
 machine.reset();
 
 const command = `G${formatAddress(initAddress)}\r`;

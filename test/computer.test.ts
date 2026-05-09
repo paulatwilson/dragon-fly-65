@@ -50,4 +50,21 @@ describe("DragonFly computer", () => {
     expect(output).toContain("DragonFly 65 Monitor");
     expect(output).toContain("GAAAA");
   });
+
+  test("protects monitor ROM from machine writes", () => {
+    const { machine } = bootMonitorComputer();
+    const originalRomByte = machine.mem.readByte(0xe000);
+
+    machine.mem.writeByte(0xe000, originalRomByte ^ 0xff);
+    machine.mem.writeByte(0x0300, 0x42);
+
+    expect(machine.mem.readByte(0xe000)).toBe(originalRomByte);
+    expect(machine.mem.readByte(0x0300)).toBe(0x42);
+  });
+
+  test("does not load program bytes into monitor ROM", () => {
+    const { machine } = bootMonitorComputer();
+
+    expect(() => machine.load(new Uint8Array([0xea]), 0xe000)).toThrow(RangeError);
+  });
 });

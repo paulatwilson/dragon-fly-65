@@ -40,8 +40,7 @@ Implemented:
 
 Missing:
 
-- A documented host-side binary loader workflow.
-- A monitor-aware assembler output workflow.
+- Monitor assembly mode implemented as a W65C832 assembly mini assembler.
 - Stable examples for loading and running assembly programs.
 - A documented monitor ABI for compiled languages such as Lovelace.
 
@@ -54,9 +53,8 @@ $0000-$01FF   zero page + hardware stack
 $0200-$0260   monitor work RAM
 $0300-$BFFF   user program RAM
 $C000-$DFFF   user program RAM / expansion area
-$E000-$EFFF   monitor ROM
+$E000-$FFFF   monitor ROM and vectors, with I/O hole at $F000-$F002
 $F000-$F002   memory-mapped I/O
-$F003-$FFFF   RAM, including vectors
 ```
 
 Memory-mapped I/O:
@@ -93,6 +91,7 @@ $0256        REG_VALID   0 = no program run yet; 1 = save area is valid
 ### Interrupt Vectors
 
 The monitor ROM populates both native-mode and emulation-mode vector tables.
+These vector bytes live in the ROM range.
 
 ```text
 $FFE4  COP  (native)   → DUMMY_IRQ (RTI)
@@ -110,11 +109,12 @@ interrupt handlers must install their own vectors before enabling interrupts.
 
 ## Boot Behavior
 
-The current monitor runner:
+The current computer boot path:
 
 1. Assembles `monitor/monitor.asm`.
-2. Loads the assembled bytes at the monitor origin, currently `$E000`.
-3. Sets the reset vector at `$FFFC-$FFFD` to the monitor origin.
+2. Loads the assembled bytes as monitor ROM at the monitor origin, currently
+   `$E000`.
+3. Uses the reset vector emitted by the monitor ROM at `$FFFC-$FFFD`.
 4. Resets the CPU.
 5. Runs instructions until stopped or interrupted.
 
@@ -296,6 +296,72 @@ Bit 1  Z  Zero
 Bit 0  C  Carry
 ```
 
+## Planned Assembly Mode
+
+The monitor should gain an `A` command for in-monitor assembly. This is not a
+host-side convenience and must not call the TypeScript assembler. The assembler
+for this mode should be written in W65C832 assembly and live in the monitor ROM.
+
+Target workflow:
+
+```text
+* A0300
+0300> lda #'H'
+0302> sta $F000
+0305> lda #'I'
+0307> sta $F000
+030A> rts
+030B> end
+OK
+* G0300
+HI
+Returned
+*
+```
+
+Initial semantics:
+
+- `A` followed by a four-digit address starts assembly mode at that address.
+- The prompt displays the current assembly address.
+- Each accepted source line emits bytes at the current address.
+- The current address advances by the emitted byte count.
+- `end` exits assembly mode and returns to the normal monitor prompt.
+- Invalid source should print an error and keep the current address unchanged.
+
+Initial instruction subset:
+
+```text
+lda #imm8
+sta abs
+rts
+nop
+sep #imm8
+rep #imm8
+```
+
+Optional after the first working path:
+
+```text
+jsr abs
+jmp abs
+```
+
+Initial parser limits:
+
+- no labels,
+- no branches,
+- no directives,
+- no expressions beyond literal values,
+- case-insensitive mnemonics,
+- hex immediates such as `$41`,
+- decimal immediates such as `65`,
+- character literals such as `'A'`,
+- absolute addresses such as `$F000`.
+
+The full TypeScript assembler remains useful as a cross-assembler for ROM
+builds and tests. It should not be treated as the implementation for monitor
+assembly mode.
+
 ## Minimal Assembly Program
 
 This program prints `A` and returns to the monitor.
@@ -329,8 +395,9 @@ Build as a binary using the assembler:
 bun run asm examples/asm/hello.asm -o /tmp/hello.bin
 ```
 
-Current manual monitor loading uses the `S` command with hex bytes. A proper
-host loader (`--load` / `--at`) is a required next milestone.
+Current manual monitor loading uses the `S` command with hex bytes. The next
+milestone is monitor assembly mode, where source is entered through the monitor
+and assembled into RAM by the running machine.
 
 ## Monitor ABI
 
@@ -369,7 +436,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| No host loader | Programs must be entered manually with `S`. `--load`/`--at` are not implemented yet. |
+| No assembly mode | Programs must currently be entered manually with `S` as hex bytes. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

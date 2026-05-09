@@ -2,19 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { assemble } from "../src/assembler";
+import { bootMonitorComputer } from "../src/computer/boot";
 import { Machine } from "../src/machine";
 
 // Build + load the monitor, return a Machine ready to run.
 function buildMonitor(): Machine {
-  const src = readFileSync(resolve(__dirname, "../monitor/monitor.asm"), "utf8");
-  const out = assemble(src);
-  expect(out.errors).toHaveLength(0);
-
-  const machine = new Machine();
-  machine.load(out.bytes, out.origin);
-  machine.setResetVector(out.origin);
-  machine.reset();
-  return machine;
+  return bootMonitorComputer().machine;
 }
 
 // Collect all output produced while feeding `input` to the machine.

@@ -1,6 +1,9 @@
 import { W65C832Cpu } from "../emulator/cpu";
-import { writeWord } from "../emulator/memory";
-import { MappedMemory } from "./memory";
+import {
+  MappedMemory,
+  MONITOR_ROM_END,
+  MONITOR_ROM_START,
+} from "./memory";
 
 export class Machine {
   readonly mem: MappedMemory;
@@ -13,14 +16,25 @@ export class Machine {
 
   // Load binary bytes into RAM at the given address.
   load(bytes: Uint8Array, address: number): void {
-    for (let i = 0; i < bytes.length; i++) {
-      this.mem.bytes[(address + i) & 0xffff] = bytes[i] ?? 0;
+    this.assertWritableRange(address, bytes.length);
+    this.mem.loadBytes(bytes, address);
+  }
+
+  loadMonitorRom(bytes: Uint8Array, address: number): void {
+    const start = address & 0xffff;
+    const end = (start + bytes.length - 1) & 0xffff;
+    if (bytes.length === 0) return;
+    if (start < MONITOR_ROM_START || end > MONITOR_ROM_END || end < start) {
+      throw new RangeError(
+        `Monitor ROM image must fit within $${hex4(MONITOR_ROM_START)}-$${hex4(MONITOR_ROM_END)}.`,
+      );
     }
+    this.mem.loadBytes(bytes, address);
   }
 
   // Point the reset vector ($FFFC–$FFFD) at an address.
   setResetVector(address: number): void {
-    writeWord(this.mem, 0xfffc, address);
+    this.mem.loadBytes(new Uint8Array([address & 0xff, address >> 8]), 0xfffc);
   }
 
   reset(): void {
@@ -46,4 +60,24 @@ export class Machine {
       await new Promise<void>(resolve => setImmediate(resolve));
     }
   }
+
+  private assertWritableRange(address: number, length: number): void {
+    if (length === 0) return;
+    const start = address & 0xffff;
+    const end = (start + length - 1) & 0xffff;
+    if (end < start) {
+      throw new RangeError("Cannot load a program across the 16-bit address boundary.");
+    }
+    for (let addr = start; addr <= end; addr++) {
+      if (this.mem.isRomAddress(addr)) {
+        throw new RangeError(
+          `Cannot load program bytes into monitor ROM at $${hex4(addr)}.`,
+        );
+      }
+    }
+  }
+}
+
+function hex4(value: number): string {
+  return (value & 0xffff).toString(16).toUpperCase().padStart(4, "0");
 }

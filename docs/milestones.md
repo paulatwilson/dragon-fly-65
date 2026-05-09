@@ -15,7 +15,8 @@ CPU emulator
   -> ROM monitor
   -> bootable computer
   -> documented monitor
-  -> program loader
+  -> monitor-resident mini assembler
+  -> native assembler growth
   -> assembly examples
   -> higher-level languages
 ```
@@ -31,8 +32,9 @@ W65C832 assembler                 done
 Assembler CLI / REPL              done
 Monitor assembly source           done
 Monitor can run in emulator       done, but not yet a complete computer workflow
-Bootable DragonFly computer       started: `bun run computer` boots monitor
-Host bootstrapper / loader        not done
+Bootable DragonFly computer       started: `bun run computer` boots monitor ROM
+Monitor-resident mini assembler   not done
+Native W65C832 assembler          not done
 Documented monitor                done for current monitor ABI
 Assembly examples                 not done
 Lovelace compiler v1              partial / experimental target
@@ -47,15 +49,16 @@ Definition of done:
 
 - `bun run computer` boots DragonFly 65 into the monitor.
 - Monitor ROM is loaded at its documented ROM address.
-- Reset vector points at the monitor entry.
+- Reset vector is provided by the monitor ROM.
 - User RAM is separate from monitor workspace and ROM.
 - `docs/monitor.md` documents commands, memory map, and ABI.
-- A host-side loader can load a binary at an address before boot or while
-  starting the machine.
-- At least one assembly "Hello World" can be assembled, loaded at `$0300`, run
-  with `G0300`, and observed through monitor output.
-- Smoke tests cover booting the monitor, loading a binary, running it, and
-  verifying output or register state.
+- The monitor can accept assembly source through its own command interface,
+  assemble it inside the running machine using W65C832 code, and write bytes
+  into RAM.
+- At least one assembly "Hello World" can be entered through monitor assembly
+  mode, run with `G0300`, and observed through monitor output.
+- Smoke tests cover booting the monitor, entering assembly through the monitor,
+  running it, and verifying output or register state.
 
 Suggested chunks:
 
@@ -64,14 +67,21 @@ Chunk 1: Add computer entrypoint [done]
   bun run computer
   Boots the machine into monitor ROM.
 
+Chunk 1A: Treat monitor as ROM [done]
+  Load the monitor through a ROM path.
+  Protect monitor ROM from normal machine writes.
+  Keep program loads out of ROM.
+
 Chunk 2: Finish monitor documentation
   docs/monitor.md
   commands, memory map, boot behavior, ABI.
 
-Chunk 3: Add host loader
-  --load <bin>
-  --at <addr>
-  optional --go <addr>
+Chunk 3: Add monitor assembly mode
+  Add an A command or equivalent.
+  Accept assembly text through the monitor interface.
+  Assemble into RAM from an address chosen inside the monitor session.
+  Implement this as a small W65C832 assembly mini assembler, not as a host
+  TypeScript assembler call.
 
 Chunk 4: Add assembly examples
   examples/asm/hello.asm
@@ -80,7 +90,7 @@ Chunk 4: Add assembly examples
 
 Chunk 5: Add smoke tests
   boot monitor
-  load asm binary
+  enter asm through monitor
   run with G
   verify terminal output
 ```
@@ -106,7 +116,7 @@ NeedleOS, SSH, Fly.io, or server concerns.
 
 ## Completed: W65C832 Assembler
 
-The assembler lives in `src/assembler/`.
+The host cross-assembler lives in `src/assembler/`.
 
 Completed capabilities include:
 
@@ -118,6 +128,62 @@ Completed capabilities include:
 - Forward label resolution.
 - REP/SEP width tracking for immediate operand encoding.
 - CLI and REPL via `bun run asm`.
+
+This assembler is still useful for building ROMs, tests, and cross-development,
+but it is not the monitor assembly mode. Real computer operation requires an
+assembler that runs on the DragonFly 65 side.
+
+## Planned: Monitor-Resident Mini Assembler
+
+The first native assembler should be deliberately small. Its job is to make the
+computer usable from its own monitor, not to match the full TypeScript assembler
+immediately.
+
+Initial target workflow:
+
+```text
+* A0300
+0300> lda #'H'
+0302> sta $F000
+0305> lda #'I'
+0307> sta $F000
+030A> rts
+030B> end
+OK
+* G0300
+HI
+Returned
+*
+```
+
+Initial instruction subset:
+
+- `lda #imm8`
+- `sta abs`
+- `rts`
+- `nop`
+- `sep #imm8`
+- `rep #imm8`
+- optionally `jsr abs` and `jmp abs` once the basic path works
+
+Initial parser scope:
+
+- one source line at a time,
+- case-insensitive mnemonics,
+- immediate byte values as decimal, hex (`$41`), or character literals (`'A'`),
+- absolute 16-bit addresses as hex (`$F000`),
+- no labels,
+- no forward references,
+- no directives except an explicit end marker for assembly mode.
+
+After this works, grow toward a real native assembler in small chunks:
+
+- labels,
+- relative branches,
+- `.db`,
+- more addressing modes,
+- more opcodes,
+- eventually parity with the host TypeScript assembler where practical.
 
 Attribution:
 
@@ -189,8 +255,8 @@ maintaining a separate language implementation.
 
 ### NeedleOS
 
-Not started. It should begin after the bootable monitor computer and loader
-workflow are real.
+Not started. It should begin after the bootable monitor computer and monitor
+assembly workflow are real.
 
 Initial areas:
 
@@ -208,5 +274,5 @@ by v1.
 
 ### SSH And Fly.io Deployment
 
-Not started. These should come after the machine has a stable monitor, loader,
-and program execution workflow.
+Not started. These should come after the machine has a stable monitor,
+in-monitor assembly, and program execution workflow.

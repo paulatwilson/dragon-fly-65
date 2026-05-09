@@ -35,8 +35,7 @@ export function bootMonitorComputer(
   }
 
   const machine = new Machine();
-  machine.load(monitor.bytes, monitor.origin);
-  machine.setResetVector(monitor.origin);
+  machine.loadMonitorRom(monitor.bytes, monitor.origin);
   machine.reset();
 
   return {
