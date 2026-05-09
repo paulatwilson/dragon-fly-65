@@ -22,8 +22,8 @@ bun run monitor
 
 ## Current Status
 
-The monitor exists and is test-covered, but it is not yet packaged as a complete
-"bootable computer" workflow.
+The monitor exists, is test-covered, and is the current DragonFly 65 boot
+environment.
 
 Implemented:
 
@@ -43,8 +43,7 @@ Implemented:
 Missing:
 
 - Labels, branches, directives, and wider opcode coverage in assembly mode.
-- Stable examples for loading and running assembly programs.
-- A documented monitor ABI for compiled languages such as Lovelace.
+- Compiler targets, such as Lovelace, that emit monitor ABI-compatible programs.
 
 ## Memory Map
 
@@ -411,17 +410,62 @@ jmp abs
 
 Unknown opcodes are shown as `DB $xx`.
 
+Use `D` as the normal read-back step after assembly:
+
+```text
+* A0300
+0300> lda #'A'
+0302> sta $F000
+0305> rts
+0306> end
+OK
+* D0300
+0300 A9 41 LDA #$41
+0302 8D 00 F0 STA $F000
+0305 60 RTS
+0306 00 DB $00
+0307 00 DB $00
+0308 00 DB $00
+0309 00 DB $00
+030A 00 DB $00
+* G0300
+A
+Returned
+```
+
+The disassembler output has three parts:
+
+```text
+address raw-bytes decoded-instruction
+```
+
+Examples:
+
+```text
+0300 A9 41 LDA #$41
+0302 8D 00 F0 STA $F000
+0305 60 RTS
+0306 00 DB $00
+```
+
+The raw byte column is useful because the monitor assembler is intentionally
+small. When a new mnemonic is added to `A`, its byte encoding should be visible
+through `D` before relying on the program behavior.
+
+Monitor-entered test programs and their expected `D`, `G`, `R`, and output
+results are recorded in `examples/asm/monitor-programs.md`.
+
 ## Minimal Assembly Program
 
 This program prints `A` and returns to the monitor.
 
-```asm
-    .65816
-    .org $0300
-
-    lda #'A'
-    sta $F000
-    rts
+```text
+* A0300
+0300> lda #'A'
+0302> sta $F000
+0305> rts
+0306> end
+OK
 ```
 
 As a byte sequence for the `S` command:
@@ -438,14 +482,9 @@ Then run it:
 
 Expected output: `A` printed, then `Returned`, then the prompt.
 
-Build as a binary using the assembler:
-
-```sh
-bun run asm examples/asm/hello.asm -o /tmp/hello.bin
-```
-
-Manual monitor loading can still use the `S` command with hex bytes. Normal
-monitor development should use `A` assembly mode for small programs.
+The host assembler remains useful for ROMs and cross-development, but normal
+monitor development should use `A` assembly mode, verify with `D`, and then run
+with `G`.
 
 ## Monitor ABI
 

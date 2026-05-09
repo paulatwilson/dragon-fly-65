@@ -61,12 +61,27 @@ Work through this checklist in order unless the user explicitly redirects:
   implementations toward the TypeScript assembler's instruction/directive
   coverage in small, tested chunks. Do not add assembler support for an opcode
   without adding matching disassembler support in the same change.
+  Work through this in order:
+  - [ ] Add accumulator immediate ops: `cmp #imm8`, `and #imm8`, `ora #imm8`,
+    `eor #imm8`, `adc #imm8`, `sbc #imm8`.
+  - [ ] Add accumulator absolute ops: `lda abs`, `cmp abs`, `and abs`,
+    `ora abs`, `eor abs`, `adc abs`, `sbc abs`.
+  - [ ] Add branch ops with absolute target syntax: `beq addr`, `bne addr`,
+    `bcc addr`, `bcs addr`, `bmi addr`, `bpl addr`. The assembler should emit
+    relative offsets; the disassembler should print resolved absolute targets.
+  - [ ] Add byte data entry: `.byte` or `db` with hex, decimal, and character
+    literals.
+  - [ ] Add label support for assembly mode, starting with backward labels only.
+  - [ ] Add forward labels with a small fixup table.
+  - [ ] Add more load/store forms only after width rules are explicit:
+    `ldx`, `ldy`, `stx`, `sty`, direct page, and indexed addressing.
+  - [ ] Add native assembler/disassembler parity tests for every new group.
 - [ ] Add optional run-on-boot support.
   Support a development shortcut such as `--go <addr>` while keeping normal boot
   behavior monitor-first.
-- [ ] Add assembly examples.
-  Include small programs that can be entered through monitor assembly mode,
-  starting with Hello World output through `$F000`.
+- [x] Add assembly examples.
+  Initial monitor-entered programs live in `examples/asm/monitor-programs.md`.
+  Keep adding examples there as the native assembler/disassembler grows.
 - [ ] Add smoke tests for the real workflow.
   Boot the computer, enter assembly through the monitor, run it with `G`, and
   verify output or register state.

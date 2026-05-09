@@ -32,13 +32,13 @@ W65C832 emulator                  done
 W65C832 assembler                 done
 Assembler CLI / REPL              done
 Monitor assembly source           done
-Monitor can run in emulator       done, but not yet a complete computer workflow
+Monitor can run in emulator       done
 Bootable DragonFly computer       started: `bun run computer` boots monitor ROM
 Monitor-resident mini assembler   started: `A` command handles a small subset
 Monitor-resident mini disassembler started: `D` matches the `A` subset
-Native W65C832 assembler          not done
+Native W65C832 assembler          started in monitor, far from complete
 Documented monitor                done for current monitor ABI
-Assembly examples                 not done
+Assembly examples                 started: `examples/asm/monitor-programs.md`
 Lovelace compiler v1              partial / experimental target
 NeedleOS                          not started
 Self-hosting Lovelace compiler    not started
@@ -91,10 +91,9 @@ Chunk 3A: Add monitor disassembly mode [done for first subset]
   Disassemble the same opcode subset supported by A.
   Keep A and D in lockstep as native assembler coverage grows.
 
-Chunk 4: Add assembly examples
-  examples/asm/hello.asm
-  examples/asm/registers.asm
-  examples/asm/memory.asm
+Chunk 4: Add assembly examples [started]
+  examples/asm/monitor-programs.md
+  Record monitor-entered source, D output, G command, and expected result.
 
 Chunk 5: Add smoke tests
   boot monitor
@@ -189,14 +188,64 @@ from RAM. As this grows, assembler and disassembler support must stay in
 lockstep.
 
 After this works, grow toward real native assembler/disassembler coverage in
-small chunks:
+small, testable chunks.
 
-- labels,
-- relative branches,
-- `.db`,
-- more addressing modes,
-- more opcodes,
-- eventually parity with the host TypeScript assembler where practical.
+## Planned: Native Assembler/Disassembler Growth
+
+The monitor assembler and monitor disassembler are one feature. Do not add
+assembly support for an opcode unless the same change also adds disassembly
+support and tests for it.
+
+Each chunk should include:
+
+- monitor assembly support,
+- monitor disassembly support,
+- at least one monitor workflow test that enters source through `A`,
+  disassembles it with `D`, and runs it with `G` when the instruction group is
+  executable in a small program,
+- documentation updates for supported syntax.
+
+Suggested order:
+
+```text
+Chunk N1: Accumulator immediate operations
+  Add cmp #imm8, and #imm8, ora #imm8, eor #imm8, adc #imm8, sbc #imm8.
+  Test parsing for hex, decimal, and character immediates where useful.
+  Test disassembly renders the same mnemonic and immediate value.
+
+Chunk N2: Accumulator absolute operations
+  Add lda abs, cmp abs, and abs, ora abs, eor abs, adc abs, sbc abs.
+  Keep syntax to 16-bit absolute addresses first.
+  Test against RAM locations written through S or earlier assembled code.
+
+Chunk N3: Relative branches with absolute target syntax
+  Add beq addr, bne addr, bcc addr, bcs addr, bmi addr, bpl addr.
+  The monitor assembler accepts absolute target addresses and emits relative
+  offsets.
+  The monitor disassembler prints resolved absolute targets, not raw offsets.
+  Test forward and backward branch distances that fit in signed 8-bit range.
+
+Chunk N4: Byte data entry
+  Add .byte or db.
+  Support hex bytes, decimal bytes, and character literals.
+  Test data can be inspected with M and disassembled as DB when it is not code.
+
+Chunk N5: Backward labels
+  Add simple labels that can be referenced after definition.
+  Start with branch and jump targets only.
+  Keep labels scoped to one A session.
+
+Chunk N6: Forward labels and fixups
+  Add a small fixup table for labels referenced before definition.
+  Reject unresolved labels with a clear monitor error.
+  Reject out-of-range branches clearly.
+
+Chunk N7: More load/store forms
+  Add ldx, ldy, stx, sty, direct page, and indexed addressing only after width
+  rules are explicit in docs and tests.
+  Avoid guessing W65C832-specific width behavior; document any DragonFly-specific
+  simplification.
+```
 
 Attribution:
 
