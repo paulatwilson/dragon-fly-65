@@ -407,6 +407,12 @@ DO_REGS_SHOW:
 ;   eor abs
 ;   adc abs
 ;   sbc abs
+;   beq abs
+;   bne abs
+;   bcc abs
+;   bcs abs
+;   bmi abs
+;   bpl abs
 ;
 ; On entry: X = INBUF+1 (parse pointer)
 ; ---------------------------------------------------------------------------
@@ -536,6 +542,30 @@ DISASM_NOT_ADC_ABS:
     bne     DISASM_NOT_SBC_ABS
     jmp     DISASM_SBC_ABS
 DISASM_NOT_SBC_ABS:
+    cmp     #$F0
+    bne     DISASM_NOT_BEQ
+    jmp     DISASM_BEQ
+DISASM_NOT_BEQ:
+    cmp     #$D0
+    bne     DISASM_NOT_BNE
+    jmp     DISASM_BNE
+DISASM_NOT_BNE:
+    cmp     #$90
+    bne     DISASM_NOT_BCC
+    jmp     DISASM_BCC
+DISASM_NOT_BCC:
+    cmp     #$B0
+    bne     DISASM_NOT_BCS
+    jmp     DISASM_BCS
+DISASM_NOT_BCS:
+    cmp     #$30
+    bne     DISASM_NOT_BMI
+    jmp     DISASM_BMI
+DISASM_NOT_BMI:
+    cmp     #$10
+    bne     DISASM_NOT_BPL
+    jmp     DISASM_BPL
+DISASM_NOT_BPL:
     cmp     #$8D
     bne     DISASM_NOT_STA_ABS
     jmp     DISASM_STA_ABS
@@ -687,6 +717,54 @@ DISASM_ADC_ABS:
 DISASM_SBC_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_SBC_ABS
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BEQ:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BEQ
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BNE:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BNE
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BCC:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BCC
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BCS:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BCS
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BMI:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BMI
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BPL:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BPL
     stx     ZP_PTR
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
@@ -904,6 +982,10 @@ ASM_PARSE_LINE:
     bne     ASM_PARSE_LINE_NOT_A
     jmp     ASM_PARSE_A
 ASM_PARSE_LINE_NOT_A:
+    cmp     #'B'
+    bne     ASM_PARSE_LINE_NOT_B
+    jmp     ASM_PARSE_B
+ASM_PARSE_LINE_NOT_B:
     cmp     #'C'
     bne     ASM_PARSE_LINE_NOT_C
     jmp     ASM_PARSE_C
@@ -937,6 +1019,76 @@ ASM_PARSE_LINE_NOT_N:
     jmp     ASM_PARSE_J
 ASM_PARSE_LINE_NOT_J:
     jmp     ASM_FAIL
+
+ASM_PARSE_B:
+    jsr     ASM_READ_UPPER
+    cmp     #'E'
+    beq     ASM_PARSE_BEQ
+    cmp     #'N'
+    beq     ASM_PARSE_BNE
+    cmp     #'C'
+    beq     ASM_PARSE_BC
+    cmp     #'M'
+    beq     ASM_PARSE_BMI
+    cmp     #'P'
+    beq     ASM_PARSE_BPL
+    jmp     ASM_FAIL
+
+ASM_PARSE_BEQ:
+    jsr     ASM_READ_UPPER
+    cmp     #'Q'
+    beq     ASM_PARSE_BEQ_OK
+    jmp     ASM_FAIL
+ASM_PARSE_BEQ_OK:
+    lda     #$F0                ; BEQ rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+
+ASM_PARSE_BNE:
+    jsr     ASM_READ_UPPER
+    cmp     #'E'
+    beq     ASM_PARSE_BNE_OK
+    jmp     ASM_FAIL
+ASM_PARSE_BNE_OK:
+    lda     #$D0                ; BNE rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+
+ASM_PARSE_BC:
+    jsr     ASM_READ_UPPER
+    cmp     #'C'
+    beq     ASM_PARSE_BCC_OK
+    cmp     #'S'
+    beq     ASM_PARSE_BCS_OK
+    jmp     ASM_FAIL
+ASM_PARSE_BCC_OK:
+    lda     #$90                ; BCC rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+ASM_PARSE_BCS_OK:
+    lda     #$B0                ; BCS rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+
+ASM_PARSE_BMI:
+    jsr     ASM_READ_UPPER
+    cmp     #'I'
+    beq     ASM_PARSE_BMI_OK
+    jmp     ASM_FAIL
+ASM_PARSE_BMI_OK:
+    lda     #$30                ; BMI rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+
+ASM_PARSE_BPL:
+    jsr     ASM_READ_UPPER
+    cmp     #'L'
+    beq     ASM_PARSE_BPL_OK
+    jmp     ASM_FAIL
+ASM_PARSE_BPL_OK:
+    lda     #$10                ; BPL rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
 
 ASM_PARSE_A:
     jsr     ASM_READ_UPPER
@@ -1438,6 +1590,30 @@ ASM_PARSE_ABS_HEX:
     sta     ZP_OPER
     rts
 
+ASM_PARSE_BRANCH_OPER:
+    pha                         ; save opcode
+    jsr     ASM_PARSE_ABS_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_BRANCH_OK
+    pla
+    rts
+ASM_PARSE_BRANCH_OK:
+    rep     #$20
+    .a16
+    lda     ZP_OPER             ; target
+    sec
+    sbc     ZP_ADDR             ; target - branch opcode address
+    sec
+    sbc     #2                  ; target - address after branch operand
+    sta     ZP_TMP              ; low byte is emitted as rel8
+    sep     #$20
+    .a8
+    pla
+    jsr     ASM_EMIT_A
+    lda     ZP_TMP
+    jsr     ASM_EMIT_A
+    rts
+
 ASM_EMIT_OPER_WORD:
     lda     ZP_OPER
     jsr     ASM_EMIT_A
@@ -1481,6 +1657,27 @@ DISASM_FETCH_ABS:
     sta     ZP_OPER
     jsr     DISASM_FETCH_PRINT
     sta     ZP_OPER+1
+    rts
+
+DISASM_FETCH_BRANCH:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_TMP
+    lda     #0
+    sta     ZP_TMP2
+    lda     ZP_TMP
+    cmp     #$80
+    bcc     DISASM_BRANCH_POSITIVE
+    lda     #$FF
+    sta     ZP_TMP2
+DISASM_BRANCH_POSITIVE:
+    rep     #$20
+    .a16
+    lda     ZP_ADDR             ; address after branch operand
+    clc
+    adc     ZP_TMP              ; add signed offset in ZP_TMP/ZP_TMP2
+    sta     ZP_OPER
+    sep     #$20
+    .a8
     rts
 
 DISASM_PRINT_OPER:
@@ -1663,6 +1860,30 @@ STR_D_SBC:
 
 STR_D_SBC_ABS:
     .ascii "SBC $"
+    .byte 0
+
+STR_D_BEQ:
+    .ascii "BEQ $"
+    .byte 0
+
+STR_D_BNE:
+    .ascii "BNE $"
+    .byte 0
+
+STR_D_BCC:
+    .ascii "BCC $"
+    .byte 0
+
+STR_D_BCS:
+    .ascii "BCS $"
+    .byte 0
+
+STR_D_BMI:
+    .ascii "BMI $"
+    .byte 0
+
+STR_D_BPL:
+    .ascii "BPL $"
     .byte 0
 
 STR_D_STA:

@@ -339,4 +339,88 @@ describe("monitor", () => {
     expect(output).toContain("Returned");
     expect(output).toContain("A=43");
   }, 10_000);
+
+  test("A and D support branches with absolute target syntax", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0480",
+        "beq $0488",
+        "bne $0480",
+        "bcc $048A",
+        "bcs $0484",
+        "bmi $048C",
+        "bpl $0488",
+        "rts",
+        "end",
+        "D0480",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0480)).toBe(0xf0);
+    expect(machine.mem.readByte(0x0481)).toBe(0x06);
+    expect(machine.mem.readByte(0x0482)).toBe(0xd0);
+    expect(machine.mem.readByte(0x0483)).toBe(0xfc);
+    expect(machine.mem.readByte(0x0484)).toBe(0x90);
+    expect(machine.mem.readByte(0x0485)).toBe(0x04);
+    expect(machine.mem.readByte(0x0486)).toBe(0xb0);
+    expect(machine.mem.readByte(0x0487)).toBe(0xfc);
+    expect(machine.mem.readByte(0x0488)).toBe(0x30);
+    expect(machine.mem.readByte(0x0489)).toBe(0x02);
+    expect(machine.mem.readByte(0x048a)).toBe(0x10);
+    expect(machine.mem.readByte(0x048b)).toBe(0xfc);
+    expect(output).toContain("0480 F0 06 BEQ $0488");
+    expect(output).toContain("0482 D0 FC BNE $0480");
+    expect(output).toContain("0484 90 04 BCC $048A");
+    expect(output).toContain("0486 B0 FC BCS $0484");
+    expect(output).toContain("0488 30 02 BMI $048C");
+    expect(output).toContain("048A 10 FC BPL $0488");
+    expect(output).toContain("048C 60 RTS");
+  }, 10_000);
+
+  test("branch operations run in monitor programs", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A04A0",
+        "lda #0",
+        "cmp #0",
+        "beq $04AB",
+        "lda #'X'",
+        "sta $F000",
+        "bcs $04B2",
+        "lda #'X'",
+        "sta $F000",
+        "bpl $04B9",
+        "lda #'X'",
+        "sta $F000",
+        "lda #1",
+        "cmp #2",
+        "bne $04C4",
+        "lda #'X'",
+        "sta $F000",
+        "bcc $04CB",
+        "lda #'X'",
+        "sta $F000",
+        "bmi $04D2",
+        "lda #'X'",
+        "sta $F000",
+        "lda #'B'",
+        "sta $F000",
+        "lda #'R'",
+        "sta $F000",
+        "rts",
+        "end",
+        "G04A0",
+        "R",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("BR");
+    expect(output).not.toContain("XBR");
+    expect(output).toContain("Returned");
+    expect(output).toContain("A=52");
+  }, 10_000);
 });

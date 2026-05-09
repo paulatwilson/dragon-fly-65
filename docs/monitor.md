@@ -42,7 +42,8 @@ Implemented:
 
 Missing:
 
-- Labels, branches, directives, and wider opcode coverage in assembly mode.
+- Labels, directives, branch range validation, and wider opcode coverage in
+  assembly mode.
 - Compiler targets, such as Lovelace, that emit monitor ABI-compatible programs.
 
 ## Memory Map
@@ -357,6 +358,12 @@ ora abs
 eor abs
 adc abs
 sbc abs
+beq abs
+bne abs
+bcc abs
+bcs abs
+bmi abs
+bpl abs
 sta abs
 rts
 nop
@@ -369,7 +376,9 @@ jmp abs
 Current parser limits:
 
 - no labels,
-- no branches,
+- branch targets must be written as absolute addresses such as `$0310`; the
+  monitor emits the relative byte internally,
+- no branch range validation yet,
 - no directives,
 - no expressions beyond literal values,
 - case-insensitive mnemonics,
@@ -425,6 +434,12 @@ ora abs
 eor abs
 adc abs
 sbc abs
+beq abs
+bne abs
+bcc abs
+bcs abs
+bmi abs
+bpl abs
 sta abs
 rts
 nop
@@ -477,6 +492,14 @@ Examples:
 The raw byte column is useful because the monitor assembler is intentionally
 small. When a new mnemonic is added to `A`, its byte encoding should be visible
 through `D` before relying on the program behavior.
+
+For branches, `D` shows the resolved absolute target address rather than the raw
+relative offset as the operand:
+
+```text
+0480 F0 06 BEQ $0488
+0482 D0 FC BNE $0480
+```
 
 Monitor-entered test programs and their expected `D`, `G`, `R`, and output
 results are recorded in `examples/asm/monitor-programs.md`.
@@ -549,7 +572,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate and absolute ops (`lda abs`, `cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate and absolute ops (`lda abs`, `cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`) with absolute target syntax, `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

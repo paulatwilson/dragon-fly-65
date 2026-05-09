@@ -66,7 +66,7 @@ Work through this checklist in order unless the user explicitly redirects:
     `eor #imm8`, `adc #imm8`, `sbc #imm8`.
   - [x] Add accumulator absolute ops: `lda abs`, `cmp abs`, `and abs`,
     `ora abs`, `eor abs`, `adc abs`, `sbc abs`.
-  - [ ] Add branch ops with absolute target syntax: `beq addr`, `bne addr`,
+  - [x] Add branch ops with absolute target syntax: `beq addr`, `bne addr`,
     `bcc addr`, `bcs addr`, `bmi addr`, `bpl addr`. The assembler should emit
     relative offsets; the disassembler should print resolved absolute targets.
   - [ ] Add byte data entry: `.byte` or `db` with hex, decimal, and character

@@ -508,7 +508,109 @@ Expected:
 - Monitor prints `Returned`.
 - `R` shows `A=43`.
 
-## Program 10: Unknown Byte Disassembly
+## Program 10: Branches With Absolute Target Syntax
+
+Purpose:
+
+- Proves `beq addr`, `bne addr`, `bcc addr`, `bcs addr`, `bmi addr`, and
+  `bpl addr` assemble with absolute target syntax.
+- Proves the monitor emits relative branch offsets internally.
+- Proves the disassembler prints resolved absolute target addresses.
+- Proves all six branch opcodes run from the monitor.
+
+Enter:
+
+```text
+* A04A0
+04A0> lda #0
+04A2> cmp #0
+04A4> beq $04AB
+04A6> lda #'X'
+04A8> sta $F000
+04AB> bcs $04B2
+04AD> lda #'X'
+04AF> sta $F000
+04B2> bpl $04B9
+04B4> lda #'X'
+04B6> sta $F000
+04B9> lda #1
+04BB> cmp #2
+04BD> bne $04C4
+04BF> lda #'X'
+04C1> sta $F000
+04C4> bcc $04CB
+04C6> lda #'X'
+04C8> sta $F000
+04CB> bmi $04D2
+04CD> lda #'X'
+04CF> sta $F000
+04D2> lda #'B'
+04D4> sta $F000
+04D7> lda #'R'
+04D9> sta $F000
+04DC> rts
+04DD> end
+OK
+```
+
+Disassemble the first eight instructions:
+
+```text
+* D04A0
+04A0 A9 00 LDA #$00
+04A2 C9 00 CMP #$00
+04A4 F0 05 BEQ $04AB
+04A6 A9 58 LDA #$58
+04A8 8D 00 F0 STA $F000
+04AB B0 05 BCS $04B2
+04AD A9 58 LDA #$58
+04AF 8D 00 F0 STA $F000
+```
+
+Disassemble the next branch group:
+
+```text
+* D04B2
+04B2 10 05 BPL $04B9
+04B4 A9 58 LDA #$58
+04B6 8D 00 F0 STA $F000
+04B9 A9 01 LDA #$01
+04BB C9 02 CMP #$02
+04BD D0 05 BNE $04C4
+04BF A9 58 LDA #$58
+04C1 8D 00 F0 STA $F000
+```
+
+Disassemble the final branch group:
+
+```text
+* D04C4
+04C4 90 05 BCC $04CB
+04C6 A9 58 LDA #$58
+04C8 8D 00 F0 STA $F000
+04CB 30 05 BMI $04D2
+04CD A9 58 LDA #$58
+04CF 8D 00 F0 STA $F000
+04D2 A9 42 LDA #$42
+04D4 8D 00 F0 STA $F000
+```
+
+Run:
+
+```text
+* G04A0
+BR
+Returned
+```
+
+Expected:
+
+- Terminal prints `BR`.
+- Terminal does not print `X`.
+- Monitor prints `Returned`.
+- `R` shows `A=52`.
+
+## Program 11: Unknown Byte Disassembly
 
 Purpose:
 

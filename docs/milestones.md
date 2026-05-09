@@ -218,7 +218,7 @@ Chunk N2: Accumulator absolute operations [done]
   Keep syntax to 16-bit absolute addresses first.
   Test against RAM locations written through S or earlier assembled code.
 
-Chunk N3: Relative branches with absolute target syntax
+Chunk N3: Relative branches with absolute target syntax [done]
   Add beq addr, bne addr, bcc addr, bcs addr, bmi addr, bpl addr.
   The monitor assembler accepts absolute target addresses and emits relative
   offsets.
