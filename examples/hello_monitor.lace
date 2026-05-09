@@ -1,0 +1,49 @@
+// Minimal monitor-friendly Lovelace program.
+//
+// The current v1 runtime has print() stubbed, so visible output is done by
+// writing ASCII bytes to the DragonFly 65 CHAR_OUT register at $F000.
+boot()
+
+pub func boot()
+    unsafe(true)
+    asm {
+        sep #$20
+        .a8
+        lda #72
+        sta $F000
+        lda #101
+        sta $F000
+        lda #108
+        sta $F000
+        lda #108
+        sta $F000
+        lda #111
+        sta $F000
+        lda #44
+        sta $F000
+        lda #32
+        sta $F000
+        lda #76
+        sta $F000
+        lda #111
+        sta $F000
+        lda #118
+        sta $F000
+        lda #101
+        sta $F000
+        lda #108
+        sta $F000
+        lda #97
+        sta $F000
+        lda #99
+        sta $F000
+        lda #101
+        sta $F000
+        lda #33
+        sta $F000
+        lda #13
+        sta $F000
+        lda #10
+        sta $F000
+    }
+end
