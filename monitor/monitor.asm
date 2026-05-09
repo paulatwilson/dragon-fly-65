@@ -26,6 +26,8 @@
 ;   SAAAADD...     Set memory  — store bytes DD… at address AAAA
 ;   GAAAA          Go          — JSR to address AAAA; program returns with RTS
 ;   R              Registers   — show registers saved from last G execution
+;   AAAAA          Assemble    — enter assembly mode at address AAAA
+;   DAAAA          Disassemble — show 8 instructions starting at address AAAA
 ;
 ; CPU conventions used in this monitor
 ; -------------------------------------
@@ -38,6 +40,9 @@
 ;   $00–$01  ZP_PTR   16-bit pointer used by PRINT_ZP
 ;   $02–$03  ZP_ADDR  16-bit working address (PARSE_HEX4 target, dump address)
 ;   $04      ZP_TMP   temporary byte
+;   $05      ZP_TMP2  temporary byte
+;   $06–$07  ZP_OPER  parsed operand word for assembly mode
+;   $08      ZP_ERR   non-zero when assembly parsing fails
 ;
 ; Register save area (written by DO_GO_RETURNED)
 ;   $0250    A_SAVE    A register from last G return
@@ -65,6 +70,9 @@ CHAR_STS    .equ $F002
 ZP_PTR      .equ $00
 ZP_ADDR     .equ $02
 ZP_TMP      .equ $04
+ZP_TMP2     .equ $05
+ZP_OPER     .equ $06
+ZP_ERR      .equ $08
 
 ; ---------------------------------------------------------------------------
 ; RAM buffers
@@ -142,8 +150,16 @@ DISPATCH_NOT_S:
     jmp     DO_GO
 DISPATCH_NOT_G:
     cmp     #'R'
-    bne     DISPATCH_UNKNOWN
+    bne     DISPATCH_NOT_R
     jmp     DO_REGS
+DISPATCH_NOT_R:
+    cmp     #'A'
+    bne     DISPATCH_NOT_A
+    jmp     DO_ASSEMBLE
+DISPATCH_NOT_A:
+    cmp     #'D'
+    bne     DISPATCH_UNKNOWN
+    jmp     DO_DISASSEMBLE
 DISPATCH_UNKNOWN:
     ldx     #STR_UNKNOWN
     stx     ZP_PTR
@@ -365,6 +381,196 @@ DO_REGS_SHOW:
     jsr     CRLF
     jmp     MAIN_LOOP
 
+; ---------------------------------------------------------------------------
+; AAAAA — Assemble source lines into memory starting at address AAAA.
+;
+; This is a monitor-resident mini assembler. It intentionally supports only a
+; small first subset:
+;   lda #imm8
+;   sta abs
+;   rts
+;   nop
+;   sep #imm8
+;   rep #imm8
+;   jsr abs
+;   jmp abs
+;
+; On entry: X = INBUF+1 (parse pointer)
+; ---------------------------------------------------------------------------
+DO_ASSEMBLE:
+    jsr     PARSE_HEX4          ; ZP_ADDR ← current assembly address
+
+ASM_LOOP:
+    jsr     CRLF
+    rep     #$20
+    .a16
+    ldx     ZP_ADDR
+    sep     #$20
+    .a8
+    jsr     PUT_HEX4_X
+    lda     #'>'
+    sta     CHAR_OUT
+    lda     #' '
+    sta     CHAR_OUT
+
+    jsr     READLINE
+    lda     INBUF_LEN
+    beq     ASM_LOOP
+
+    ldx     #INBUF
+    jsr     ASM_LINE_IS_END
+    cmp     #1
+    beq     ASM_DONE
+
+    ldx     #INBUF
+    jsr     ASM_PARSE_LINE
+    lda     ZP_ERR
+    beq     ASM_LOOP
+
+    ldx     #STR_UNKNOWN
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     ASM_LOOP
+
+ASM_DONE:
+    ldx     #STR_OK
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     MAIN_LOOP
+
+; ---------------------------------------------------------------------------
+; DAAAA — Disassemble 8 instructions starting at address AAAA.
+;
+; This is the matching mini disassembler for the monitor assembler subset.
+; Keep it in lockstep with assembly mode as new native assembler opcodes are
+; added.
+;
+; On entry: X = INBUF+1 (parse pointer)
+; ---------------------------------------------------------------------------
+DO_DISASSEMBLE:
+    jsr     PARSE_HEX4          ; ZP_ADDR ← current disassembly address
+    lda     #8
+    sta     ZP_ERR
+
+DISASM_LOOP:
+    jsr     CRLF
+    rep     #$20
+    .a16
+    ldx     ZP_ADDR
+    sep     #$20
+    .a8
+    jsr     PUT_HEX4_X
+    lda     #' '
+    sta     CHAR_OUT
+
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+
+    lda     ZP_OPER
+    cmp     #$A9
+    beq     DISASM_LDA_IMM
+    cmp     #$8D
+    beq     DISASM_STA_ABS
+    cmp     #$60
+    bne     DISASM_NOT_RTS
+    jmp     DISASM_RTS
+DISASM_NOT_RTS:
+    cmp     #$EA
+    bne     DISASM_NOT_NOP
+    jmp     DISASM_NOP
+DISASM_NOT_NOP:
+    cmp     #$E2
+    beq     DISASM_SEP_IMM
+    cmp     #$C2
+    beq     DISASM_REP_IMM
+    cmp     #$20
+    beq     DISASM_JSR_ABS
+    cmp     #$4C
+    beq     DISASM_JMP_ABS
+    jmp     DISASM_UNKNOWN
+
+DISASM_LDA_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_LDA
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_SEP_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_SEP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_REP_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_REP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_STA_ABS:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_STA
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_JSR_ABS:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_JSR
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_JMP_ABS:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_JMP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_RTS:
+    ldx     #STR_D_RTS
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
+DISASM_NOP:
+    ldx     #STR_D_NOP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
+DISASM_UNKNOWN:
+    ldx     #STR_D_DB
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+
+DISASM_NEXT:
+    dec     ZP_ERR
+    beq     DISASM_DONE
+    jmp     DISASM_LOOP
+
+DISASM_DONE:
+    jsr     CRLF
+    jmp     MAIN_LOOP
+
 ; =============================================================================
 ; Subroutines
 ; =============================================================================
@@ -491,6 +697,356 @@ PUT_HEX4_X:
     rts
 
 ; ---------------------------------------------------------------------------
+; Assembly-mode helpers
+; ---------------------------------------------------------------------------
+
+ASM_PARSE_LINE:
+    sep     #$20
+    .a8
+    lda     #0
+    sta     ZP_ERR
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_READ_UPPER
+    cmp     #'L'
+    beq     ASM_PARSE_L
+    cmp     #'S'
+    beq     ASM_PARSE_S
+    cmp     #'R'
+    bne     ASM_PARSE_LINE_NOT_R
+    jmp     ASM_PARSE_R
+ASM_PARSE_LINE_NOT_R:
+    cmp     #'N'
+    bne     ASM_PARSE_LINE_NOT_N
+    jmp     ASM_PARSE_N
+ASM_PARSE_LINE_NOT_N:
+    cmp     #'J'
+    bne     ASM_PARSE_LINE_NOT_J
+    jmp     ASM_PARSE_J
+ASM_PARSE_LINE_NOT_J:
+    jmp     ASM_FAIL
+
+ASM_PARSE_L:
+    jsr     ASM_READ_UPPER
+    cmp     #'D'
+    beq     ASM_PARSE_L_GOT_D
+    jmp     ASM_FAIL
+ASM_PARSE_L_GOT_D:
+    jsr     ASM_READ_UPPER
+    cmp     #'A'
+    beq     ASM_PARSE_L_GOT_A
+    jmp     ASM_FAIL
+ASM_PARSE_L_GOT_A:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_L_OK
+    rts
+ASM_PARSE_L_OK:
+    lda     #$A9                ; LDA #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_S:
+    jsr     ASM_READ_UPPER
+    cmp     #'T'
+    beq     ASM_PARSE_STA
+    cmp     #'E'
+    beq     ASM_PARSE_SEP
+    jmp     ASM_FAIL
+
+ASM_PARSE_STA:
+    jsr     ASM_READ_UPPER
+    cmp     #'A'
+    beq     ASM_PARSE_STA_GOT_A
+    jmp     ASM_FAIL
+ASM_PARSE_STA_GOT_A:
+    jsr     ASM_PARSE_ABS_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_STA_OK
+    rts
+ASM_PARSE_STA_OK:
+    lda     #$8D                ; STA abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+
+ASM_PARSE_SEP:
+    jsr     ASM_READ_UPPER
+    cmp     #'P'
+    beq     ASM_PARSE_SEP_GOT_P
+    jmp     ASM_FAIL
+ASM_PARSE_SEP_GOT_P:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_SEP_OK
+    rts
+ASM_PARSE_SEP_OK:
+    lda     #$E2                ; SEP #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_R:
+    jsr     ASM_READ_UPPER
+    cmp     #'T'
+    bne     ASM_PARSE_REP
+    jsr     ASM_READ_UPPER
+    cmp     #'S'
+    bne     ASM_FAIL
+    lda     #$60                ; RTS
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_REP:
+    cmp     #'E'
+    bne     ASM_FAIL
+    jsr     ASM_READ_UPPER
+    cmp     #'P'
+    bne     ASM_FAIL
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    bne     ASM_PARSE_DONE
+    lda     #$C2                ; REP #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_N:
+    jsr     ASM_READ_UPPER
+    cmp     #'O'
+    bne     ASM_FAIL
+    jsr     ASM_READ_UPPER
+    cmp     #'P'
+    bne     ASM_FAIL
+    lda     #$EA                ; NOP
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_PARSE_J:
+    jsr     ASM_READ_UPPER
+    cmp     #'S'
+    beq     ASM_PARSE_JSR
+    cmp     #'M'
+    beq     ASM_PARSE_JMP
+    jmp     ASM_FAIL
+
+ASM_PARSE_JSR:
+    jsr     ASM_READ_UPPER
+    cmp     #'R'
+    bne     ASM_FAIL
+    jsr     ASM_PARSE_ABS_OPER
+    lda     ZP_ERR
+    bne     ASM_PARSE_DONE
+    lda     #$20                ; JSR abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+
+ASM_PARSE_JMP:
+    jsr     ASM_READ_UPPER
+    cmp     #'P'
+    bne     ASM_FAIL
+    jsr     ASM_PARSE_ABS_OPER
+    lda     ZP_ERR
+    bne     ASM_PARSE_DONE
+    lda     #$4C                ; JMP abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+
+ASM_FAIL:
+    lda     #1
+    sta     ZP_ERR
+ASM_PARSE_DONE:
+    rts
+
+ASM_LINE_IS_END:
+    sep     #$20
+    .a8
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_READ_UPPER
+    cmp     #'E'
+    bne     ASM_NOT_END
+    jsr     ASM_READ_UPPER
+    cmp     #'N'
+    bne     ASM_NOT_END
+    jsr     ASM_READ_UPPER
+    cmp     #'D'
+    bne     ASM_NOT_END
+    lda     #1
+    rts
+ASM_NOT_END:
+    lda     #0
+    rts
+
+ASM_SKIP_SPACES:
+    lda     $0000,x
+    cmp     #' '
+    bne     ASM_SKIP_DONE
+    inx
+    bra     ASM_SKIP_SPACES
+ASM_SKIP_DONE:
+    rts
+
+ASM_READ_UPPER:
+    lda     $0000,x
+    inx
+    cmp     #'a'
+    bcc     ASM_READ_UPPER_DONE
+    and     #$DF
+ASM_READ_UPPER_DONE:
+    rts
+
+ASM_PARSE_HASH_VALUE8:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'#'
+    beq     ASM_HASH_OK
+    jmp     ASM_FAIL
+ASM_HASH_OK:
+    inx
+    jsr     ASM_PARSE_VALUE8
+    rts
+
+ASM_PARSE_VALUE8:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'$'
+    beq     ASM_PARSE_HEX8
+    cmp     #$27                ; single quote
+    beq     ASM_PARSE_CHAR8
+    jmp     ASM_PARSE_DEC8
+
+ASM_PARSE_HEX8:
+    inx
+    jsr     PARSE_HEX2
+    rts
+
+ASM_PARSE_CHAR8:
+    inx
+    lda     $0000,x
+    pha
+    inx
+    lda     $0000,x
+    cmp     #$27
+    beq     ASM_CHAR_CLOSE
+    lda     #1
+    sta     ZP_ERR
+ASM_CHAR_CLOSE:
+    inx
+    pla
+    rts
+
+ASM_PARSE_DEC8:
+    lda     $0000,x
+    cmp     #'0'
+    bcc     ASM_PARSE_DEC8_FAIL
+    cmp     #'9'+1
+    bcs     ASM_PARSE_DEC8_FAIL
+    sec
+    sbc     #'0'
+    sta     ZP_OPER             ; first digit
+    inx
+
+    lda     $0000,x
+    cmp     #'0'
+    bcc     ASM_PARSE_DEC8_ONE
+    cmp     #'9'+1
+    bcs     ASM_PARSE_DEC8_ONE
+    sec
+    sbc     #'0'
+    sta     ZP_TMP2             ; second digit
+    lda     ZP_OPER
+    tay
+    lda     DEC_TENS,y
+    clc
+    inx
+    adc     ZP_TMP2
+    rts
+
+ASM_PARSE_DEC8_ONE:
+    lda     ZP_OPER
+    rts
+
+ASM_PARSE_DEC8_FAIL:
+    lda     #1
+    sta     ZP_ERR
+    lda     #0
+    rts
+
+ASM_PARSE_ABS_OPER:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'$'
+    beq     ASM_PARSE_ABS_HEX
+    jmp     ASM_FAIL
+ASM_PARSE_ABS_HEX:
+    inx
+    jsr     PARSE_HEX2
+    sta     ZP_OPER+1
+    jsr     PARSE_HEX2
+    sta     ZP_OPER
+    rts
+
+ASM_EMIT_OPER_WORD:
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER+1
+    jsr     ASM_EMIT_A
+    rts
+
+ASM_EMIT_A:
+    sep     #$20
+    .a8
+    ldy     #0
+    sta     (ZP_ADDR),y
+    inc     ZP_ADDR
+    bne     ASM_EMIT_DONE
+    inc     ZP_ADDR+1
+ASM_EMIT_DONE:
+    rts
+
+; ---------------------------------------------------------------------------
+; Disassembly-mode helpers
+; ---------------------------------------------------------------------------
+
+DISASM_FETCH_PRINT:
+    sep     #$20
+    .a8
+    ldy     #0
+    lda     (ZP_ADDR),y
+    pha
+    jsr     PUT_HEX2
+    lda     #' '
+    sta     CHAR_OUT
+    inc     ZP_ADDR
+    bne     DISASM_FETCH_DONE
+    inc     ZP_ADDR+1
+DISASM_FETCH_DONE:
+    pla
+    rts
+
+DISASM_FETCH_ABS:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER+1
+    rts
+
+DISASM_PRINT_OPER:
+    lda     ZP_OPER+1
+    jsr     PUT_HEX2
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    rts
+
+; ---------------------------------------------------------------------------
 ; PARSE_HEX4 — Parse 4 hex chars from INBUF[X..X+3].
 ; Result stored in ZP_ADDR ($02–$03).  X advanced by 4.
 ; ---------------------------------------------------------------------------
@@ -564,6 +1120,10 @@ STR_HELP:
     .ascii "GAAAA       run at AAAA (program returns with RTS)"
     .byte $0D,$0A
     .ascii "R           show registers from last G"
+    .byte $0D,$0A
+    .ascii "AAAAA       assemble at AAAA, end to finish"
+    .byte $0D,$0A
+    .ascii "DAAAA       disassemble 8 instructions at AAAA"
     .byte $0D,$0A,0
 
 STR_UNKNOWN:
@@ -602,6 +1162,44 @@ STR_REG_P:
     .ascii "  P="
     .byte 0
 
+DEC_TENS:
+    .byte 0,10,20,30,40,50,60,70,80,90
+
+STR_D_LDA:
+    .ascii "LDA #$"
+    .byte 0
+
+STR_D_STA:
+    .ascii "STA $"
+    .byte 0
+
+STR_D_RTS:
+    .ascii "RTS"
+    .byte 0
+
+STR_D_NOP:
+    .ascii "NOP"
+    .byte 0
+
+STR_D_SEP:
+    .ascii "SEP #$"
+    .byte 0
+
+STR_D_REP:
+    .ascii "REP #$"
+    .byte 0
+
+STR_D_JSR:
+    .ascii "JSR $"
+    .byte 0
+
+STR_D_JMP:
+    .ascii "JMP $"
+    .byte 0
+
+STR_D_DB:
+    .ascii "DB $"
+    .byte 0
 
 ; =============================================================================
 ; Unused-interrupt handler (RTI back to caller)

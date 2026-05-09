@@ -47,16 +47,20 @@ Work through this checklist in order unless the user explicitly redirects:
 - [x] Treat monitor as ROM in the machine workflow.
   Load monitor at the documented ROM address, use the reset vector emitted by
   the ROM, and keep user RAM separate from monitor workspace.
-- [ ] Add monitor assembly mode.
+- [x] Add monitor assembly mode.
   Add a monitor command that accepts assembly source through the monitor prompt.
   This must be implemented as a monitor-resident mini assembler in W65C832
   assembly, not by calling the TypeScript host assembler or side-loading bytes.
   Start with the smallest subset needed for Hello World, write bytes into RAM,
   and then run the program with `G`.
-- [ ] Grow the native assembler.
-  After monitor assembly mode works, expand the W65C832 assembly implementation
-  toward the TypeScript assembler's instruction/directive coverage in small,
-  tested chunks.
+- [x] Add monitor disassembly mode.
+  Add a `D` command that disassembles the same opcode subset supported by the
+  monitor assembler.
+- [ ] Grow the native assembler and disassembler together.
+  After monitor assembly/disassembly mode works, expand both W65C832 assembly
+  implementations toward the TypeScript assembler's instruction/directive
+  coverage in small, tested chunks. Do not add assembler support for an opcode
+  without adding matching disassembler support in the same change.
 - [ ] Add optional run-on-boot support.
   Support a development shortcut such as `--go <addr>` while keeping normal boot
   behavior monitor-first.
@@ -100,6 +104,8 @@ Current monitor commands:
 - `S`: set memory bytes
 - `G`: run code at an address using `JSR`
 - `R`: show registers saved after the last returned `G`
+- `A`: assemble source into RAM
+- `D`: disassemble RAM
 
 The monitor ABI is documented in `docs/monitor.md`. Programs launched with `G`
 should currently return with `RTS`. Terminal output is produced by writing bytes

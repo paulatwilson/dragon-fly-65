@@ -16,7 +16,8 @@ CPU emulator
   -> bootable computer
   -> documented monitor
   -> monitor-resident mini assembler
-  -> native assembler growth
+  -> monitor-resident mini disassembler
+  -> native assembler/disassembler growth
   -> assembly examples
   -> higher-level languages
 ```
@@ -33,7 +34,8 @@ Assembler CLI / REPL              done
 Monitor assembly source           done
 Monitor can run in emulator       done, but not yet a complete computer workflow
 Bootable DragonFly computer       started: `bun run computer` boots monitor ROM
-Monitor-resident mini assembler   not done
+Monitor-resident mini assembler   started: `A` command handles a small subset
+Monitor-resident mini disassembler started: `D` matches the `A` subset
 Native W65C832 assembler          not done
 Documented monitor                done for current monitor ABI
 Assembly examples                 not done
@@ -53,8 +55,9 @@ Definition of done:
 - User RAM is separate from monitor workspace and ROM.
 - `docs/monitor.md` documents commands, memory map, and ABI.
 - The monitor can accept assembly source through its own command interface,
-  assemble it inside the running machine using W65C832 code, and write bytes
-  into RAM.
+  assemble a small instruction subset inside the running machine using W65C832
+  code, and write bytes into RAM.
+- The monitor can disassemble the same instruction subset from RAM.
 - At least one assembly "Hello World" can be entered through monitor assembly
   mode, run with `G0300`, and observed through monitor output.
 - Smoke tests cover booting the monitor, entering assembly through the monitor,
@@ -76,12 +79,17 @@ Chunk 2: Finish monitor documentation
   docs/monitor.md
   commands, memory map, boot behavior, ABI.
 
-Chunk 3: Add monitor assembly mode
+Chunk 3: Add monitor assembly mode [done for first subset]
   Add an A command or equivalent.
   Accept assembly text through the monitor interface.
   Assemble into RAM from an address chosen inside the monitor session.
   Implement this as a small W65C832 assembly mini assembler, not as a host
   TypeScript assembler call.
+
+Chunk 3A: Add monitor disassembly mode [done for first subset]
+  Add a D command or equivalent.
+  Disassemble the same opcode subset supported by A.
+  Keep A and D in lockstep as native assembler coverage grows.
 
 Chunk 4: Add assembly examples
   examples/asm/hello.asm
@@ -176,7 +184,12 @@ Initial parser scope:
 - no forward references,
 - no directives except an explicit end marker for assembly mode.
 
-After this works, grow toward a real native assembler in small chunks:
+The monitor also has a matching `D` command that disassembles the same subset
+from RAM. As this grows, assembler and disassembler support must stay in
+lockstep.
+
+After this works, grow toward real native assembler/disassembler coverage in
+small chunks:
 
 - labels,
 - relative branches,

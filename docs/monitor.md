@@ -37,10 +37,12 @@ Implemented:
 - Run a subroutine at a supplied address.
 - Return to the monitor with `RTS`.
 - Display registers saved after a `G` command.
+- Assemble a small instruction subset into RAM with the `A` command.
+- Disassemble the same small instruction subset from RAM with the `D` command.
 
 Missing:
 
-- Monitor assembly mode implemented as a W65C832 assembly mini assembler.
+- Labels, branches, directives, and wider opcode coverage in assembly mode.
 - Stable examples for loading and running assembly programs.
 - A documented monitor ABI for compiled languages such as Lovelace.
 
@@ -177,6 +179,8 @@ MAAAA       memory dump (16 bytes at AAAA)
 SAAAADD..   set bytes at AAAA
 GAAAA       run at AAAA (program returns with RTS)
 R           show registers from last G
+AAAAA       assemble at AAAA, end to finish
+DAAAA       disassemble 8 instructions at AAAA
 ```
 
 ### `M` — Memory dump
@@ -296,13 +300,22 @@ Bit 1  Z  Zero
 Bit 0  C  Carry
 ```
 
-## Planned Assembly Mode
+### `A` — Assemble
 
-The monitor should gain an `A` command for in-monitor assembly. This is not a
-host-side convenience and must not call the TypeScript assembler. The assembler
-for this mode should be written in W65C832 assembly and live in the monitor ROM.
+Enter monitor assembly mode at a 16-bit address. This is implemented inside the
+monitor ROM as a W65C832 assembly mini assembler. It does not call the
+TypeScript host assembler.
 
-Target workflow:
+Format:
+
+```text
+AAAAA
+```
+
+Where the first `A` is the command and the remaining four hex digits are the
+assembly address.
+
+Example:
 
 ```text
 * A0300
@@ -319,7 +332,7 @@ Returned
 *
 ```
 
-Initial semantics:
+Semantics:
 
 - `A` followed by a four-digit address starts assembly mode at that address.
 - The prompt displays the current assembly address.
@@ -328,7 +341,7 @@ Initial semantics:
 - `end` exits assembly mode and returns to the normal monitor prompt.
 - Invalid source should print an error and keep the current address unchanged.
 
-Initial instruction subset:
+Current instruction subset:
 
 ```text
 lda #imm8
@@ -337,16 +350,11 @@ rts
 nop
 sep #imm8
 rep #imm8
-```
-
-Optional after the first working path:
-
-```text
 jsr abs
 jmp abs
 ```
 
-Initial parser limits:
+Current parser limits:
 
 - no labels,
 - no branches,
@@ -354,13 +362,54 @@ Initial parser limits:
 - no expressions beyond literal values,
 - case-insensitive mnemonics,
 - hex immediates such as `$41`,
-- decimal immediates such as `65`,
+- one- or two-digit decimal immediates such as `65`,
 - character literals such as `'A'`,
 - absolute addresses such as `$F000`.
 
 The full TypeScript assembler remains useful as a cross-assembler for ROM
 builds and tests. It should not be treated as the implementation for monitor
 assembly mode.
+
+### `D` — Disassemble
+
+Disassemble eight instructions starting at a 16-bit address. `D` intentionally
+matches the current `A` command subset. When native assembler support grows, the
+disassembler must be updated in the same change.
+
+Format:
+
+```text
+DAAAA
+```
+
+Example after assembling the `HI` program above:
+
+```text
+* D0300
+0300 A9 48 LDA #$48
+0302 8D 00 F0 STA $F000
+0305 A9 49 LDA #$49
+0307 8D 00 F0 STA $F000
+030A 60 RTS
+030B 00 DB $00
+030C 00 DB $00
+030D 00 DB $00
+```
+
+Current disassembly subset:
+
+```text
+lda #imm8
+sta abs
+rts
+nop
+sep #imm8
+rep #imm8
+jsr abs
+jmp abs
+```
+
+Unknown opcodes are shown as `DB $xx`.
 
 ## Minimal Assembly Program
 
@@ -395,9 +444,8 @@ Build as a binary using the assembler:
 bun run asm examples/asm/hello.asm -o /tmp/hello.bin
 ```
 
-Current manual monitor loading uses the `S` command with hex bytes. The next
-milestone is monitor assembly mode, where source is entered through the monitor
-and assembled into RAM by the running machine.
+Manual monitor loading can still use the `S` command with hex bytes. Normal
+monitor development should use `A` assembly mode for small programs.
 
 ## Monitor ABI
 
@@ -436,7 +484,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| No assembly mode | Programs must currently be entered manually with `S` as hex bytes. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

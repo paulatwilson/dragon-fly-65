@@ -33,8 +33,8 @@ function runWithInput(machine: Machine, input: string, maxSteps = 5_000_000): st
     let inputFed = false;
 
     while (steps < maxSteps) {
-      // Feed one input byte every ~200 steps so the monitor has time to process
-      if (!inputFed && byteIdx < bytes.length && steps % 200 === 0) {
+      // Feed input gradually so the monitor has time to poll CHAR_STS.
+      if (!inputFed && byteIdx < bytes.length && steps % 50 === 0) {
         machine.pushInput(bytes[byteIdx++]!);
         if (byteIdx >= bytes.length) inputFed = true;
       }
@@ -49,8 +49,8 @@ function runWithInput(machine: Machine, input: string, maxSteps = 5_000_000): st
         if (lastLen > 0) lastOutputStep = steps;
       }
 
-      // Once all input is fed, stop after 50 000 quiet steps
-      if (inputFed && steps - lastOutputStep > 50_000) break;
+      // Once all input is fed, stop after a quiet period.
+      if (inputFed && steps - lastOutputStep > 10_000) break;
     }
   } finally {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,7 +73,7 @@ describe("monitor", () => {
     // Run long enough to see the banner, then H to get to a stable state
     const output = runWithInput(machine, "H\r");
     expect(output).toContain("DragonFly 65 Monitor");
-  });
+  }, 10_000);
 
   test("H command shows help text", () => {
     const machine = buildMonitor();
@@ -81,7 +81,8 @@ describe("monitor", () => {
     expect(output).toContain("MAAAA");
     expect(output).toContain("GAAAA");
     expect(output).toContain("SAAAADD");
-  });
+    expect(output).toContain("DAAAA");
+  }, 10_000);
 
   test("unknown command shows error", () => {
     const machine = buildMonitor();
@@ -143,4 +144,61 @@ describe("monitor", () => {
     expect(output).toContain("Y=");
     expect(output).toContain("P=");
   });
+
+  test("A command assembles and runs a small program", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      "A0300\rlda #'H'\rsta $F000\rlda #'I'\rsta $F000\rrts\rend\rG0300\r",
+    );
+
+    expect(machine.mem.readByte(0x0300)).toBe(0xa9);
+    expect(machine.mem.readByte(0x0301)).toBe("H".charCodeAt(0));
+    expect(machine.mem.readByte(0x0302)).toBe(0x8d);
+    expect(machine.mem.readByte(0x0303)).toBe(0x00);
+    expect(machine.mem.readByte(0x0304)).toBe(0xf0);
+    expect(output).toContain("HI");
+    expect(output).toContain("Returned");
+  });
+
+  test("A command supports hex and decimal immediates", () => {
+    const machine = buildMonitor();
+
+    runWithInput(machine, "A0310\rsep #$20\rrep #48\rnop\rend\r");
+
+    expect(machine.mem.readByte(0x0310)).toBe(0xe2);
+    expect(machine.mem.readByte(0x0311)).toBe(0x20);
+    expect(machine.mem.readByte(0x0312)).toBe(0xc2);
+    expect(machine.mem.readByte(0x0313)).toBe(48);
+    expect(machine.mem.readByte(0x0314)).toBe(0xea);
+  });
+
+  test("D command disassembles the native assembler subset", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0320",
+        "lda #'A'",
+        "sta $F000",
+        "sep #$20",
+        "rep #48",
+        "nop",
+        "jsr $0330",
+        "jmp $0340",
+        "rts",
+        "end",
+        "D0320",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("0320 A9 41 LDA #$41");
+    expect(output).toContain("0322 8D 00 F0 STA $F000");
+    expect(output).toContain("0325 E2 20 SEP #$20");
+    expect(output).toContain("0327 C2 30 REP #$30");
+    expect(output).toContain("0329 EA NOP");
+    expect(output).toContain("032A 20 30 03 JSR $0330");
+    expect(output).toContain("032D 4C 40 03 JMP $0340");
+    expect(output).toContain("0330 60 RTS");
+  }, 10_000);
 });
