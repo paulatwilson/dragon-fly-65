@@ -350,6 +350,13 @@ ora #imm8
 eor #imm8
 adc #imm8
 sbc #imm8
+lda abs
+cmp abs
+and abs
+ora abs
+eor abs
+adc abs
+sbc abs
 sta abs
 rts
 nop
@@ -411,6 +418,13 @@ ora #imm8
 eor #imm8
 adc #imm8
 sbc #imm8
+lda abs
+cmp abs
+and abs
+ora abs
+eor abs
+adc abs
+sbc abs
 sta abs
 rts
 nop
@@ -535,7 +549,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate and absolute ops (`lda abs`, `cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

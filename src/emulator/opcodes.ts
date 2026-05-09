@@ -419,6 +419,14 @@ export const OPCODES = new Map<number, OpcodeDefinition>(
     direct(0xe4, "CPX", 3, (cpu, context) => cpu.completeCompareXDirect(context)),
     direct(0xe5, "SBC", 3, (cpu, context) => cpu.completeSubtractWithCarryDirect(context)),
 
+    // --- ALU absolute modes --------------------------------------------------
+    absolute(0x0d, "ORA", 4, (cpu, context) => cpu.completeOrAbsolute(context)),
+    absolute(0x2d, "AND", 4, (cpu, context) => cpu.completeAndAbsolute(context)),
+    absolute(0x4d, "EOR", 4, (cpu, context) => cpu.completeExclusiveOrAbsolute(context)),
+    absolute(0x6d, "ADC", 4, (cpu, context) => cpu.completeAddWithCarryAbsolute(context)),
+    absolute(0xcd, "CMP", 4, (cpu, context) => cpu.completeCompareAccumulatorAbsolute(context)),
+    absolute(0xed, "SBC", 4, (cpu, context) => cpu.completeSubtractWithCarryAbsolute(context)),
+
     // --- LDX/STX direct indexed Y --------------------------------------------
     directIndexedY(0x96, "STX", 4, (cpu, context) => cpu.completeStoreXDirectIndexedY(context)),
     directIndexedY(0xb6, "LDX", 4, (cpu, context) => cpu.completeLoadXDirectIndexedY(context)),

@@ -270,4 +270,73 @@ describe("monitor", () => {
     expect(output).toContain("Returned");
     expect(output).toContain("A=43");
   }, 10_000);
+
+  test("A and D support accumulator absolute operations", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0440",
+        "lda $0500",
+        "cmp $0501",
+        "and $0502",
+        "ora $0503",
+        "eor $0504",
+        "adc $0505",
+        "sbc $0506",
+        "rts",
+        "end",
+        "D0440",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0440)).toBe(0xad);
+    expect(machine.mem.readByte(0x0441)).toBe(0x00);
+    expect(machine.mem.readByte(0x0442)).toBe(0x05);
+    expect(machine.mem.readByte(0x0443)).toBe(0xcd);
+    expect(machine.mem.readByte(0x0446)).toBe(0x2d);
+    expect(machine.mem.readByte(0x0449)).toBe(0x0d);
+    expect(machine.mem.readByte(0x044c)).toBe(0x4d);
+    expect(machine.mem.readByte(0x044f)).toBe(0x6d);
+    expect(machine.mem.readByte(0x0452)).toBe(0xed);
+    expect(output).toContain("0440 AD 00 05 LDA $0500");
+    expect(output).toContain("0443 CD 01 05 CMP $0501");
+    expect(output).toContain("0446 2D 02 05 AND $0502");
+    expect(output).toContain("0449 0D 03 05 ORA $0503");
+    expect(output).toContain("044C 4D 04 05 EOR $0504");
+    expect(output).toContain("044F 6D 05 05 ADC $0505");
+    expect(output).toContain("0452 ED 06 05 SBC $0506");
+    expect(output).toContain("0455 60 RTS");
+  }, 10_000);
+
+  test("new accumulator absolute operations run in monitor programs", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "S0500F10F400041004603",
+        "A0460",
+        "lda $0500",
+        "and $0501",
+        "ora $0502",
+        "eor $0503",
+        "sta $F000",
+        "cmp $0504",
+        "adc $0505",
+        "sta $F000",
+        "lda $0506",
+        "cmp $0506",
+        "sbc $0507",
+        "sta $F000",
+        "rts",
+        "end",
+        "G0460",
+        "R",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("ABC");
+    expect(output).toContain("Returned");
+    expect(output).toContain("A=43");
+  }, 10_000);
 });

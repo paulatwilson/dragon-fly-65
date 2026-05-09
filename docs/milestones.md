@@ -213,7 +213,7 @@ Chunk N1: Accumulator immediate operations [done]
   Test parsing for hex, decimal, and character immediates where useful.
   Test disassembly renders the same mnemonic and immediate value.
 
-Chunk N2: Accumulator absolute operations
+Chunk N2: Accumulator absolute operations [done]
   Add lda abs, cmp abs, and abs, ora abs, eor abs, adc abs, sbc abs.
   Keep syntax to 16-bit absolute addresses first.
   Test against RAM locations written through S or earlier assembled code.

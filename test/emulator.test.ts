@@ -206,7 +206,7 @@ test("CPU immediate fetch helpers follow active accumulator and index widths", (
 });
 
 test("opcode metadata describes implemented implied instructions", () => {
-  expect(OPCODES.size).toBe(133);
+  expect(OPCODES.size).toBe(139);
   expect(getOpcodeDefinition(0xa9)).toMatchObject({
     opcode: 0xa9,
     mnemonic: "LDA",
@@ -2854,6 +2854,39 @@ test("CMP direct compares accumulator with memory", () => {
 
   expect(Number(cpu.readRegister("p")) & StatusFlag.Zero).toBe(StatusFlag.Zero);
   expect(Number(cpu.readRegister("p")) & StatusFlag.Carry).toBe(StatusFlag.Carry);
+});
+
+// --- ALU absolute -----------------------------------------------------------
+
+test("accumulator absolute ALU operations read memory operands", () => {
+  const ram = createRam(1024);
+  const cpu = createCpu({ memory: ram });
+
+  cpu.writeRegister("p", StatusFlag.Memory | StatusFlag.Index);
+  ram.writeByte(0x0200, 0x0f);
+  ram.writeByte(0x0201, 0x40);
+  ram.writeByte(0x0202, 0x00);
+  ram.writeByte(0x0203, 0x41);
+  ram.writeByte(0x0204, 0x00);
+  ram.writeByte(0x0205, 0x42);
+  ram.writeByte(0x0206, 0x01);
+
+  const program = [
+    0xa9, 0xf1,       // LDA #$F1
+    0x2d, 0x00, 0x02, // AND $0200 -> $01
+    0x0d, 0x01, 0x02, // ORA $0201 -> $41
+    0x4d, 0x02, 0x02, // EOR $0202 -> $41
+    0xcd, 0x03, 0x02, // CMP $0203 -> carry set
+    0x6d, 0x04, 0x02, // ADC $0204 -> $42
+    0xcd, 0x05, 0x02, // CMP $0205 -> carry set
+    0xed, 0x06, 0x02, // SBC $0206 -> $41
+    0xdb,             // STP
+  ];
+  program.forEach((byte, address) => ram.writeByte(address, byte));
+
+  while (!cpu.state.stopped) cpu.step();
+
+  expect(cpu.readRegister("a")).toBe(0x41);
 });
 
 // --- LDX dp,Y and STX dp,Y --------------------------------------------------

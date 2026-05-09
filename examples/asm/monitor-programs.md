@@ -415,7 +415,100 @@ Expected:
 - Monitor prints `Returned`.
 - `R` shows `A=43`.
 
-## Program 9: Unknown Byte Disassembly
+## Program 9: Accumulator Absolute Operations
+
+Purpose:
+
+- Proves `lda abs`, `cmp abs`, `and abs`, `ora abs`, `eor abs`, `adc abs`,
+  and `sbc abs` assemble, disassemble, and run from the monitor.
+- Reads test data from RAM at `$0500`.
+- Uses `cmp` to set carry before `adc` and `sbc`, because the monitor does not
+  yet support `clc` or `sec`.
+
+Enter data:
+
+```text
+* S0500F10F400041004603
+OK
+```
+
+This writes:
+
+```text
+$0500 = F1
+$0501 = 0F
+$0502 = 40
+$0503 = 00
+$0504 = 41
+$0505 = 00
+$0506 = 46
+$0507 = 03
+```
+
+Enter:
+
+```text
+* A03A0
+03A0> lda $0500
+03A3> and $0501
+03A6> ora $0502
+03A9> eor $0503
+03AC> sta $F000
+03AF> cmp $0504
+03B2> adc $0505
+03B5> sta $F000
+03B8> lda $0506
+03BB> cmp $0506
+03BE> sbc $0507
+03C1> sta $F000
+03C4> rts
+03C5> end
+OK
+```
+
+Disassemble the first eight instructions:
+
+```text
+* D03A0
+03A0 AD 00 05 LDA $0500
+03A3 2D 01 05 AND $0501
+03A6 0D 02 05 ORA $0502
+03A9 4D 03 05 EOR $0503
+03AC 8D 00 F0 STA $F000
+03AF CD 04 05 CMP $0504
+03B2 6D 05 05 ADC $0505
+03B5 8D 00 F0 STA $F000
+```
+
+Disassemble the remaining instructions:
+
+```text
+* D03B8
+03B8 AD 06 05 LDA $0506
+03BB CD 06 05 CMP $0506
+03BE ED 07 05 SBC $0507
+03C1 8D 00 F0 STA $F000
+03C4 60 RTS
+03C5 00 DB $00
+03C6 00 DB $00
+03C7 00 DB $00
+```
+
+Run:
+
+```text
+* G03A0
+ABC
+Returned
+```
+
+Expected:
+
+- Terminal prints `ABC`.
+- Monitor prints `Returned`.
+- `R` shows `A=43`.
+
+## Program 10: Unknown Byte Disassembly
 
 Purpose:
 

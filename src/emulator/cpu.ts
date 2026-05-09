@@ -1861,6 +1861,59 @@ export class W65C832Cpu {
     };
   }
 
+  completeAddWithCarryAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const address = this.resolveAbsoluteAddress(context.operandBytes);
+    const operand = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
+    return this.completeAdderInstruction(context, operand, accumulator, 4);
+  }
+
+  completeSubtractWithCarryAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const address = this.resolveAbsoluteAddress(context.operandBytes);
+    const raw = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
+    return this.completeAdderInstruction(context, (~raw) & maskForWidth(accumulator), accumulator, 4);
+  }
+
+  completeAndAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const address = this.resolveAbsoluteAddress(context.operandBytes);
+    const operand = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
+    return this.completeBitwiseOnValue(context, operand, (a, b) => a & b, accumulator, 4 + this.accWidthPenalty());
+  }
+
+  completeOrAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const address = this.resolveAbsoluteAddress(context.operandBytes);
+    const operand = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
+    return this.completeBitwiseOnValue(context, operand, (a, b) => a | b, accumulator, 4 + this.accWidthPenalty());
+  }
+
+  completeExclusiveOrAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const address = this.resolveAbsoluteAddress(context.operandBytes);
+    const operand = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
+    return this.completeBitwiseOnValue(context, operand, (a, b) => a ^ b, accumulator, 4 + this.accWidthPenalty());
+  }
+
+  completeCompareAccumulatorAbsolute(context: InstructionContext): StepResult {
+    const { accumulator } = resolveWidthMode(this.state);
+    const address = this.resolveAbsoluteAddress(context.operandBytes);
+    const operand = maskToWidth(this.readMemoryValue(address, accumulator), accumulator);
+    const regValue = maskToWidth(this.state.a, accumulator);
+    const statusBefore = this.state.p;
+    const cycles = 4 + this.accWidthPenalty();
+    updateNegativeZeroFlags(this.state, maskToWidth(regValue - operand, accumulator), accumulator);
+    setStatusFlag(this.state, StatusFlag.Carry, regValue >= operand);
+    this.state.cycles += cycles;
+    const registerChanges: StepResult["registerChanges"] = {};
+    if (statusBefore !== this.state.p) registerChanges.p = { before: statusBefore, after: this.state.p };
+    return {
+      pcBefore: context.pcBefore, pcAfter: makeProgramAddress(this.state.prb, this.state.pc),
+      opcode: context.opcode, mnemonic: "CMP", bytes: context.bytes, cycles, stopped: false, registerChanges,
+    };
+  }
+
   completeCompareXDirect(context: InstructionContext): StepResult {
     const { index } = resolveWidthMode(this.state);
     const address = this.resolveDirectAddress(context.operandBytes);
