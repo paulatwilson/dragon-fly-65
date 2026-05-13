@@ -364,6 +364,8 @@ bcc abs
 bcs abs
 bmi abs
 bpl abs
+.byte value[,value...]
+db value[,value...]
 sta abs
 rts
 nop
@@ -379,13 +381,15 @@ Current parser limits:
 - branch targets must be written as absolute addresses such as `$0310`; the
   monitor emits the relative byte internally,
 - no branch range validation yet,
-- no directives,
+- no directives except `.byte` and `db`,
 - no expressions beyond literal values,
 - case-insensitive mnemonics,
 - hex immediates such as `$41`,
 - one- or two-digit decimal immediates such as `65`,
 - character literals such as `'A'`,
 - absolute addresses such as `$F000`.
+- `.byte` and `db` accept comma-separated hex byte, decimal byte, and character
+  literals such as `.byte $41, 66, 'C'`.
 
 The full TypeScript assembler remains useful as a cross-assembler for ROM
 builds and tests. It should not be treated as the implementation for monitor
@@ -440,6 +444,8 @@ bcc abs
 bcs abs
 bmi abs
 bpl abs
+.byte value[,value...]
+db value[,value...]
 sta abs
 rts
 nop
@@ -572,7 +578,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate and absolute ops (`lda abs`, `cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`) with absolute target syntax, `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate and absolute ops (`lda abs`, `cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`) with absolute target syntax, byte data entry (`.byte`, `db`), `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

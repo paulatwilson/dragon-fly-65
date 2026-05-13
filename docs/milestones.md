@@ -225,7 +225,7 @@ Chunk N3: Relative branches with absolute target syntax [done]
   The monitor disassembler prints resolved absolute targets, not raw offsets.
   Test forward and backward branch distances that fit in signed 8-bit range.
 
-Chunk N4: Byte data entry
+Chunk N4: Byte data entry [done]
   Add .byte or db.
   Support hex bytes, decimal bytes, and character literals.
   Test data can be inspected with M and disassembled as DB when it is not code.

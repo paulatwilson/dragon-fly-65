@@ -69,7 +69,7 @@ Work through this checklist in order unless the user explicitly redirects:
   - [x] Add branch ops with absolute target syntax: `beq addr`, `bne addr`,
     `bcc addr`, `bcs addr`, `bmi addr`, `bpl addr`. The assembler should emit
     relative offsets; the disassembler should print resolved absolute targets.
-  - [ ] Add byte data entry: `.byte` or `db` with hex, decimal, and character
+  - [x] Add byte data entry: `.byte` or `db` with hex, decimal, and character
     literals.
   - [ ] Add label support for assembly mode, starting with backward labels only.
   - [ ] Add forward labels with a small fixup table.

@@ -413,6 +413,8 @@ DO_REGS_SHOW:
 ;   bcs abs
 ;   bmi abs
 ;   bpl abs
+;   .byte value[,value...]
+;   db value[,value...]
 ;
 ; On entry: X = INBUF+1 (parse pointer)
 ; ---------------------------------------------------------------------------
@@ -978,6 +980,10 @@ ASM_PARSE_LINE:
     sta     ZP_ERR
     jsr     ASM_SKIP_SPACES
     jsr     ASM_READ_UPPER
+    cmp     #'.'
+    bne     ASM_PARSE_LINE_NOT_DOT
+    jmp     ASM_PARSE_DOT
+ASM_PARSE_LINE_NOT_DOT:
     cmp     #'A'
     bne     ASM_PARSE_LINE_NOT_A
     jmp     ASM_PARSE_A
@@ -990,6 +996,10 @@ ASM_PARSE_LINE_NOT_B:
     bne     ASM_PARSE_LINE_NOT_C
     jmp     ASM_PARSE_C
 ASM_PARSE_LINE_NOT_C:
+    cmp     #'D'
+    bne     ASM_PARSE_LINE_NOT_D
+    jmp     ASM_PARSE_D
+ASM_PARSE_LINE_NOT_D:
     cmp     #'E'
     bne     ASM_PARSE_LINE_NOT_E
     jmp     ASM_PARSE_E
@@ -1018,6 +1028,37 @@ ASM_PARSE_LINE_NOT_N:
     bne     ASM_PARSE_LINE_NOT_J
     jmp     ASM_PARSE_J
 ASM_PARSE_LINE_NOT_J:
+    jmp     ASM_FAIL
+
+ASM_PARSE_DOT:
+    jsr     ASM_READ_UPPER
+    cmp     #'B'
+    beq     ASM_PARSE_DOT_B
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_B:
+    jsr     ASM_READ_UPPER
+    cmp     #'Y'
+    beq     ASM_PARSE_DOT_BY
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_BY:
+    jsr     ASM_READ_UPPER
+    cmp     #'T'
+    beq     ASM_PARSE_DOT_BYT
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_BYT:
+    jsr     ASM_READ_UPPER
+    cmp     #'E'
+    bne     ASM_PARSE_DOT_BYT_NOT_E
+    jmp     ASM_PARSE_BYTE_LIST
+ASM_PARSE_DOT_BYT_NOT_E:
+    jmp     ASM_FAIL
+
+ASM_PARSE_D:
+    jsr     ASM_READ_UPPER
+    cmp     #'B'
+    bne     ASM_PARSE_D_NOT_B
+    jmp     ASM_PARSE_BYTE_LIST
+ASM_PARSE_D_NOT_B:
     jmp     ASM_FAIL
 
 ASM_PARSE_B:
@@ -1490,6 +1531,24 @@ ASM_SKIP_SPACES:
 ASM_SKIP_DONE:
     rts
 
+ASM_AT_EOL:
+    rep     #$20
+    .a16
+    txa
+    sec
+    sbc     #INBUF
+    sta     ZP_TMP
+    sep     #$20
+    .a8
+    lda     ZP_TMP
+    cmp     INBUF_LEN
+    bcs     ASM_AT_EOL_YES
+    lda     #0
+    rts
+ASM_AT_EOL_YES:
+    lda     #1
+    rts
+
 ASM_READ_UPPER:
     lda     $0000,x
     inx
@@ -1574,6 +1633,30 @@ ASM_PARSE_DEC8_FAIL:
     lda     #1
     sta     ZP_ERR
     lda     #0
+    rts
+
+ASM_PARSE_BYTE_LIST:
+    jsr     ASM_PARSE_VALUE8
+    pha
+    lda     ZP_ERR
+    beq     ASM_PARSE_BYTE_LIST_OK
+    pla
+    rts
+ASM_PARSE_BYTE_LIST_OK:
+    pla
+    jsr     ASM_EMIT_A
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_BYTE_LIST_DONE
+    lda     $0000,x
+    cmp     #','
+    beq     ASM_PARSE_BYTE_LIST_MORE
+    jmp     ASM_FAIL
+ASM_PARSE_BYTE_LIST_MORE:
+    inx
+    jmp     ASM_PARSE_BYTE_LIST
+ASM_PARSE_BYTE_LIST_DONE:
     rts
 
 ASM_PARSE_ABS_OPER:

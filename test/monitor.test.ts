@@ -423,4 +423,61 @@ describe("monitor", () => {
     expect(output).toContain("Returned");
     expect(output).toContain("A=52");
   }, 10_000);
+
+  test("A command supports byte data entry", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0500",
+        ".byte $41, 66, 'C'",
+        "db $00, 68",
+        "end",
+        "M0500",
+        "D0500",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0500)).toBe(0x41);
+    expect(machine.mem.readByte(0x0501)).toBe(66);
+    expect(machine.mem.readByte(0x0502)).toBe("C".charCodeAt(0));
+    expect(machine.mem.readByte(0x0503)).toBe(0x00);
+    expect(machine.mem.readByte(0x0504)).toBe(68);
+    expect(output).toContain("0500: 41 42 43 00 44");
+    expect(output).toContain("|ABC.D");
+    expect(output).toContain("0500 41 DB $41");
+    expect(output).toContain("0501 42 DB $42");
+    expect(output).toContain("0502 43 DB $43");
+    expect(output).toContain("0503 00 DB $00");
+    expect(output).toContain("0504 44 DB $44");
+  }, 10_000);
+
+  test("byte data emitted by A can be used by monitor programs", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0520",
+        ".byte 'D', $41, 84, $41",
+        "end",
+        "A0530",
+        "lda $0520",
+        "sta $F000",
+        "lda $0521",
+        "sta $F000",
+        "lda $0522",
+        "sta $F000",
+        "lda $0523",
+        "sta $F000",
+        "rts",
+        "end",
+        "G0530",
+        "R",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("DATA");
+    expect(output).toContain("Returned");
+    expect(output).toContain("A=41");
+  }, 10_000);
 });

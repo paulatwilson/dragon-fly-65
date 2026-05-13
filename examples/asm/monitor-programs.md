@@ -610,7 +610,78 @@ Expected:
 - Monitor prints `Returned`.
 - `R` shows `A=52`.
 
-## Program 11: Unknown Byte Disassembly
+## Program 11: Byte Data Entry
+
+Purpose:
+
+- Proves `.byte` and `db` emit raw data from monitor assembly mode.
+- Proves byte data accepts hex, decimal, and character literals.
+- Proves emitted data can be inspected with `M`, disassembled as `DB $xx`, and
+  used by a monitor program.
+
+Enter data:
+
+```text
+* A0500
+0500> .byte $41, 66, 'C'
+0503> db $00, 68
+0505> end
+OK
+```
+
+Inspect memory:
+
+```text
+* M0500
+0500: 41 42 43 00 44 ...
+```
+
+Disassemble:
+
+```text
+* D0500
+0500 41 DB $41
+0501 42 DB $42
+0502 43 DB $43
+0503 00 DB $00
+0504 44 DB $44
+0505 00 DB $00
+0506 00 DB $00
+0507 00 DB $00
+```
+
+Use the data from a program:
+
+```text
+* A0520
+0520> .byte 'D', $41, 84, $41
+0524> end
+OK
+* A0530
+0530> lda $0520
+0533> sta $F000
+0536> lda $0521
+0539> sta $F000
+053C> lda $0522
+053F> sta $F000
+0542> lda $0523
+0545> sta $F000
+0548> rts
+0549> end
+OK
+* G0530
+DATA
+Returned
+```
+
+Expected:
+
+- `$0500-$0504` contains `41 42 43 00 44`.
+- `D0500` shows each data byte as `DB $xx`.
+- The program at `$0530` prints `DATA`.
+- `R` shows `A=41`.
+
+## Program 12: Unknown Byte Disassembly
 
 Purpose:
 
