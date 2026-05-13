@@ -51,8 +51,7 @@ The monitor currently uses bank 0 and a 64 KiB machine profile.
 $0000-$01FF   zero page + hardware stack
 $0200-$0293   monitor work RAM
 $0300-$BFFF   user program RAM
-$C000-$DFFF   user program RAM / expansion area
-$E000-$FFFF   monitor ROM and vectors, with I/O hole at $F000-$F002
+$C000-$FFFF   monitor ROM and vectors, with I/O hole at $F000-$F002
 $F000-$F002   memory-mapped I/O
 ```
 
@@ -112,7 +111,7 @@ The current computer boot path:
 
 1. Assembles `monitor/monitor.asm`.
 2. Loads the assembled bytes as monitor ROM at the monitor origin, currently
-   `$E000`.
+   `$C000`.
 3. Uses the reset vector emitted by the monitor ROM at `$FFFC-$FFFD`.
 4. Resets the CPU.
 5. Runs instructions until stopped or interrupted.
@@ -371,6 +370,23 @@ stx dp,y
 sty dp,x
 ldx abs,y
 ldy abs,x
+tax
+tay
+txa
+tya
+tsx
+txs
+inx
+dex
+iny
+dey
+clc
+sec
+cli
+sei
+clv
+cld
+sed
 beq abs
 bne abs
 bcc abs
@@ -465,6 +481,39 @@ ora abs
 eor abs
 adc abs
 sbc abs
+ldx #imm8
+ldy #imm8
+ldx dp
+ldy dp
+stx dp
+sty dp
+ldx abs
+ldy abs
+stx abs
+sty abs
+ldx dp,y
+ldy dp,x
+stx dp,y
+sty dp,x
+ldx abs,y
+ldy abs,x
+tax
+tay
+txa
+tya
+tsx
+txs
+inx
+dex
+iny
+dey
+clc
+sec
+cli
+sei
+clv
+cld
+sed
 beq abs
 bne abs
 bcc abs

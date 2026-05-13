@@ -77,7 +77,7 @@ Work through this checklist in order unless the user explicitly redirects:
     `ldx`, `ldy`, `stx`, `sty`, direct page, and indexed addressing.
   - [x] Add native assembler/disassembler parity tests for every new group.
   Continue with the next native assembler phase in `docs/milestones.md`:
-  - [ ] Add core implied and status instructions.
+  - [x] Add core implied and status instructions.
   - [ ] Finish `sta` and `lda` direct page/indexed forms.
   - [ ] Expand ALU, compare, bit, increment/decrement, shift/rotate, branch,
     stack, jump, directive, symbol, width, long, and indirect support in small

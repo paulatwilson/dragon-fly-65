@@ -1,8 +1,8 @@
 import type { ByteMemory } from "../emulator/types";
 
 // Memory map
-// $0000–$DFFF  RAM  (programs and data)
-// $E000–$FFFF  monitor ROM, with an I/O hole at $F000-$F002
+// $0000–$BFFF  RAM  (programs and data)
+// $C000–$FFFF  monitor ROM, with an I/O hole at $F000-$F002
 // $F000        CHAR_OUT  write: send byte to terminal
 // $F001        CHAR_IN   read: next byte from terminal (0xFF if empty)
 // $F002        CHAR_STS  read: 1 if input is available, 0 otherwise
@@ -10,7 +10,7 @@ import type { ByteMemory } from "../emulator/types";
 export const CHAR_OUT = 0xf000;
 export const CHAR_IN  = 0xf001;
 export const CHAR_STS = 0xf002;
-export const MONITOR_ROM_START = 0xe000;
+export const MONITOR_ROM_START = 0xc000;
 export const MONITOR_ROM_END = 0xffff;
 
 export class MappedMemory implements ByteMemory {

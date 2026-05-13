@@ -713,6 +713,112 @@ Expected:
 - The first line is `0390 02 DB $02`.
 - This program should not be run with `G`.
 
+## Program 13: Core Implied And Status Instructions
+
+Purpose:
+
+- Proves the monitor assembler accepts the N10 implied/status instruction group.
+- Proves the disassembler renders the same N10 mnemonics.
+- Runs the safe transfer, increment/decrement, and status subset without using
+  `txs`, which changes the stack pointer.
+
+Enter:
+
+```text
+* A06C0
+06C0> sep #$10
+06C2> lda #'A'
+06C4> tax
+06C5> inx
+06C6> dex
+06C7> txa
+06C8> sta $F000
+06CB> lda #'B'
+06CD> tay
+06CE> iny
+06CF> dey
+06D0> tya
+06D1> sta $F000
+06D4> clc
+06D5> sec
+06D6> clv
+06D7> cld
+06D8> sed
+06D9> cli
+06DA> sei
+06DB> rep #$10
+06DD> rts
+06DE> end
+OK
+```
+
+Disassemble the implied/status opcode group:
+
+```text
+* A0800
+0800> tax
+0801> tay
+0802> txa
+0803> tya
+0804> tsx
+0805> txs
+0806> inx
+0807> dex
+0808> iny
+0809> dey
+080A> clc
+080B> sec
+080C> cli
+080D> sei
+080E> clv
+080F> cld
+0810> sed
+0811> end
+OK
+* D0800
+0800 AA TAX
+0801 A8 TAY
+0802 8A TXA
+0803 98 TYA
+0804 BA TSX
+0805 9A TXS
+0806 E8 INX
+0807 CA DEX
+* D0808
+0808 C8 INY
+0809 88 DEY
+080A 18 CLC
+080B 38 SEC
+080C 58 CLI
+080D 78 SEI
+080E B8 CLV
+080F D8 CLD
+* D0810
+0810 F8 SED
+0811 00 DB $00
+0812 00 DB $00
+0813 00 DB $00
+0814 00 DB $00
+0815 00 DB $00
+0816 00 DB $00
+0817 00 DB $00
+```
+
+Run:
+
+```text
+* G06C0
+AB
+Returned
+```
+
+Expected:
+
+- The program prints `AB`.
+- `D0800`, `D0808`, and `D0810` show every N10 opcode listed above.
+- `txs` should be treated as a disassembly/parity case until a program
+  intentionally manages its own stack.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

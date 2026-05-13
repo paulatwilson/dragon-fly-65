@@ -263,9 +263,11 @@ Phase 2 checklist:
 - [x] Chunk N9: Clean up the roadmap.
   Remove stale duplicate chunks, mark phase 1 accurately, and make this phase 2
   checklist explicit.
-- [ ] Chunk N10: Add core implied and status instructions.
+- [x] Chunk N10: Add core implied and status instructions.
   Add `tax`, `tay`, `txa`, `tya`, `tsx`, `txs`, `inx`, `dex`, `iny`, `dey`,
   `clc`, `sec`, `cli`, `sei`, `clv`, `cld`, and `sed`.
+  This expanded the monitor ROM window from `$E000-$FFFF` to `$C000-$FFFF`
+  because the phase 1 monitor image already filled the old 8 KiB ROM.
 - [ ] Chunk N11: Finish `sta` direct page and indexed forms.
   Add `sta dp`, `sta dp,x`, `sta abs,x`, and `sta abs,y`.
 - [ ] Chunk N12: Add `lda` direct page and indexed forms.

@@ -630,6 +630,96 @@ describe("monitor", () => {
     expect(output).toContain("Y=0042");
   }, 10_000);
 
+  test("core implied and status instructions run in monitor programs", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A06C0",
+        "sep #$10",
+        "lda #'A'",
+        "tax",
+        "inx",
+        "dex",
+        "txa",
+        "sta $F000",
+        "lda #'B'",
+        "tay",
+        "iny",
+        "dey",
+        "tya",
+        "sta $F000",
+        "clc",
+        "sec",
+        "clv",
+        "cld",
+        "sed",
+        "cli",
+        "sei",
+        "rep #$10",
+        "rts",
+        "end",
+        "G06C0",
+        "R",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("AB");
+    expect(output).toContain("Returned");
+    expect(output).toContain("A=42");
+    expect(output).toContain("X=0041");
+    expect(output).toContain("Y=0042");
+  }, 10_000);
+
+  test("A and D support core implied and status instructions", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0800",
+        "tax",
+        "tay",
+        "txa",
+        "tya",
+        "tsx",
+        "txs",
+        "inx",
+        "dex",
+        "iny",
+        "dey",
+        "clc",
+        "sec",
+        "cli",
+        "sei",
+        "clv",
+        "cld",
+        "sed",
+        "end",
+        "D0800",
+        "D0808",
+        "D0810",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("0800 AA TAX");
+    expect(output).toContain("0801 A8 TAY");
+    expect(output).toContain("0802 8A TXA");
+    expect(output).toContain("0803 98 TYA");
+    expect(output).toContain("0804 BA TSX");
+    expect(output).toContain("0805 9A TXS");
+    expect(output).toContain("0806 E8 INX");
+    expect(output).toContain("0807 CA DEX");
+    expect(output).toContain("0808 C8 INY");
+    expect(output).toContain("0809 88 DEY");
+    expect(output).toContain("080A 18 CLC");
+    expect(output).toContain("080B 38 SEC");
+    expect(output).toContain("080C 58 CLI");
+    expect(output).toContain("080D 78 SEI");
+    expect(output).toContain("080E B8 CLV");
+    expect(output).toContain("080F D8 CLD");
+    expect(output).toContain("0810 F8 SED");
+  }, 15_000);
+
   test("native assembler and disassembler parity covers completed roadmap groups", () => {
     const machine = buildMonitor();
     const output = runWithInput(
