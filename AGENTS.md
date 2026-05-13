@@ -76,6 +76,12 @@ Work through this checklist in order unless the user explicitly redirects:
   - [x] Add more load/store forms only after width rules are explicit:
     `ldx`, `ldy`, `stx`, `sty`, direct page, and indexed addressing.
   - [x] Add native assembler/disassembler parity tests for every new group.
+  Continue with the next native assembler phase in `docs/milestones.md`:
+  - [ ] Add core implied and status instructions.
+  - [ ] Finish `sta` and `lda` direct page/indexed forms.
+  - [ ] Expand ALU, compare, bit, increment/decrement, shift/rotate, branch,
+    stack, jump, directive, symbol, width, long, and indirect support in small
+    assembler/disassembler/test chunks.
 - [ ] Add optional run-on-boot support.
   Support a development shortcut such as `--go <addr>` while keeping normal boot
   behavior monitor-first.

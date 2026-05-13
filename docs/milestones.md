@@ -34,9 +34,9 @@ Assembler CLI / REPL              done
 Monitor assembly source           done
 Monitor can run in emulator       done
 Bootable DragonFly computer       started: `bun run computer` boots monitor ROM
-Monitor-resident mini assembler   started: `A` command handles a small subset
+Monitor-resident mini assembler   started: `A` command handles a growing subset
 Monitor-resident mini disassembler started: `D` matches the `A` subset
-Native W65C832 assembler          started in monitor, far from complete
+Native W65C832 assembler          phase 1 done, phase 2 planned below
 Documented monitor                done for current monitor ABI
 Assembly examples                 started: `examples/asm/monitor-programs.md`
 Lovelace compiler v1              partial / experimental target
@@ -140,9 +140,9 @@ This assembler is still useful for building ROMs, tests, and cross-development,
 but it is not the monitor assembly mode. Real computer operation requires an
 assembler that runs on the DragonFly 65 side.
 
-## Planned: Monitor-Resident Mini Assembler
+## Completed: Monitor-Resident Mini Assembler Phase 1
 
-The first native assembler should be deliberately small. Its job is to make the
+The first native assembler is deliberately small. Its job is to make the
 computer usable from its own monitor, not to match the full TypeScript assembler
 immediately.
 
@@ -187,10 +187,10 @@ The monitor also has a matching `D` command that disassembles the same subset
 from RAM. As this grows, assembler and disassembler support must stay in
 lockstep.
 
-After this works, grow toward real native assembler/disassembler coverage in
-small, testable chunks.
+Phase 1 has grown beyond the initial Hello World subset. The monitor now has
+native assembly/disassembly coverage for the completed chunks below.
 
-## Planned: Native Assembler/Disassembler Growth
+## Native Assembler/Disassembler Growth
 
 The monitor assembler and monitor disassembler are one feature. Do not add
 assembly support for an opcode unless the same change also adds disassembly
@@ -205,7 +205,7 @@ Each chunk should include:
   executable in a small program,
 - documentation updates for supported syntax.
 
-Suggested order:
+Completed phase 1 chunks:
 
 ```text
 Chunk N1: Accumulator immediate operations [done]
@@ -251,13 +251,67 @@ Chunk N8: Native assembler/disassembler parity tests [done]
   Add an explicit monitor test gate that assembles each completed native
   assembler chunk, disassembles it with D, and checks the emitted bytes and
   disassembly text stay in sync.
-
-Chunk N7: More load/store forms
-  Add ldx, ldy, stx, sty, direct page, and indexed addressing only after width
-  rules are explicit in docs and tests.
-  Avoid guessing W65C832-specific width behavior; document any DragonFly-specific
-  simplification.
 ```
+
+Phase 2 should continue from the working monitor assembler and grow toward the
+host TypeScript assembler's practical coverage. Keep chunks small. Each chunk
+must update `monitor/monitor.asm`, monitor workflow tests, monitor docs, and
+examples when the syntax is user-facing.
+
+Phase 2 checklist:
+
+- [x] Chunk N9: Clean up the roadmap.
+  Remove stale duplicate chunks, mark phase 1 accurately, and make this phase 2
+  checklist explicit.
+- [ ] Chunk N10: Add core implied and status instructions.
+  Add `tax`, `tay`, `txa`, `tya`, `tsx`, `txs`, `inx`, `dex`, `iny`, `dey`,
+  `clc`, `sec`, `cli`, `sei`, `clv`, `cld`, and `sed`.
+- [ ] Chunk N11: Finish `sta` direct page and indexed forms.
+  Add `sta dp`, `sta dp,x`, `sta abs,x`, and `sta abs,y`.
+- [ ] Chunk N12: Add `lda` direct page and indexed forms.
+  Add `lda dp`, `lda dp,x`, `lda abs,x`, and `lda abs,y`.
+- [ ] Chunk N13: Expand accumulator ALU addressing.
+  For `cmp`, `and`, `ora`, `eor`, `adc`, and `sbc`, add `dp`, `dp,x`,
+  `abs,x`, and `abs,y`.
+- [ ] Chunk N14: Add `cpx` and `cpy`.
+  Add `cpx #imm8`, `cpy #imm8`, `cpx dp`, `cpy dp`, `cpx abs`, and `cpy abs`.
+- [ ] Chunk N15: Add `bit`, `inc`, and `dec`.
+  Add `bit #imm8`, `bit dp`, `bit abs`, `bit dp,x`, `bit abs,x`, plus
+  `inc`/`dec` accumulator, direct page, absolute, and indexed forms.
+- [ ] Chunk N16: Add shifts and rotates.
+  Add `asl`, `lsr`, `rol`, and `ror` accumulator, direct page, absolute, and
+  indexed forms.
+- [ ] Chunk N17: Add remaining short branches.
+  Add `bra`, `bvc`, and `bvs` with absolute target syntax.
+- [ ] Chunk N18: Add stack instructions.
+  Add `pha`, `pla`, `php`, `plp`, `phx`, `plx`, `phy`, `ply`, `phb`, `plb`,
+  `phd`, `pld`, and `phk`.
+- [ ] Chunk N19: Add interrupt and machine-control instructions.
+  Add `brk`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, and `stp`.
+- [ ] Chunk N20: Add more jump forms.
+  Add `jmp (abs)`, `jmp (abs,x)`, `jmp [abs]`, and `jsr (abs,x)`.
+- [ ] Chunk N21: Add native width directives.
+  Add `.a8`, `.a16`, `.a32`, `.i8`, `.i16`, and `.i32`, and define how `D`
+  renders width-sensitive immediates.
+- [ ] Chunk N22: Add word and string data directives.
+  Add `.word`/`.dw`, `.long`/`.dl`, `.ascii`, `.asciiz`, `.resb`, and string
+  literals in `.byte`/`db`.
+- [ ] Chunk N23: Improve symbol support.
+  Add labels on instruction lines, `.equ` constants, larger or documented
+  label/fixup limits, duplicate-label errors, and unresolved-label diagnostics.
+- [ ] Chunk N24: Add address force modifiers.
+  Add `<expr` for direct page, `!expr` for absolute, and `>expr` for long.
+- [ ] Chunk N25: Add long addressing.
+  Add `lda long`, `sta long`, `lda long,x`, `sta long,x`, `jsl long`, and
+  `jml long`.
+- [ ] Chunk N26: Add indirect addressing.
+  Add `(dp)`, `(dp,x)`, `(dp),y`, `[dp]`, `[dp],y`, then stack-relative
+  `dp,s` and `(dp,s),y`.
+- [ ] Chunk N27: Add block move instructions.
+  Add `mvn src,dst` and `mvp src,dst`.
+- [ ] Chunk N28: Keep the parity gate complete for every new group.
+  For every chunk, assemble through `A`, disassemble through `D`, verify emitted
+  bytes, run with `G` when meaningful, and update monitor docs/examples.
 
 Attribution:
 
