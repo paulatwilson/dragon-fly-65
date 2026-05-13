@@ -40,10 +40,7 @@ Implemented:
 - Assemble a small instruction subset into RAM with the `A` command.
 - Disassemble the same small instruction subset from RAM with the `D` command.
 
-Missing:
-
-- Labels, directives, branch range validation, and wider opcode coverage in
-  assembly mode.
+- Additional directives and wider opcode coverage in assembly mode.
 - Compiler targets, such as Lovelace, that emit monitor ABI-compatible programs.
 
 ## Memory Map
@@ -52,7 +49,7 @@ The monitor currently uses bank 0 and a 64 KiB machine profile.
 
 ```text
 $0000-$01FF   zero page + hardware stack
-$0200-$0260   monitor work RAM
+$0200-$0293   monitor work RAM
 $0300-$BFFF   user program RAM
 $C000-$DFFF   user program RAM / expansion area
 $E000-$FFFF   monitor ROM and vectors, with I/O hole at $F000-$F002
@@ -380,14 +377,14 @@ Current parser limits:
 
 - labels must be on their own line, such as `loop:`,
 - labels are scoped to one `A` assembly session,
-- label references must point backward to labels already defined in the current
-  session,
-- forward labels are rejected for now,
+- label references may point backward or forward within the current session,
+- unresolved labels are rejected when `end` is entered,
 - the first native label table stores eight compact one-byte-hashed label
-  entries, so collision handling is still a future assembler improvement,
+  entries, and the first fixup table stores eight unresolved references, so
+  collision handling and larger tables are future assembler improvements,
 - branch targets may be written as absolute addresses such as `$0310` or as
-  already-defined labels; the monitor emits the relative byte internally,
-- no branch range validation yet,
+  labels; the monitor emits the relative byte internally,
+- branch targets must fit the signed 8-bit relative branch range,
 - no directives except `.byte` and `db`,
 - no expressions beyond literal values,
 - case-insensitive mnemonics,

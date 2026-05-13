@@ -6,7 +6,8 @@
 ; Memory map
 ; ----------
 ;   $0000–$01FF   Zero page + hardware stack
-;   $0200–$0260   Monitor work RAM (input buffer, register save area)
+;   $0200–$0293   Monitor work RAM (input buffer, register save area,
+;                  native assembler label/fixup tables)
 ;   $0300–$BFFF   Free RAM (user programs)
 ;   $C000–$DFFF   Free RAM (user programs, continued)
 ;   $E000–$EFFF   Monitor ROM  ← loaded here
@@ -46,6 +47,12 @@
 ;   $0257    ASM_LABEL_COUNT
 ;   $0258    ASM_LABEL_HASHES  8 one-byte label hashes
 ;   $0260    ASM_LABEL_ADDRS   8 two-byte label addresses
+;   $0270    ASM_FIXUP_COUNT
+;   $0271    ASM_PENDING_KIND  pending operand kind: 0 none, 1 abs16, 2 branch
+;   $0272    ASM_PENDING_HASH
+;   $0273    ASM_FIXUP_HASHES  8 one-byte unresolved label hashes
+;   $027B    ASM_FIXUP_ADDRS   8 two-byte patch addresses
+;   $028B    ASM_FIXUP_KINDS   8 one-byte patch kinds
 ;
 ; Register save area (written by DO_GO_RETURNED)
 ;   $0250    A_SAVE    A register from last G return
@@ -92,6 +99,12 @@ REG_VALID   .equ $0256
 ASM_LABEL_COUNT  .equ $0257
 ASM_LABEL_HASHES .equ $0258
 ASM_LABEL_ADDRS  .equ $0260
+ASM_FIXUP_COUNT  .equ $0270
+ASM_PENDING_KIND .equ $0271
+ASM_PENDING_HASH .equ $0272
+ASM_FIXUP_HASHES .equ $0273
+ASM_FIXUP_ADDRS  .equ $027B
+ASM_FIXUP_KINDS  .equ $028B
 
 ; ---------------------------------------------------------------------------
 ; Boot / monitor entry
@@ -421,7 +434,7 @@ DO_REGS_SHOW:
 ;   bpl abs
 ;   .byte value[,value...]
 ;   db value[,value...]
-;   backward labels on label-only lines, e.g. loop:
+;   labels on label-only lines, e.g. loop:
 ;
 ; On entry: X = INBUF+1 (parse pointer)
 ; ---------------------------------------------------------------------------
@@ -429,6 +442,8 @@ DO_ASSEMBLE:
     jsr     PARSE_HEX4          ; ZP_ADDR ← current assembly address
     lda     #0
     sta     ASM_LABEL_COUNT      ; labels are scoped to one A session
+    sta     ASM_FIXUP_COUNT
+    sta     ASM_PENDING_KIND
 
 ASM_LOOP:
     jsr     CRLF
@@ -463,6 +478,14 @@ ASM_LOOP:
     jmp     ASM_LOOP
 
 ASM_DONE:
+    jsr     ASM_CHECK_UNRESOLVED
+    lda     ZP_ERR
+    beq     ASM_DONE_OK
+    ldx     #STR_UNKNOWN
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     ASM_LOOP
+ASM_DONE_OK:
     ldx     #STR_OK
     stx     ZP_PTR
     jsr     PRINT_ZP
@@ -1684,6 +1707,24 @@ ASM_PARSE_BYTE_LIST_MORE:
 ASM_PARSE_BYTE_LIST_DONE:
     rts
 
+ASM_X_AT_EOL:
+    rep     #$20
+    .a16
+    txa
+    sec
+    sbc     #INBUF
+    sta     ZP_OPER
+    sep     #$20
+    .a8
+    lda     ZP_OPER
+    cmp     INBUF_LEN
+    bcs     ASM_X_AT_EOL_YES
+    lda     #0
+    rts
+ASM_X_AT_EOL_YES:
+    lda     #1
+    rts
+
 ASM_PARSE_LABEL_DEF:
     lda     #0
     sta     ZP_TMP              ; label hash
@@ -1694,12 +1735,16 @@ ASM_PARSE_LABEL_DEF:
     lda     #0                  ; not a label definition
     rts
 ASM_LABEL_DEF_LOOP:
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_LABEL_DEF_NOT_LABEL
     lda     $0000,x
     cmp     #':'
     beq     ASM_LABEL_DEF_FOUND
     jsr     ASM_IS_LABEL_CHAR
     cmp     #1
     beq     ASM_LABEL_DEF_ADD
+ASM_LABEL_DEF_NOT_LABEL:
     lda     #0                  ; identifier without ':' is a mnemonic
     rts
 ASM_LABEL_DEF_ADD:
@@ -1722,7 +1767,8 @@ ASM_LABEL_DEF_FOUND:
 ASM_LABEL_DEF_STORE:
     lda     ZP_OPER
     sta     ZP_TMP
-    ldy     ASM_LABEL_COUNT
+    lda     ASM_LABEL_COUNT
+    tay
     tya
     cmp     #8
     bcc     ASM_LABEL_DEF_ROOM
@@ -1742,6 +1788,15 @@ ASM_LABEL_DEF_ROOM:
     lda     ZP_ADDR+1
     sta     ASM_LABEL_ADDRS+1,y
     inc     ASM_LABEL_COUNT
+    lda     ZP_ADDR
+    sta     ZP_OPER
+    lda     ZP_ADDR+1
+    sta     ZP_OPER+1
+    jsr     ASM_RESOLVE_FIXUPS_FOR_LABEL
+    lda     ZP_ERR
+    beq     ASM_LABEL_DEF_OK
+    rts
+ASM_LABEL_DEF_OK:
     lda     #1
     rts
 
@@ -1752,6 +1807,8 @@ ASM_PARSE_ABS_OPER:
     beq     ASM_PARSE_ABS_HEX
     jmp     ASM_PARSE_LABEL_REF
 ASM_PARSE_ABS_HEX:
+    lda     #0
+    sta     ASM_PENDING_KIND
     inx
     jsr     PARSE_HEX2
     sta     ZP_OPER+1
@@ -1768,6 +1825,9 @@ ASM_PARSE_LABEL_REF:
     beq     ASM_LABEL_REF_LOOP
     jmp     ASM_FAIL
 ASM_LABEL_REF_LOOP:
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_LABEL_REF_LOOKUP
     lda     $0000,x
     jsr     ASM_IS_LABEL_CHAR
     cmp     #1
@@ -1787,7 +1847,14 @@ ASM_LABEL_REF_SEARCH:
     tya
     cmp     ASM_LABEL_COUNT
     bcc     ASM_LABEL_REF_CHECK
-    jmp     ASM_FAIL             ; backward labels only for now
+    lda     ZP_TMP
+    sta     ASM_PENDING_HASH
+    lda     #1
+    sta     ASM_PENDING_KIND      ; unresolved abs16 until caller narrows it
+    lda     #0
+    sta     ZP_OPER
+    sta     ZP_OPER+1
+    rts
 ASM_LABEL_REF_CHECK:
     lda     ASM_LABEL_HASHES,y
     cmp     ZP_TMP
@@ -1795,6 +1862,8 @@ ASM_LABEL_REF_CHECK:
     iny
     jmp     ASM_LABEL_REF_SEARCH
 ASM_LABEL_REF_FOUND:
+    lda     #0
+    sta     ASM_PENDING_KIND
     rep     #$20
     .a16
     tya
@@ -1847,6 +1916,149 @@ ASM_IS_LABEL_YES:
     lda     #1
     rts
 
+ASM_ADD_FIXUP:
+    lda     ASM_FIXUP_COUNT
+    tay
+    tya
+    cmp     #8
+    bcc     ASM_ADD_FIXUP_ROOM
+    jmp     ASM_FAIL
+ASM_ADD_FIXUP_ROOM:
+    lda     ASM_PENDING_HASH
+    sta     ASM_FIXUP_HASHES,y
+    lda     ASM_PENDING_KIND
+    sta     ASM_FIXUP_KINDS,y
+    rep     #$20
+    .a16
+    tya
+    asl     a
+    tay
+    sep     #$20
+    .a8
+    lda     ZP_ADDR
+    sta     ASM_FIXUP_ADDRS,y
+    lda     ZP_ADDR+1
+    sta     ASM_FIXUP_ADDRS+1,y
+    inc     ASM_FIXUP_COUNT
+    rts
+
+ASM_CHECK_UNRESOLVED:
+    lda     #0
+    sta     ZP_ERR
+    ldy     #0
+ASM_CHECK_UNRESOLVED_LOOP:
+    tya
+    cmp     ASM_FIXUP_COUNT
+    bcc     ASM_CHECK_UNRESOLVED_KIND
+    rts
+ASM_CHECK_UNRESOLVED_KIND:
+    lda     ASM_FIXUP_KINDS,y
+    beq     ASM_CHECK_UNRESOLVED_NEXT
+    jmp     ASM_FAIL
+ASM_CHECK_UNRESOLVED_NEXT:
+    iny
+    jmp     ASM_CHECK_UNRESOLVED_LOOP
+
+ASM_RESOLVE_FIXUPS_FOR_LABEL:
+    lda     ZP_TMP
+    sta     ASM_PENDING_HASH
+    ldy     #0
+ASM_RESOLVE_FIXUPS_LOOP:
+    tya
+    cmp     ASM_FIXUP_COUNT
+    bcc     ASM_RESOLVE_FIXUPS_CHECK
+    rts
+ASM_RESOLVE_FIXUPS_CHECK:
+    lda     ASM_FIXUP_KINDS,y
+    beq     ASM_RESOLVE_FIXUPS_NEXT
+    lda     ASM_FIXUP_HASHES,y
+    cmp     ASM_PENDING_HASH
+    bne     ASM_RESOLVE_FIXUPS_NEXT
+    lda     ASM_FIXUP_KINDS,y
+    cmp     #1
+    beq     ASM_RESOLVE_FIXUP_ABS
+    cmp     #2
+    beq     ASM_RESOLVE_FIXUP_BRANCH
+    jmp     ASM_FAIL
+ASM_RESOLVE_FIXUPS_NEXT:
+    iny
+    jmp     ASM_RESOLVE_FIXUPS_LOOP
+
+ASM_RESOLVE_FIXUP_LOAD_ADDR:
+    phy
+    rep     #$20
+    .a16
+    tya
+    asl     a
+    tay
+    sep     #$20
+    .a8
+    lda     ASM_FIXUP_ADDRS,y
+    sta     ZP_PTR
+    lda     ASM_FIXUP_ADDRS+1,y
+    sta     ZP_PTR+1
+    ply
+    rts
+
+ASM_RESOLVE_FIXUP_ABS:
+    jsr     ASM_RESOLVE_FIXUP_LOAD_ADDR
+    phy
+    ldy     #0
+    lda     ZP_OPER
+    sta     (ZP_PTR),y
+    iny
+    lda     ZP_OPER+1
+    sta     (ZP_PTR),y
+    ply
+    lda     #0
+    sta     ASM_FIXUP_KINDS,y
+    jmp     ASM_RESOLVE_FIXUPS_NEXT
+
+ASM_RESOLVE_FIXUP_BRANCH:
+    jsr     ASM_RESOLVE_FIXUP_LOAD_ADDR
+    rep     #$20
+    .a16
+    lda     ZP_OPER             ; target
+    sec
+    sbc     ZP_PTR              ; target - branch operand address
+    sec
+    sbc     #1                  ; target - address after branch operand
+    sta     ZP_TMP
+    sep     #$20
+    .a8
+    jsr     ASM_VALIDATE_BRANCH_TMP
+    lda     ZP_ERR
+    beq     ASM_RESOLVE_FIXUP_BRANCH_OK
+    rts
+ASM_RESOLVE_FIXUP_BRANCH_OK:
+    phy
+    ldy     #0
+    lda     ZP_TMP
+    sta     (ZP_PTR),y
+    ply
+    lda     #0
+    sta     ASM_FIXUP_KINDS,y
+    jmp     ASM_RESOLVE_FIXUPS_NEXT
+
+ASM_VALIDATE_BRANCH_TMP:
+    lda     ZP_TMP2
+    beq     ASM_VALIDATE_BRANCH_POSITIVE
+    cmp     #$FF
+    beq     ASM_VALIDATE_BRANCH_NEGATIVE
+    jmp     ASM_FAIL
+ASM_VALIDATE_BRANCH_POSITIVE:
+    lda     ZP_TMP
+    cmp     #$80
+    bcc     ASM_VALIDATE_BRANCH_OK
+    jmp     ASM_FAIL
+ASM_VALIDATE_BRANCH_NEGATIVE:
+    lda     ZP_TMP
+    cmp     #$80
+    bcs     ASM_VALIDATE_BRANCH_OK
+    jmp     ASM_FAIL
+ASM_VALIDATE_BRANCH_OK:
+    rts
+
 ASM_PARSE_BRANCH_OPER:
     pha                         ; save opcode
     jsr     ASM_PARSE_ABS_OPER
@@ -1855,6 +2067,22 @@ ASM_PARSE_BRANCH_OPER:
     pla
     rts
 ASM_PARSE_BRANCH_OK:
+    lda     ASM_PENDING_KIND
+    beq     ASM_PARSE_BRANCH_RESOLVED
+    pla
+    jsr     ASM_EMIT_A
+    lda     #2
+    sta     ASM_PENDING_KIND
+    jsr     ASM_ADD_FIXUP
+    lda     ZP_ERR
+    beq     ASM_PARSE_BRANCH_FORWARD_OK
+    rts
+ASM_PARSE_BRANCH_FORWARD_OK:
+    lda     #0
+    jsr     ASM_EMIT_A
+    sta     ASM_PENDING_KIND
+    rts
+ASM_PARSE_BRANCH_RESOLVED:
     rep     #$20
     .a16
     lda     ZP_OPER             ; target
@@ -1865,6 +2093,12 @@ ASM_PARSE_BRANCH_OK:
     sta     ZP_TMP              ; low byte is emitted as rel8
     sep     #$20
     .a8
+    jsr     ASM_VALIDATE_BRANCH_TMP
+    lda     ZP_ERR
+    beq     ASM_PARSE_BRANCH_RANGE_OK
+    pla
+    rts
+ASM_PARSE_BRANCH_RANGE_OK:
     pla
     jsr     ASM_EMIT_A
     lda     ZP_TMP
@@ -1872,10 +2106,25 @@ ASM_PARSE_BRANCH_OK:
     rts
 
 ASM_EMIT_OPER_WORD:
+    lda     ASM_PENDING_KIND
+    beq     ASM_EMIT_OPER_WORD_RESOLVED
+    lda     #1
+    sta     ASM_PENDING_KIND
+    jsr     ASM_ADD_FIXUP
+    lda     ZP_ERR
+    beq     ASM_EMIT_OPER_WORD_FORWARD_OK
+    rts
+ASM_EMIT_OPER_WORD_FORWARD_OK:
+    lda     #0
+    sta     ZP_OPER
+    sta     ZP_OPER+1
+ASM_EMIT_OPER_WORD_RESOLVED:
     lda     ZP_OPER
     jsr     ASM_EMIT_A
     lda     ZP_OPER+1
     jsr     ASM_EMIT_A
+    lda     #0
+    sta     ASM_PENDING_KIND
     rts
 
 ASM_EMIT_A:

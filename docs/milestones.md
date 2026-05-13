@@ -180,7 +180,7 @@ Initial parser scope:
 - immediate byte values as decimal, hex (`$41`), or character literals (`'A'`),
 - absolute 16-bit addresses as hex (`$F000`),
 - backward labels on label-only lines,
-- no forward references,
+- forward references through a small fixup table,
 - no directives except an explicit end marker for assembly mode.
 
 The monitor also has a matching `D` command that disassembles the same subset
@@ -236,7 +236,7 @@ Chunk N5: Backward labels [done]
   labels are scoped to one A session. The first implementation uses a small
   eight-entry native label table.
 
-Chunk N6: Forward labels and fixups
+Chunk N6: Forward labels and fixups [done]
   Add a small fixup table for labels referenced before definition.
   Reject unresolved labels with a clear monitor error.
   Reject out-of-range branches clearly.

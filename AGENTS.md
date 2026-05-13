@@ -72,7 +72,7 @@ Work through this checklist in order unless the user explicitly redirects:
   - [x] Add byte data entry: `.byte` or `db` with hex, decimal, and character
     literals.
   - [x] Add label support for assembly mode, starting with backward labels only.
-  - [ ] Add forward labels with a small fixup table.
+  - [x] Add forward labels with a small fixup table.
   - [ ] Add more load/store forms only after width rules are explicit:
     `ldx`, `ldy`, `stx`, `sty`, direct page, and indexed addressing.
   - [ ] Add native assembler/disassembler parity tests for every new group.

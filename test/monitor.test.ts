@@ -509,19 +509,47 @@ describe("monitor", () => {
     expect(output).toContain("Returned");
   }, 10_000);
 
-  test("A command rejects forward labels for now", () => {
+  test("A command supports forward labels with fixups", () => {
     const machine = buildMonitor();
     const output = runWithInput(
       machine,
       [
         "A0620",
         "bne later",
+        "lda later",
         "later:",
+        "rts",
+        "end",
+        "D0620",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0620)).toBe(0xd0);
+    expect(machine.mem.readByte(0x0621)).toBe(0x03);
+    expect(machine.mem.readByte(0x0622)).toBe(0xad);
+    expect(machine.mem.readByte(0x0623)).toBe(0x25);
+    expect(machine.mem.readByte(0x0624)).toBe(0x06);
+    expect(machine.mem.readByte(0x0625)).toBe(0x60);
+    expect(output).toContain("0620 D0 03 BNE $0625");
+    expect(output).toContain("0622 AD 25 06 LDA $0625");
+    expect(output).toContain("OK");
+    expect(output).not.toContain("?");
+  }, 10_000);
+
+  test("A command rejects unresolved forward labels on end", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0640",
+        "bne missing",
         "end",
       ].join("\r") + "\r",
     );
 
-    expect(machine.mem.readByte(0x0620)).toBe(0x00);
+    expect(machine.mem.readByte(0x0640)).toBe(0xd0);
+    expect(machine.mem.readByte(0x0641)).toBe(0x00);
     expect(output).toContain("?");
+    expect(output).not.toContain("OK");
   }, 10_000);
 });
