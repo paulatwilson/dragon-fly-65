@@ -241,6 +241,12 @@ Chunk N6: Forward labels and fixups [done]
   Reject unresolved labels with a clear monitor error.
   Reject out-of-range branches clearly.
 
+Chunk N7: Index register load/store forms [done]
+  Make width rules explicit for native assembly mode. The first implementation
+  emits one-byte index immediates, supports direct page and absolute addressing
+  for ldx, ldy, stx, and sty, and supports the legal X/Y indexed forms for that
+  register family.
+
 Chunk N7: More load/store forms
   Add ldx, ldy, stx, sty, direct page, and indexed addressing only after width
   rules are explicit in docs and tests.

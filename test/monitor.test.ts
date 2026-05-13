@@ -552,4 +552,81 @@ describe("monitor", () => {
     expect(output).toContain("?");
     expect(output).not.toContain("OK");
   }, 10_000);
+
+  test("A and D support index register load and store forms", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0660",
+        "ldx #$02",
+        "ldy #$03",
+        "ldx $10",
+        "ldy $11",
+        "ldx $10,y",
+        "ldy $11,x",
+        "ldx $0700",
+        "ldy $0702",
+        "end",
+        "D0660",
+        "A0680",
+        "stx $12",
+        "sty $13",
+        "stx $12,y",
+        "sty $13,x",
+        "stx $0704",
+        "sty $0706",
+        "ldx $0700,y",
+        "ldy $0702,x",
+        "end",
+        "D0680",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0660)).toBe(0xa2);
+    expect(machine.mem.readByte(0x0662)).toBe(0xa0);
+    expect(machine.mem.readByte(0x0664)).toBe(0xa6);
+    expect(machine.mem.readByte(0x0666)).toBe(0xa4);
+    expect(machine.mem.readByte(0x0668)).toBe(0xb6);
+    expect(machine.mem.readByte(0x066a)).toBe(0xb4);
+    expect(machine.mem.readByte(0x066c)).toBe(0xae);
+    expect(machine.mem.readByte(0x066f)).toBe(0xac);
+    expect(output).toContain("0660 A2 02 LDX #$02");
+    expect(output).toContain("0664 A6 10 LDX $10");
+    expect(output).toContain("0668 B6 10 LDX $10,Y");
+    expect(output).toContain("066C AE 00 07 LDX $0700");
+    expect(output).toContain("0680 86 12 STX $12");
+    expect(output).toContain("0684 96 12 STX $12,Y");
+    expect(output).toContain("0688 8E 04 07 STX $0704");
+    expect(output).toContain("068E BE 00 07 LDX $0700,Y");
+  }, 15_000);
+
+  test("new index register load and store forms run in monitor programs", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A06A0",
+        "sep #$10",
+        "ldx #$41",
+        "stx $10",
+        "ldy #$42",
+        "sty $11",
+        "lda $0010",
+        "sta $F000",
+        "lda $0011",
+        "sta $F000",
+        "rep #$10",
+        "rts",
+        "end",
+        "G06A0",
+        "R",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("AB");
+    expect(output).toContain("Returned");
+    expect(output).toContain("X=0041");
+    expect(output).toContain("Y=0042");
+  }, 10_000);
 });

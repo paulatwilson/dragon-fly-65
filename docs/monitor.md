@@ -355,6 +355,22 @@ ora abs
 eor abs
 adc abs
 sbc abs
+ldx #imm8
+ldy #imm8
+ldx dp
+ldy dp
+stx dp
+sty dp
+ldx abs
+ldy abs
+stx abs
+sty abs
+ldx dp,y
+ldy dp,x
+stx dp,y
+sty dp,x
+ldx abs,y
+ldy abs,x
 beq abs
 bne abs
 bcc abs
@@ -375,6 +391,13 @@ jmp abs
 
 Current parser limits:
 
+- accumulator and index immediate forms currently emit one-byte immediates;
+  `ldx #imm8` and `ldy #imm8` should be used only after switching to 8-bit
+  index mode, such as with `sep #$10`,
+- memory load/store width is controlled by CPU status flags at runtime, not by
+  address syntax,
+- direct page syntax uses two hex digits, such as `$10`; absolute syntax uses
+  four hex digits, such as `$0010`,
 - labels must be on their own line, such as `loop:`,
 - labels are scoped to one `A` assembly session,
 - label references may point backward or forward within the current session,

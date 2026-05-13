@@ -73,7 +73,7 @@ Work through this checklist in order unless the user explicitly redirects:
     literals.
   - [x] Add label support for assembly mode, starting with backward labels only.
   - [x] Add forward labels with a small fixup table.
-  - [ ] Add more load/store forms only after width rules are explicit:
+  - [x] Add more load/store forms only after width rules are explicit:
     `ldx`, `ldy`, `stx`, `sty`, direct page, and indexed addressing.
   - [ ] Add native assembler/disassembler parity tests for every new group.
 - [ ] Add optional run-on-boot support.
