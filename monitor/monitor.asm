@@ -43,6 +43,9 @@
 ;   $05      ZP_TMP2  temporary byte
 ;   $06–$07  ZP_OPER  parsed operand word for assembly mode
 ;   $08      ZP_ERR   non-zero when assembly parsing fails
+;   $0257    ASM_LABEL_COUNT
+;   $0258    ASM_LABEL_HASHES  8 one-byte label hashes
+;   $0260    ASM_LABEL_ADDRS   8 two-byte label addresses
 ;
 ; Register save area (written by DO_GO_RETURNED)
 ;   $0250    A_SAVE    A register from last G return
@@ -86,6 +89,9 @@ X_SAVE      .equ $0251          ; 2 bytes
 Y_SAVE      .equ $0253          ; 2 bytes
 P_SAVE      .equ $0255
 REG_VALID   .equ $0256
+ASM_LABEL_COUNT  .equ $0257
+ASM_LABEL_HASHES .equ $0258
+ASM_LABEL_ADDRS  .equ $0260
 
 ; ---------------------------------------------------------------------------
 ; Boot / monitor entry
@@ -415,11 +421,14 @@ DO_REGS_SHOW:
 ;   bpl abs
 ;   .byte value[,value...]
 ;   db value[,value...]
+;   backward labels on label-only lines, e.g. loop:
 ;
 ; On entry: X = INBUF+1 (parse pointer)
 ; ---------------------------------------------------------------------------
 DO_ASSEMBLE:
     jsr     PARSE_HEX4          ; ZP_ADDR ← current assembly address
+    lda     #0
+    sta     ASM_LABEL_COUNT      ; labels are scoped to one A session
 
 ASM_LOOP:
     jsr     CRLF
@@ -979,6 +988,22 @@ ASM_PARSE_LINE:
     lda     #0
     sta     ZP_ERR
     jsr     ASM_SKIP_SPACES
+    rep     #$20
+    .a16
+    txa
+    sta     ZP_PTR              ; restore point if this is not a label
+    sep     #$20
+    .a8
+    jsr     ASM_PARSE_LABEL_DEF
+    cmp     #1
+    bne     ASM_PARSE_LINE_NOT_LABEL
+    rts
+ASM_PARSE_LINE_NOT_LABEL:
+    rep     #$20
+    .a16
+    ldx     ZP_PTR
+    sep     #$20
+    .a8
     jsr     ASM_READ_UPPER
     cmp     #'.'
     bne     ASM_PARSE_LINE_NOT_DOT
@@ -1659,18 +1684,167 @@ ASM_PARSE_BYTE_LIST_MORE:
 ASM_PARSE_BYTE_LIST_DONE:
     rts
 
+ASM_PARSE_LABEL_DEF:
+    lda     #0
+    sta     ZP_TMP              ; label hash
+    lda     $0000,x
+    jsr     ASM_IS_LABEL_START
+    cmp     #1
+    beq     ASM_LABEL_DEF_LOOP
+    lda     #0                  ; not a label definition
+    rts
+ASM_LABEL_DEF_LOOP:
+    lda     $0000,x
+    cmp     #':'
+    beq     ASM_LABEL_DEF_FOUND
+    jsr     ASM_IS_LABEL_CHAR
+    cmp     #1
+    beq     ASM_LABEL_DEF_ADD
+    lda     #0                  ; identifier without ':' is a mnemonic
+    rts
+ASM_LABEL_DEF_ADD:
+    lda     $0000,x
+    jsr     ASM_UPPER_A
+    clc
+    adc     ZP_TMP
+    sta     ZP_TMP
+    inx
+    jmp     ASM_LABEL_DEF_LOOP
+ASM_LABEL_DEF_FOUND:
+    inx
+    lda     ZP_TMP
+    sta     ZP_OPER
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_LABEL_DEF_STORE
+    jmp     ASM_FAIL
+ASM_LABEL_DEF_STORE:
+    lda     ZP_OPER
+    sta     ZP_TMP
+    ldy     ASM_LABEL_COUNT
+    tya
+    cmp     #8
+    bcc     ASM_LABEL_DEF_ROOM
+    jmp     ASM_FAIL
+ASM_LABEL_DEF_ROOM:
+    lda     ZP_TMP
+    sta     ASM_LABEL_HASHES,y
+    rep     #$20
+    .a16
+    tya
+    asl     a
+    tay
+    sep     #$20
+    .a8
+    lda     ZP_ADDR
+    sta     ASM_LABEL_ADDRS,y
+    lda     ZP_ADDR+1
+    sta     ASM_LABEL_ADDRS+1,y
+    inc     ASM_LABEL_COUNT
+    lda     #1
+    rts
+
 ASM_PARSE_ABS_OPER:
     jsr     ASM_SKIP_SPACES
     lda     $0000,x
     cmp     #'$'
     beq     ASM_PARSE_ABS_HEX
-    jmp     ASM_FAIL
+    jmp     ASM_PARSE_LABEL_REF
 ASM_PARSE_ABS_HEX:
     inx
     jsr     PARSE_HEX2
     sta     ZP_OPER+1
     jsr     PARSE_HEX2
     sta     ZP_OPER
+    rts
+
+ASM_PARSE_LABEL_REF:
+    lda     #0
+    sta     ZP_TMP
+    lda     $0000,x
+    jsr     ASM_IS_LABEL_START
+    cmp     #1
+    beq     ASM_LABEL_REF_LOOP
+    jmp     ASM_FAIL
+ASM_LABEL_REF_LOOP:
+    lda     $0000,x
+    jsr     ASM_IS_LABEL_CHAR
+    cmp     #1
+    beq     ASM_LABEL_REF_ADD
+    jmp     ASM_LABEL_REF_LOOKUP
+ASM_LABEL_REF_ADD:
+    lda     $0000,x
+    jsr     ASM_UPPER_A
+    clc
+    adc     ZP_TMP
+    sta     ZP_TMP
+    inx
+    jmp     ASM_LABEL_REF_LOOP
+ASM_LABEL_REF_LOOKUP:
+    ldy     #0
+ASM_LABEL_REF_SEARCH:
+    tya
+    cmp     ASM_LABEL_COUNT
+    bcc     ASM_LABEL_REF_CHECK
+    jmp     ASM_FAIL             ; backward labels only for now
+ASM_LABEL_REF_CHECK:
+    lda     ASM_LABEL_HASHES,y
+    cmp     ZP_TMP
+    beq     ASM_LABEL_REF_FOUND
+    iny
+    jmp     ASM_LABEL_REF_SEARCH
+ASM_LABEL_REF_FOUND:
+    rep     #$20
+    .a16
+    tya
+    asl     a
+    tay
+    sep     #$20
+    .a8
+    lda     ASM_LABEL_ADDRS,y
+    sta     ZP_OPER
+    lda     ASM_LABEL_ADDRS+1,y
+    sta     ZP_OPER+1
+    rts
+
+ASM_UPPER_A:
+    cmp     #'a'
+    bcc     ASM_UPPER_DONE
+    cmp     #'z'+1
+    bcs     ASM_UPPER_DONE
+    and     #$DF
+ASM_UPPER_DONE:
+    rts
+
+ASM_IS_LABEL_START:
+    jsr     ASM_UPPER_A
+    cmp     #'_'
+    beq     ASM_IS_LABEL_YES
+    cmp     #'A'
+    bcc     ASM_IS_LABEL_NO
+    cmp     #'Z'+1
+    bcc     ASM_IS_LABEL_YES
+    jmp     ASM_IS_LABEL_NO
+
+ASM_IS_LABEL_CHAR:
+    jsr     ASM_UPPER_A
+    cmp     #'_'
+    beq     ASM_IS_LABEL_YES
+    cmp     #'A'
+    bcc     ASM_IS_LABEL_DIGIT
+    cmp     #'Z'+1
+    bcc     ASM_IS_LABEL_YES
+ASM_IS_LABEL_DIGIT:
+    cmp     #'0'
+    bcc     ASM_IS_LABEL_NO
+    cmp     #'9'+1
+    bcc     ASM_IS_LABEL_YES
+ASM_IS_LABEL_NO:
+    lda     #0
+    rts
+ASM_IS_LABEL_YES:
+    lda     #1
     rts
 
 ASM_PARSE_BRANCH_OPER:

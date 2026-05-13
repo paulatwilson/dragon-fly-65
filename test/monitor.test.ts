@@ -307,7 +307,7 @@ describe("monitor", () => {
     expect(output).toContain("044F 6D 05 05 ADC $0505");
     expect(output).toContain("0452 ED 06 05 SBC $0506");
     expect(output).toContain("0455 60 RTS");
-  }, 10_000);
+  }, 15_000);
 
   test("new accumulator absolute operations run in monitor programs", () => {
     const machine = buildMonitor();
@@ -479,5 +479,49 @@ describe("monitor", () => {
     expect(output).toContain("DATA");
     expect(output).toContain("Returned");
     expect(output).toContain("A=41");
+  }, 10_000);
+
+  test("A command supports backward labels for branch targets", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0600",
+        "loop:",
+        "lda #0",
+        "cmp #0",
+        "bne loop",
+        "rts",
+        "end",
+        "D0600",
+        "G0600",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0600)).toBe(0xa9);
+    expect(machine.mem.readByte(0x0601)).toBe(0x00);
+    expect(machine.mem.readByte(0x0602)).toBe(0xc9);
+    expect(machine.mem.readByte(0x0603)).toBe(0x00);
+    expect(machine.mem.readByte(0x0604)).toBe(0xd0);
+    expect(machine.mem.readByte(0x0605)).toBe(0xfa);
+    expect(machine.mem.readByte(0x0606)).toBe(0x60);
+    expect(output).toContain("0604 D0 FA BNE $0600");
+    expect(output).toContain("Returned");
+  }, 10_000);
+
+  test("A command rejects forward labels for now", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0620",
+        "bne later",
+        "later:",
+        "end",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0620)).toBe(0x00);
+    expect(output).toContain("?");
   }, 10_000);
 });

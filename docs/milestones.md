@@ -179,7 +179,7 @@ Initial parser scope:
 - case-insensitive mnemonics,
 - immediate byte values as decimal, hex (`$41`), or character literals (`'A'`),
 - absolute 16-bit addresses as hex (`$F000`),
-- no labels,
+- backward labels on label-only lines,
 - no forward references,
 - no directives except an explicit end marker for assembly mode.
 
@@ -230,10 +230,11 @@ Chunk N4: Byte data entry [done]
   Support hex bytes, decimal bytes, and character literals.
   Test data can be inspected with M and disassembled as DB when it is not code.
 
-Chunk N5: Backward labels
+Chunk N5: Backward labels [done]
   Add simple labels that can be referenced after definition.
-  Start with branch and jump targets only.
-  Keep labels scoped to one A session.
+  Label definitions are label-only lines, references must point backward, and
+  labels are scoped to one A session. The first implementation uses a small
+  eight-entry native label table.
 
 Chunk N6: Forward labels and fixups
   Add a small fixup table for labels referenced before definition.

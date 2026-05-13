@@ -366,6 +366,7 @@ bmi abs
 bpl abs
 .byte value[,value...]
 db value[,value...]
+label:
 sta abs
 rts
 nop
@@ -377,9 +378,15 @@ jmp abs
 
 Current parser limits:
 
-- no labels,
-- branch targets must be written as absolute addresses such as `$0310`; the
-  monitor emits the relative byte internally,
+- labels must be on their own line, such as `loop:`,
+- labels are scoped to one `A` assembly session,
+- label references must point backward to labels already defined in the current
+  session,
+- forward labels are rejected for now,
+- the first native label table stores eight compact one-byte-hashed label
+  entries, so collision handling is still a future assembler improvement,
+- branch targets may be written as absolute addresses such as `$0310` or as
+  already-defined labels; the monitor emits the relative byte internally,
 - no branch range validation yet,
 - no directives except `.byte` and `db`,
 - no expressions beyond literal values,

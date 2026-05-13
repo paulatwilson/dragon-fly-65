@@ -71,7 +71,7 @@ Work through this checklist in order unless the user explicitly redirects:
     relative offsets; the disassembler should print resolved absolute targets.
   - [x] Add byte data entry: `.byte` or `db` with hex, decimal, and character
     literals.
-  - [ ] Add label support for assembly mode, starting with backward labels only.
+  - [x] Add label support for assembly mode, starting with backward labels only.
   - [ ] Add forward labels with a small fixup table.
   - [ ] Add more load/store forms only after width rules are explicit:
     `ldx`, `ldy`, `stx`, `sty`, direct page, and indexed addressing.
