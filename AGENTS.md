@@ -75,7 +75,7 @@ Work through this checklist in order unless the user explicitly redirects:
   - [x] Add forward labels with a small fixup table.
   - [x] Add more load/store forms only after width rules are explicit:
     `ldx`, `ldy`, `stx`, `sty`, direct page, and indexed addressing.
-  - [ ] Add native assembler/disassembler parity tests for every new group.
+  - [x] Add native assembler/disassembler parity tests for every new group.
 - [ ] Add optional run-on-boot support.
   Support a development shortcut such as `--go <addr>` while keeping normal boot
   behavior monitor-first.

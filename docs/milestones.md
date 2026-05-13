@@ -247,6 +247,11 @@ Chunk N7: Index register load/store forms [done]
   for ldx, ldy, stx, and sty, and supports the legal X/Y indexed forms for that
   register family.
 
+Chunk N8: Native assembler/disassembler parity tests [done]
+  Add an explicit monitor test gate that assembles each completed native
+  assembler chunk, disassembles it with D, and checks the emitted bytes and
+  disassembly text stay in sync.
+
 Chunk N7: More load/store forms
   Add ldx, ldy, stx, sty, direct page, and indexed addressing only after width
   rules are explicit in docs and tests.

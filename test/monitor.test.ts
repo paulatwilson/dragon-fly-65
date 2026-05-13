@@ -629,4 +629,128 @@ describe("monitor", () => {
     expect(output).toContain("X=0041");
     expect(output).toContain("Y=0042");
   }, 10_000);
+
+  test("native assembler and disassembler parity covers completed roadmap groups", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0700",
+        "cmp #$41",
+        "and #$0F",
+        "ora #$40",
+        "eor #$01",
+        "adc #$02",
+        "sbc #$03",
+        "end",
+        "D0700",
+        "A0720",
+        "lda $0800",
+        "cmp $0801",
+        "and $0802",
+        "ora $0803",
+        "eor $0804",
+        "adc $0805",
+        "sbc $0806",
+        "end",
+        "D0720",
+        "A0750",
+        "beq $0758",
+        "bne $0750",
+        "bcc $075A",
+        "bcs $0754",
+        "bmi $075C",
+        "bpl $0758",
+        "end",
+        "D0750",
+        "A0770",
+        ".byte $41, 66, 'C'",
+        "db $00, 68",
+        "end",
+        "D0770",
+        "A0790",
+        "start:",
+        "bne later",
+        "lda start",
+        "later:",
+        "bne start",
+        "rts",
+        "end",
+        "D0790",
+        "A07B0",
+        "ldx #$02",
+        "ldy #$03",
+        "ldx $10",
+        "ldy $11",
+        "ldx $10,y",
+        "ldy $11,x",
+        "ldx $0800",
+        "ldy $0802",
+        "end",
+        "D07B0",
+        "A07D0",
+        "stx $12",
+        "sty $13",
+        "stx $12,y",
+        "sty $13,x",
+        "stx $0804",
+        "sty $0806",
+        "ldx $0800,y",
+        "ldy $0802,x",
+        "end",
+        "D07D0",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("0700 C9 41 CMP #$41");
+    expect(output).toContain("0702 29 0F AND #$0F");
+    expect(output).toContain("0704 09 40 ORA #$40");
+    expect(output).toContain("0706 49 01 EOR #$01");
+    expect(output).toContain("0708 69 02 ADC #$02");
+    expect(output).toContain("070A E9 03 SBC #$03");
+
+    expect(output).toContain("0720 AD 00 08 LDA $0800");
+    expect(output).toContain("0723 CD 01 08 CMP $0801");
+    expect(output).toContain("0726 2D 02 08 AND $0802");
+    expect(output).toContain("0729 0D 03 08 ORA $0803");
+    expect(output).toContain("072C 4D 04 08 EOR $0804");
+    expect(output).toContain("072F 6D 05 08 ADC $0805");
+    expect(output).toContain("0732 ED 06 08 SBC $0806");
+
+    expect(output).toContain("0750 F0 06 BEQ $0758");
+    expect(output).toContain("0752 D0 FC BNE $0750");
+    expect(output).toContain("0754 90 04 BCC $075A");
+    expect(output).toContain("0756 B0 FC BCS $0754");
+    expect(output).toContain("0758 30 02 BMI $075C");
+    expect(output).toContain("075A 10 FC BPL $0758");
+
+    expect(output).toContain("0770 41 DB $41");
+    expect(output).toContain("0771 42 DB $42");
+    expect(output).toContain("0772 43 DB $43");
+    expect(output).toContain("0773 00 DB $00");
+    expect(output).toContain("0774 44 DB $44");
+
+    expect(output).toContain("0790 D0 03 BNE $0795");
+    expect(output).toContain("0792 AD 90 07 LDA $0790");
+    expect(output).toContain("0795 D0 F9 BNE $0790");
+    expect(output).toContain("0797 60 RTS");
+
+    expect(output).toContain("07B0 A2 02 LDX #$02");
+    expect(output).toContain("07B2 A0 03 LDY #$03");
+    expect(output).toContain("07B4 A6 10 LDX $10");
+    expect(output).toContain("07B6 A4 11 LDY $11");
+    expect(output).toContain("07B8 B6 10 LDX $10,Y");
+    expect(output).toContain("07BA B4 11 LDY $11,X");
+    expect(output).toContain("07BC AE 00 08 LDX $0800");
+    expect(output).toContain("07BF AC 02 08 LDY $0802");
+
+    expect(output).toContain("07D0 86 12 STX $12");
+    expect(output).toContain("07D2 84 13 STY $13");
+    expect(output).toContain("07D4 96 12 STX $12,Y");
+    expect(output).toContain("07D6 94 13 STY $13,X");
+    expect(output).toContain("07D8 8E 04 08 STX $0804");
+    expect(output).toContain("07DB 8C 06 08 STY $0806");
+    expect(output).toContain("07DE BE 00 08 LDX $0800,Y");
+    expect(output).toContain("07E1 BC 02 08 LDY $0802,X");
+  }, 40_000);
 });
