@@ -268,8 +268,10 @@ Phase 2 checklist:
   `clc`, `sec`, `cli`, `sei`, `clv`, `cld`, and `sed`.
   This expanded the monitor ROM window from `$E000-$FFFF` to `$C000-$FFFF`
   because the phase 1 monitor image already filled the old 8 KiB ROM.
-- [ ] Chunk N11: Finish `sta` direct page and indexed forms.
+- [x] Chunk N11: Finish `sta` direct page and indexed forms.
   Add `sta dp`, `sta dp,x`, `sta abs,x`, and `sta abs,y`.
+  The monitor assembler and disassembler now cover the complete phase-2 `sta`
+  direct page/indexed group, with parity test coverage.
 - [ ] Chunk N12: Add `lda` direct page and indexed forms.
   Add `lda dp`, `lda dp,x`, `lda abs,x`, and `lda abs,y`.
 - [ ] Chunk N13: Expand accumulator ALU addressing.

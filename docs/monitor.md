@@ -370,6 +370,10 @@ stx dp,y
 sty dp,x
 ldx abs,y
 ldy abs,x
+sta dp
+sta dp,x
+sta abs,x
+sta abs,y
 tax
 tay
 txa
@@ -497,6 +501,10 @@ stx dp,y
 sty dp,x
 ldx abs,y
 ldy abs,x
+sta dp
+sta dp,x
+sta abs,x
+sta abs,y
 tax
 tay
 txa
@@ -654,7 +662,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate and absolute ops (`lda abs`, `cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`) with absolute target syntax, byte data entry (`.byte`, `db`), `sta abs`, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, accumulator immediate and absolute ops (`lda abs`, `cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`) with absolute target syntax, byte data entry (`.byte`, `db`), `sta` direct page/absolute forms (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

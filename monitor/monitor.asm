@@ -405,7 +405,11 @@ DO_REGS_SHOW:
 ; This is a monitor-resident mini assembler. It intentionally supports only a
 ; small first subset:
 ;   lda #imm8
+;   sta dp
+;   sta dp,x
 ;   sta abs
+;   sta abs,x
+;   sta abs,y
 ;   rts
 ;   nop
 ;   sep #imm8
@@ -672,10 +676,26 @@ DISASM_NOT_BMI:
     bne     DISASM_NOT_BPL
     jmp     DISASM_BPL
 DISASM_NOT_BPL:
+    cmp     #$85
+    bne     DISASM_NOT_STA_DP
+    jmp     DISASM_STA_DP
+DISASM_NOT_STA_DP:
+    cmp     #$95
+    bne     DISASM_NOT_STA_DPX
+    jmp     DISASM_STA_DPX
+DISASM_NOT_STA_DPX:
     cmp     #$8D
     bne     DISASM_NOT_STA_ABS
     jmp     DISASM_STA_ABS
 DISASM_NOT_STA_ABS:
+    cmp     #$9D
+    bne     DISASM_NOT_STA_ABSX
+    jmp     DISASM_STA_ABSX
+DISASM_NOT_STA_ABSX:
+    cmp     #$99
+    bne     DISASM_NOT_STA_ABSY
+    jmp     DISASM_STA_ABSY
+DISASM_NOT_STA_ABSY:
     cmp     #$86
     bne     DISASM_NOT_STX_DP
     jmp     DISASM_STX_DP
@@ -1048,11 +1068,31 @@ DISASM_REP_IMM:
     jsr     PUT_HEX2
     jmp     DISASM_NEXT
 
+DISASM_STA_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_STA
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_STA_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_STA
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
 DISASM_STA_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_STA
     stx     ZP_PTR
     jmp     DISASM_PRINT_ABS_NEXT
+DISASM_STA_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_STA
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+DISASM_STA_ABSY:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_STA
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSY_NEXT
 
 DISASM_STX_DP:
     jsr     DISASM_FETCH_DP
@@ -1940,12 +1980,43 @@ ASM_PARSE_STA:
 ASM_PARSE_ST_NOT_Y:
     jmp     ASM_FAIL
 ASM_PARSE_STA_GOT_A:
-    jsr     ASM_PARSE_ABS_OPER
+    jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_STA_OK
     rts
 ASM_PARSE_STA_OK:
+    lda     ZP_TMP2
+    cmp     #0
+    beq     ASM_PARSE_STA_DP
+    cmp     #1
+    beq     ASM_PARSE_STA_ABS
+    cmp     #2
+    beq     ASM_PARSE_STA_DPX
+    cmp     #4
+    beq     ASM_PARSE_STA_ABSX
+    cmp     #5
+    beq     ASM_PARSE_STA_ABSY
+    jmp     ASM_FAIL
+ASM_PARSE_STA_DP:
+    lda     #$85                ; STA dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_STA_DPX:
+    lda     #$95                ; STA dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_STA_ABS:
     lda     #$8D                ; STA abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_STA_ABSX:
+    lda     #$9D                ; STA abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_STA_ABSY:
+    lda     #$99                ; STA abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts

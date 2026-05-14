@@ -819,6 +819,65 @@ Expected:
 - `txs` should be treated as a disassembly/parity case until a program
   intentionally manages its own stack.
 
+## Program 14: STA Direct Page And Indexed Forms
+
+Purpose:
+
+- Proves the monitor assembler accepts the N11 `sta` direct page and indexed
+  forms.
+- Proves the disassembler renders the same N11 `sta` forms.
+- Runs the stores and verifies direct page plus absolute target memory.
+
+Enter:
+
+```text
+* A0820
+0820> sep #$30
+0822> ldx #$01
+0824> ldy #$02
+0826> lda #'Q'
+0828> sta $20
+082A> sta $20,x
+082C> sta $0390
+082F> sta $0390,x
+0832> sta $0390,y
+0835> rts
+0836> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0828
+0828 85 20 STA $20
+082A 95 20 STA $20,X
+082C 8D 90 03 STA $0390
+082F 9D 90 03 STA $0390,X
+0832 99 90 03 STA $0390,Y
+0835 60 RTS
+0836 00 DB $00
+0837 00 DB $00
+```
+
+Run and inspect:
+
+```text
+* G0820
+Returned
+* M0020
+0020: 51 51 ...
+* M0390
+0390: 51 51 51 ...
+```
+
+Expected:
+
+- `$0020` and `$0021` contain `$51`.
+- `$0390`, `$0391`, and `$0392` contain `$51`.
+- `D0828` shows `STA $20`, `STA $20,X`, `STA $0390`, `STA $0390,X`, and
+  `STA $0390,Y`.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this
