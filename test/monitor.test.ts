@@ -921,6 +921,23 @@ describe("monitor", () => {
         "ror $0822,x",
         "end",
         "D0980",
+        "A09A0",
+        "pha",
+        "pla",
+        "php",
+        "plp",
+        "phx",
+        "plx",
+        "phy",
+        "ply",
+        "phb",
+        "plb",
+        "phd",
+        "pld",
+        "phk",
+        "end",
+        "D09A0",
+        "D09A8",
       ].join("\r") + "\r",
     );
 
@@ -1062,5 +1079,72 @@ describe("monitor", () => {
     expect(output).toContain("0983 6E 22 08 ROR $0822");
     expect(output).toContain("0986 76 24 ROR $24,X");
     expect(output).toContain("0988 7E 22 08 ROR $0822,X");
+
+    expect(output).toContain("09A0 48 PHA");
+    expect(output).toContain("09A1 68 PLA");
+    expect(output).toContain("09A2 08 PHP");
+    expect(output).toContain("09A3 28 PLP");
+    expect(output).toContain("09A4 DA PHX");
+    expect(output).toContain("09A5 FA PLX");
+    expect(output).toContain("09A6 5A PHY");
+    expect(output).toContain("09A7 7A PLY");
+    expect(output).toContain("09A8 8B PHB");
+    expect(output).toContain("09A9 AB PLB");
+    expect(output).toContain("09AA 0B PHD");
+    expect(output).toContain("09AB 2B PLD");
+    expect(output).toContain("09AC 4B PHK");
   }, 40_000);
+
+  test("A and D support stack instructions", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0A00",
+        "pha",
+        "pla",
+        "php",
+        "plp",
+        "phx",
+        "plx",
+        "phy",
+        "ply",
+        "phb",
+        "plb",
+        "phd",
+        "pld",
+        "phk",
+        "end",
+        "D0A00",
+        "D0A08",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0a00)).toBe(0x48);
+    expect(machine.mem.readByte(0x0a01)).toBe(0x68);
+    expect(machine.mem.readByte(0x0a02)).toBe(0x08);
+    expect(machine.mem.readByte(0x0a03)).toBe(0x28);
+    expect(machine.mem.readByte(0x0a04)).toBe(0xda);
+    expect(machine.mem.readByte(0x0a05)).toBe(0xfa);
+    expect(machine.mem.readByte(0x0a06)).toBe(0x5a);
+    expect(machine.mem.readByte(0x0a07)).toBe(0x7a);
+    expect(machine.mem.readByte(0x0a08)).toBe(0x8b);
+    expect(machine.mem.readByte(0x0a09)).toBe(0xab);
+    expect(machine.mem.readByte(0x0a0a)).toBe(0x0b);
+    expect(machine.mem.readByte(0x0a0b)).toBe(0x2b);
+    expect(machine.mem.readByte(0x0a0c)).toBe(0x4b);
+    expect(output).toContain("0A00 48 PHA");
+    expect(output).toContain("0A01 68 PLA");
+    expect(output).toContain("0A02 08 PHP");
+    expect(output).toContain("0A03 28 PLP");
+    expect(output).toContain("0A04 DA PHX");
+    expect(output).toContain("0A05 FA PLX");
+    expect(output).toContain("0A06 5A PHY");
+    expect(output).toContain("0A07 7A PLY");
+    expect(output).toContain("0A08 8B PHB");
+    expect(output).toContain("0A09 AB PLB");
+    expect(output).toContain("0A0A 0B PHD");
+    expect(output).toContain("0A0B 2B PLD");
+    expect(output).toContain("0A0C 4B PHK");
+  }, 15_000);
 });

@@ -1153,6 +1153,58 @@ DISASM_NOT_RTS:
     bne     DISASM_NOT_NOP
     jmp     DISASM_NOP
 DISASM_NOT_NOP:
+    cmp     #$48
+    bne     DISASM_NOT_PHA
+    jmp     DISASM_PHA
+DISASM_NOT_PHA:
+    cmp     #$68
+    bne     DISASM_NOT_PLA
+    jmp     DISASM_PLA
+DISASM_NOT_PLA:
+    cmp     #$08
+    bne     DISASM_NOT_PHP
+    jmp     DISASM_PHP
+DISASM_NOT_PHP:
+    cmp     #$28
+    bne     DISASM_NOT_PLP
+    jmp     DISASM_PLP
+DISASM_NOT_PLP:
+    cmp     #$DA
+    bne     DISASM_NOT_PHX
+    jmp     DISASM_PHX
+DISASM_NOT_PHX:
+    cmp     #$FA
+    bne     DISASM_NOT_PLX
+    jmp     DISASM_PLX
+DISASM_NOT_PLX:
+    cmp     #$5A
+    bne     DISASM_NOT_PHY
+    jmp     DISASM_PHY
+DISASM_NOT_PHY:
+    cmp     #$7A
+    bne     DISASM_NOT_PLY
+    jmp     DISASM_PLY
+DISASM_NOT_PLY:
+    cmp     #$8B
+    bne     DISASM_NOT_PHB
+    jmp     DISASM_PHB
+DISASM_NOT_PHB:
+    cmp     #$AB
+    bne     DISASM_NOT_PLB
+    jmp     DISASM_PLB
+DISASM_NOT_PLB:
+    cmp     #$0B
+    bne     DISASM_NOT_PHD
+    jmp     DISASM_PHD
+DISASM_NOT_PHD:
+    cmp     #$2B
+    bne     DISASM_NOT_PLD
+    jmp     DISASM_PLD
+DISASM_NOT_PLD:
+    cmp     #$4B
+    bne     DISASM_NOT_PHK
+    jmp     DISASM_PHK
+DISASM_NOT_PHK:
     cmp     #$E2
     bne     DISASM_NOT_SEP_IMM
     jmp     DISASM_SEP_IMM
@@ -1961,6 +2013,72 @@ DISASM_SED:
     jsr     PRINT_ZP
     jmp     DISASM_NEXT
 
+DISASM_PHA:
+    ldx     #STR_D_PHA
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PLA:
+    ldx     #STR_D_PLA
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PHP:
+    ldx     #STR_D_PHP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PLP:
+    ldx     #STR_D_PLP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PHX:
+    ldx     #STR_D_PHX
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PLX:
+    ldx     #STR_D_PLX
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PHY:
+    ldx     #STR_D_PHY
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PLY:
+    ldx     #STR_D_PLY
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PHB:
+    ldx     #STR_D_PHB
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PLB:
+    ldx     #STR_D_PLB
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PHD:
+    ldx     #STR_D_PHD
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PLD:
+    ldx     #STR_D_PLD
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_PHK:
+    ldx     #STR_D_PHK
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
 DISASM_JSR_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_JSR
@@ -2213,6 +2331,10 @@ ASM_PARSE_LINE_NOT_N:
     bne     ASM_PARSE_LINE_NOT_J
     jmp     ASM_PARSE_J
 ASM_PARSE_LINE_NOT_J:
+    cmp     #'P'
+    bne     ASM_PARSE_LINE_NOT_P
+    jmp     ASM_PARSE_P
+ASM_PARSE_LINE_NOT_P:
     jmp     ASM_FAIL
 
 ASM_PARSE_DOT:
@@ -3766,6 +3888,91 @@ ASM_EMIT_IMPLIED:
     jsr     ASM_EMIT_A
     rts
 
+ASM_PARSE_P:
+    jsr     ASM_READ_UPPER
+    cmp     #'H'
+    bne     ASM_PARSE_P_NOT_H
+    jmp     ASM_PARSE_PH
+ASM_PARSE_P_NOT_H:
+    cmp     #'L'
+    bne     ASM_PARSE_P_NOT_L
+    jmp     ASM_PARSE_PL
+ASM_PARSE_P_NOT_L:
+    jmp     ASM_FAIL
+
+ASM_PARSE_PH:
+    jsr     ASM_READ_UPPER
+    cmp     #'A'
+    beq     ASM_PARSE_PHA
+    cmp     #'P'
+    beq     ASM_PARSE_PHP
+    cmp     #'X'
+    beq     ASM_PARSE_PHX
+    cmp     #'Y'
+    beq     ASM_PARSE_PHY
+    cmp     #'B'
+    beq     ASM_PARSE_PHB
+    cmp     #'D'
+    beq     ASM_PARSE_PHD
+    cmp     #'K'
+    beq     ASM_PARSE_PHK
+    jmp     ASM_FAIL
+ASM_PARSE_PHA:
+    lda     #$48                ; PHA
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PHP:
+    lda     #$08                ; PHP
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PHX:
+    lda     #$DA                ; PHX
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PHY:
+    lda     #$5A                ; PHY
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PHB:
+    lda     #$8B                ; PHB
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PHD:
+    lda     #$0B                ; PHD
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PHK:
+    lda     #$4B                ; PHK
+    jmp     ASM_EMIT_IMPLIED
+
+ASM_PARSE_PL:
+    jsr     ASM_READ_UPPER
+    cmp     #'A'
+    beq     ASM_PARSE_PLA
+    cmp     #'P'
+    beq     ASM_PARSE_PLP
+    cmp     #'X'
+    beq     ASM_PARSE_PLX
+    cmp     #'Y'
+    beq     ASM_PARSE_PLY
+    cmp     #'B'
+    beq     ASM_PARSE_PLB
+    cmp     #'D'
+    beq     ASM_PARSE_PLD
+    jmp     ASM_FAIL
+ASM_PARSE_PLA:
+    lda     #$68                ; PLA
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PLP:
+    lda     #$28                ; PLP
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PLX:
+    lda     #$FA                ; PLX
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PLY:
+    lda     #$7A                ; PLY
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PLB:
+    lda     #$AB                ; PLB
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_PLD:
+    lda     #$2B                ; PLD
+    jmp     ASM_EMIT_IMPLIED
+
 ASM_LINE_IS_END:
     sep     #$20
     .a8
@@ -4970,6 +5177,58 @@ STR_D_RTS:
 
 STR_D_NOP:
     .ascii "NOP"
+    .byte 0
+
+STR_D_PHA:
+    .ascii "PHA"
+    .byte 0
+
+STR_D_PLA:
+    .ascii "PLA"
+    .byte 0
+
+STR_D_PHP:
+    .ascii "PHP"
+    .byte 0
+
+STR_D_PLP:
+    .ascii "PLP"
+    .byte 0
+
+STR_D_PHX:
+    .ascii "PHX"
+    .byte 0
+
+STR_D_PLX:
+    .ascii "PLX"
+    .byte 0
+
+STR_D_PHY:
+    .ascii "PHY"
+    .byte 0
+
+STR_D_PLY:
+    .ascii "PLY"
+    .byte 0
+
+STR_D_PHB:
+    .ascii "PHB"
+    .byte 0
+
+STR_D_PLB:
+    .ascii "PLB"
+    .byte 0
+
+STR_D_PHD:
+    .ascii "PHD"
+    .byte 0
+
+STR_D_PLD:
+    .ascii "PLD"
+    .byte 0
+
+STR_D_PHK:
+    .ascii "PHK"
     .byte 0
 
 STR_D_SEP:

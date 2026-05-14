@@ -300,9 +300,11 @@ Phase 2 checklist:
   Add `bra`, `bvc`, and `bvs` with absolute target syntax.
   The monitor assembler and disassembler now cover all 65C02 short branches,
   with parity test coverage.
-- [ ] Chunk N18: Add stack instructions.
+- [x] Chunk N18: Add stack instructions.
   Add `pha`, `pla`, `php`, `plp`, `phx`, `plx`, `phy`, `ply`, `phb`, `plb`,
   `phd`, `pld`, and `phk`.
+  The monitor assembler and disassembler now cover all 65C02/816 push and pull
+  instructions, with parity test coverage.
 - [ ] Chunk N19: Add interrupt and machine-control instructions.
   Add `brk`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, and `stp`.
 - [ ] Chunk N20: Add more jump forms.

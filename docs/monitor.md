@@ -469,6 +469,19 @@ bpl abs
 bra abs
 bvc abs
 bvs abs
+pha
+pla
+php
+plp
+phx
+plx
+phy
+ply
+phb
+plb
+phd
+pld
+phk
 .byte value[,value...]
 db value[,value...]
 label:
@@ -672,6 +685,19 @@ bpl abs
 bra abs
 bvc abs
 bvs abs
+pha
+pla
+php
+plp
+phx
+plx
+phy
+ply
+phb
+plb
+phd
+pld
+phk
 .byte value[,value...]
 db value[,value...]
 sta abs
