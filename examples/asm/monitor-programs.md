@@ -1156,6 +1156,98 @@ Expected:
 - These parity examples should not be run with `G` unless the referenced data
   bytes are initialized first.
 
+## Program 19: Shift And Rotate Forms
+
+Purpose:
+
+- Proves the monitor assembler accepts the N16 `asl`, `lsr`, `rol`, and `ror`
+  accumulator, direct page, absolute, and indexed forms.
+- Proves the disassembler renders the same N16 forms.
+
+Enter:
+
+```text
+* A0970
+0970> asl
+0971> asl $30
+0973> asl $03AA
+0976> asl $30,x
+0978> asl $03AA,x
+097B> end
+OK
+* A0990
+0990> lsr
+0991> lsr $31
+0993> lsr $03AC
+0996> lsr $31,x
+0998> lsr $03AC,x
+099B> end
+OK
+* A09B0
+09B0> rol
+09B1> rol $32
+09B3> rol $03AE
+09B6> rol $32,x
+09B8> rol $03AE,x
+09BB> end
+OK
+* A09D0
+09D0> ror
+09D1> ror $33
+09D3> ror $03B0
+09D6> ror $33,x
+09D8> ror $03B0,x
+09DB> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0970
+0970 0A ASL
+0971 06 30 ASL $30
+0973 0E AA 03 ASL $03AA
+0976 16 30 ASL $30,X
+0978 1E AA 03 ASL $03AA,X
+097B 00 DB $00
+097C 00 DB $00
+097D 00 DB $00
+* D0990
+0990 4A LSR
+0991 46 31 LSR $31
+0993 4E AC 03 LSR $03AC
+0996 56 31 LSR $31,X
+0998 5E AC 03 LSR $03AC,X
+099B 00 DB $00
+099C 00 DB $00
+099D 00 DB $00
+* D09B0
+09B0 2A ROL
+09B1 26 32 ROL $32
+09B3 2E AE 03 ROL $03AE
+09B6 36 32 ROL $32,X
+09B8 3E AE 03 ROL $03AE,X
+09BB 00 DB $00
+09BC 00 DB $00
+09BD 00 DB $00
+* D09D0
+09D0 6A ROR
+09D1 66 33 ROR $33
+09D3 6E B0 03 ROR $03B0
+09D6 76 33 ROR $33,X
+09D8 7E B0 03 ROR $03B0,X
+09DB 00 DB $00
+09DC 00 DB $00
+09DD 00 DB $00
+```
+
+Expected:
+
+- The four `D` commands show every N16 opcode listed above.
+- These parity examples should not be run with `G` unless the referenced data
+  bytes are initialized first.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

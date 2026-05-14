@@ -875,6 +875,38 @@ describe("monitor", () => {
         "dec $081A,x",
         "end",
         "D0900",
+        "A0920",
+        "asl",
+        "asl $21",
+        "asl $081C",
+        "asl $21,x",
+        "asl $081C,x",
+        "end",
+        "D0920",
+        "A0940",
+        "lsr",
+        "lsr $22",
+        "lsr $081E",
+        "lsr $22,x",
+        "lsr $081E,x",
+        "end",
+        "D0940",
+        "A0960",
+        "rol",
+        "rol $23",
+        "rol $0820",
+        "rol $23,x",
+        "rol $0820,x",
+        "end",
+        "D0960",
+        "A0980",
+        "ror",
+        "ror $24",
+        "ror $0822",
+        "ror $24,x",
+        "ror $0822,x",
+        "end",
+        "D0980",
       ].join("\r") + "\r",
     );
 
@@ -992,5 +1024,29 @@ describe("monitor", () => {
     expect(output).toContain("0903 CE 1A 08 DEC $081A");
     expect(output).toContain("0906 D6 20 DEC $20,X");
     expect(output).toContain("0908 DE 1A 08 DEC $081A,X");
+
+    expect(output).toContain("0920 0A ASL");
+    expect(output).toContain("0921 06 21 ASL $21");
+    expect(output).toContain("0923 0E 1C 08 ASL $081C");
+    expect(output).toContain("0926 16 21 ASL $21,X");
+    expect(output).toContain("0928 1E 1C 08 ASL $081C,X");
+
+    expect(output).toContain("0940 4A LSR");
+    expect(output).toContain("0941 46 22 LSR $22");
+    expect(output).toContain("0943 4E 1E 08 LSR $081E");
+    expect(output).toContain("0946 56 22 LSR $22,X");
+    expect(output).toContain("0948 5E 1E 08 LSR $081E,X");
+
+    expect(output).toContain("0960 2A ROL");
+    expect(output).toContain("0961 26 23 ROL $23");
+    expect(output).toContain("0963 2E 20 08 ROL $0820");
+    expect(output).toContain("0966 36 23 ROL $23,X");
+    expect(output).toContain("0968 3E 20 08 ROL $0820,X");
+
+    expect(output).toContain("0980 6A ROR");
+    expect(output).toContain("0981 66 24 ROR $24");
+    expect(output).toContain("0983 6E 22 08 ROR $0822");
+    expect(output).toContain("0986 76 24 ROR $24,X");
+    expect(output).toContain("0988 7E 22 08 ROR $0822,X");
   }, 40_000);
 });

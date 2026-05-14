@@ -453,6 +453,26 @@ DO_REGS_SHOW:
 ;   dec dp,x
 ;   dec abs
 ;   dec abs,x
+;   asl
+;   asl dp
+;   asl dp,x
+;   asl abs
+;   asl abs,x
+;   lsr
+;   lsr dp
+;   lsr dp,x
+;   lsr abs
+;   lsr abs,x
+;   rol
+;   rol dp
+;   rol dp,x
+;   rol abs
+;   rol abs,x
+;   ror
+;   ror dp
+;   ror dp,x
+;   ror abs
+;   ror abs,x
 ;   and dp
 ;   and dp,x
 ;   and abs
@@ -757,6 +777,86 @@ DISASM_NOT_DEC_ABS:
     bne     DISASM_NOT_DEC_ABSX
     jmp     DISASM_DEC_ABSX
 DISASM_NOT_DEC_ABSX:
+    cmp     #$0A
+    bne     DISASM_NOT_ASL_A
+    jmp     DISASM_ASL_A
+DISASM_NOT_ASL_A:
+    cmp     #$06
+    bne     DISASM_NOT_ASL_DP
+    jmp     DISASM_ASL_DP
+DISASM_NOT_ASL_DP:
+    cmp     #$16
+    bne     DISASM_NOT_ASL_DPX
+    jmp     DISASM_ASL_DPX
+DISASM_NOT_ASL_DPX:
+    cmp     #$0E
+    bne     DISASM_NOT_ASL_ABS
+    jmp     DISASM_ASL_ABS
+DISASM_NOT_ASL_ABS:
+    cmp     #$1E
+    bne     DISASM_NOT_ASL_ABSX
+    jmp     DISASM_ASL_ABSX
+DISASM_NOT_ASL_ABSX:
+    cmp     #$4A
+    bne     DISASM_NOT_LSR_A
+    jmp     DISASM_LSR_A
+DISASM_NOT_LSR_A:
+    cmp     #$46
+    bne     DISASM_NOT_LSR_DP
+    jmp     DISASM_LSR_DP
+DISASM_NOT_LSR_DP:
+    cmp     #$56
+    bne     DISASM_NOT_LSR_DPX
+    jmp     DISASM_LSR_DPX
+DISASM_NOT_LSR_DPX:
+    cmp     #$4E
+    bne     DISASM_NOT_LSR_ABS
+    jmp     DISASM_LSR_ABS
+DISASM_NOT_LSR_ABS:
+    cmp     #$5E
+    bne     DISASM_NOT_LSR_ABSX
+    jmp     DISASM_LSR_ABSX
+DISASM_NOT_LSR_ABSX:
+    cmp     #$2A
+    bne     DISASM_NOT_ROL_A
+    jmp     DISASM_ROL_A
+DISASM_NOT_ROL_A:
+    cmp     #$26
+    bne     DISASM_NOT_ROL_DP
+    jmp     DISASM_ROL_DP
+DISASM_NOT_ROL_DP:
+    cmp     #$36
+    bne     DISASM_NOT_ROL_DPX
+    jmp     DISASM_ROL_DPX
+DISASM_NOT_ROL_DPX:
+    cmp     #$2E
+    bne     DISASM_NOT_ROL_ABS
+    jmp     DISASM_ROL_ABS
+DISASM_NOT_ROL_ABS:
+    cmp     #$3E
+    bne     DISASM_NOT_ROL_ABSX
+    jmp     DISASM_ROL_ABSX
+DISASM_NOT_ROL_ABSX:
+    cmp     #$6A
+    bne     DISASM_NOT_ROR_A
+    jmp     DISASM_ROR_A
+DISASM_NOT_ROR_A:
+    cmp     #$66
+    bne     DISASM_NOT_ROR_DP
+    jmp     DISASM_ROR_DP
+DISASM_NOT_ROR_DP:
+    cmp     #$76
+    bne     DISASM_NOT_ROR_DPX
+    jmp     DISASM_ROR_DPX
+DISASM_NOT_ROR_DPX:
+    cmp     #$6E
+    bne     DISASM_NOT_ROR_ABS
+    jmp     DISASM_ROR_ABS
+DISASM_NOT_ROR_ABS:
+    cmp     #$7E
+    bne     DISASM_NOT_ROR_ABSX
+    jmp     DISASM_ROR_ABSX
+DISASM_NOT_ROR_ABSX:
     cmp     #$25
     bne     DISASM_NOT_AND_DP
     jmp     DISASM_AND_DP
@@ -1306,6 +1406,110 @@ DISASM_DEC_ABS:
 DISASM_DEC_ABSX:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_DEC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+
+DISASM_ASL_A:
+    ldx     #STR_D_ASL
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_ASL_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ASL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_ASL_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ASL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
+DISASM_ASL_ABS:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ASL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABS_NEXT
+DISASM_ASL_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ASL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+
+DISASM_LSR_A:
+    ldx     #STR_D_LSR
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_LSR_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_LSR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_LSR_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_LSR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
+DISASM_LSR_ABS:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_LSR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABS_NEXT
+DISASM_LSR_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_LSR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+
+DISASM_ROL_A:
+    ldx     #STR_D_ROL
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_ROL_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ROL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_ROL_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ROL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
+DISASM_ROL_ABS:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ROL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABS_NEXT
+DISASM_ROL_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ROL_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+
+DISASM_ROR_A:
+    ldx     #STR_D_ROR
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+DISASM_ROR_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ROR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_ROR_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ROR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
+DISASM_ROR_ABS:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ROR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABS_NEXT
+DISASM_ROR_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ROR_ABS
     stx     ZP_PTR
     jmp     DISASM_PRINT_ABSX_NEXT
 
@@ -2203,10 +2407,61 @@ ASM_PARSE_BPL_OK:
 ASM_PARSE_A:
     jsr     ASM_READ_UPPER
     cmp     #'D'
-    beq     ASM_PARSE_ADC
+    bne     ASM_PARSE_A_NOT_D
+    jmp     ASM_PARSE_ADC
+ASM_PARSE_A_NOT_D:
     cmp     #'N'
-    beq     ASM_PARSE_AND
+    bne     ASM_PARSE_A_NOT_N
+    jmp     ASM_PARSE_AND
+ASM_PARSE_A_NOT_N:
+    cmp     #'S'
+    beq     ASM_PARSE_ASL
     jmp     ASM_FAIL
+
+ASM_PARSE_ASL:
+    jsr     ASM_READ_UPPER
+    cmp     #'L'
+    beq     ASM_PARSE_ASL_GOT_L
+    jmp     ASM_FAIL
+ASM_PARSE_ASL_GOT_L:
+    jsr     ASM_PARSE_INCDEC_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_ASL_OK
+    rts
+ASM_PARSE_ASL_OK:
+    lda     ZP_TMP2
+    cmp     #6
+    beq     ASM_PARSE_ASL_A
+    cmp     #0
+    beq     ASM_PARSE_ASL_DP
+    cmp     #1
+    beq     ASM_PARSE_ASL_ABS
+    cmp     #2
+    beq     ASM_PARSE_ASL_DPX
+    cmp     #4
+    beq     ASM_PARSE_ASL_ABSX
+    jmp     ASM_FAIL
+ASM_PARSE_ASL_A:
+    lda     #$0A                ; ASL accumulator
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_ASL_DP:
+    lda     #$06                ; ASL dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_ASL_DPX:
+    lda     #$16                ; ASL dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_ASL_ABS:
+    lda     #$0E                ; ASL abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_ASL_ABSX:
+    lda     #$1E                ; ASL abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
 
 ASM_PARSE_ADC:
     jsr     ASM_READ_UPPER
@@ -2763,7 +3018,55 @@ ASM_PARSE_L:
     jsr     ASM_READ_UPPER
     cmp     #'D'
     beq     ASM_PARSE_L_GOT_D
+    cmp     #'S'
+    beq     ASM_PARSE_LSR
     jmp     ASM_FAIL
+
+ASM_PARSE_LSR:
+    jsr     ASM_READ_UPPER
+    cmp     #'R'
+    beq     ASM_PARSE_LSR_GOT_R
+    jmp     ASM_FAIL
+ASM_PARSE_LSR_GOT_R:
+    jsr     ASM_PARSE_INCDEC_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_LSR_OK
+    rts
+ASM_PARSE_LSR_OK:
+    lda     ZP_TMP2
+    cmp     #6
+    beq     ASM_PARSE_LSR_A
+    cmp     #0
+    beq     ASM_PARSE_LSR_DP
+    cmp     #1
+    beq     ASM_PARSE_LSR_ABS
+    cmp     #2
+    beq     ASM_PARSE_LSR_DPX
+    cmp     #4
+    beq     ASM_PARSE_LSR_ABSX
+    jmp     ASM_FAIL
+ASM_PARSE_LSR_A:
+    lda     #$4A                ; LSR accumulator
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_LSR_DP:
+    lda     #$46                ; LSR dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_LSR_DPX:
+    lda     #$56                ; LSR dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_LSR_ABS:
+    lda     #$4E                ; LSR abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_LSR_ABSX:
+    lda     #$5E                ; LSR abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+
 ASM_PARSE_L_GOT_D:
     jsr     ASM_READ_UPPER
     cmp     #'A'
@@ -3169,8 +3472,97 @@ ASM_PARSE_RTS_OK:
 
 ASM_PARSE_REP:
     cmp     #'E'
-    beq     ASM_PARSE_REP_GOT_E
+    bne     ASM_PARSE_R_NOT_E
+    jmp     ASM_PARSE_REP_GOT_E
+ASM_PARSE_R_NOT_E:
+    cmp     #'O'
+    beq     ASM_PARSE_RO
     jmp     ASM_FAIL
+ASM_PARSE_RO:
+    jsr     ASM_READ_UPPER
+    cmp     #'L'
+    beq     ASM_PARSE_ROL
+    cmp     #'R'
+    beq     ASM_PARSE_ROR
+    jmp     ASM_FAIL
+ASM_PARSE_ROL:
+    jsr     ASM_PARSE_INCDEC_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_ROL_OK
+    rts
+ASM_PARSE_ROL_OK:
+    lda     ZP_TMP2
+    cmp     #6
+    beq     ASM_PARSE_ROL_A
+    cmp     #0
+    beq     ASM_PARSE_ROL_DP
+    cmp     #1
+    beq     ASM_PARSE_ROL_ABS
+    cmp     #2
+    beq     ASM_PARSE_ROL_DPX
+    cmp     #4
+    beq     ASM_PARSE_ROL_ABSX
+    jmp     ASM_FAIL
+ASM_PARSE_ROL_A:
+    lda     #$2A                ; ROL accumulator
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_ROL_DP:
+    lda     #$26                ; ROL dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_ROL_DPX:
+    lda     #$36                ; ROL dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_ROL_ABS:
+    lda     #$2E                ; ROL abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_ROL_ABSX:
+    lda     #$3E                ; ROL abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_ROR:
+    jsr     ASM_PARSE_INCDEC_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_ROR_OK
+    rts
+ASM_PARSE_ROR_OK:
+    lda     ZP_TMP2
+    cmp     #6
+    beq     ASM_PARSE_ROR_A
+    cmp     #0
+    beq     ASM_PARSE_ROR_DP
+    cmp     #1
+    beq     ASM_PARSE_ROR_ABS
+    cmp     #2
+    beq     ASM_PARSE_ROR_DPX
+    cmp     #4
+    beq     ASM_PARSE_ROR_ABSX
+    jmp     ASM_FAIL
+ASM_PARSE_ROR_A:
+    lda     #$6A                ; ROR accumulator
+    jmp     ASM_EMIT_IMPLIED
+ASM_PARSE_ROR_DP:
+    lda     #$66                ; ROR dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_ROR_DPX:
+    lda     #$76                ; ROR dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_ROR_ABS:
+    lda     #$6E                ; ROR abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_ROR_ABSX:
+    lda     #$7E                ; ROR abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
 ASM_PARSE_REP_GOT_E:
     jsr     ASM_READ_UPPER
     cmp     #'P'
@@ -4312,6 +4704,38 @@ STR_D_DEC:
 
 STR_D_DEC_ABS:
     .ascii "DEC $"
+    .byte 0
+
+STR_D_ASL:
+    .ascii "ASL"
+    .byte 0
+
+STR_D_ASL_ABS:
+    .ascii "ASL $"
+    .byte 0
+
+STR_D_LSR:
+    .ascii "LSR"
+    .byte 0
+
+STR_D_LSR_ABS:
+    .ascii "LSR $"
+    .byte 0
+
+STR_D_ROL:
+    .ascii "ROL"
+    .byte 0
+
+STR_D_ROL_ABS:
+    .ascii "ROL $"
+    .byte 0
+
+STR_D_ROR:
+    .ascii "ROR"
+    .byte 0
+
+STR_D_ROR_ABS:
+    .ascii "ROR $"
     .byte 0
 
 STR_D_AND:

@@ -291,9 +291,11 @@ Phase 2 checklist:
   `inc`/`dec` accumulator, direct page, absolute, and indexed forms.
   The monitor assembler and disassembler now cover the phase-2 BIT and
   increment/decrement memory groups, with parity test coverage.
-- [ ] Chunk N16: Add shifts and rotates.
+- [x] Chunk N16: Add shifts and rotates.
   Add `asl`, `lsr`, `rol`, and `ror` accumulator, direct page, absolute, and
   indexed forms.
+  The monitor assembler and disassembler now cover accumulator, direct page,
+  absolute, and X-indexed shift/rotate forms, with parity test coverage.
 - [ ] Chunk N17: Add remaining short branches.
   Add `bra`, `bvc`, and `bvs` with absolute target syntax.
 - [ ] Chunk N18: Add stack instructions.
