@@ -1040,6 +1040,48 @@ Expected:
 - This parity example should not be run with `G` unless the referenced data
   bytes are initialized first.
 
+## Program 17: Index Register Compare Forms
+
+Purpose:
+
+- Proves the monitor assembler accepts the N14 `cpx` and `cpy` immediate,
+  direct page, and absolute forms.
+- Proves the disassembler renders the same N14 forms.
+
+Enter:
+
+```text
+* A08F0
+08F0> cpx #$02
+08F2> cpy #$03
+08F4> cpx $2A
+08F6> cpy $2B
+08F8> cpx $03A0
+08FB> cpy $03A2
+08FE> end
+OK
+```
+
+Disassemble:
+
+```text
+* D08F0
+08F0 E0 02 CPX #$02
+08F2 C0 03 CPY #$03
+08F4 E4 2A CPX $2A
+08F6 C4 2B CPY $2B
+08F8 EC A0 03 CPX $03A0
+08FB CC A2 03 CPY $03A2
+08FE 00 DB $00
+08FF 00 DB $00
+```
+
+Expected:
+
+- `D08F0` shows every N14 opcode listed above.
+- This parity example should not be run with `G` unless the referenced data
+  bytes are initialized first.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

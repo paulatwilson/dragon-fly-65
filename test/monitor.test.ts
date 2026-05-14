@@ -842,6 +842,15 @@ describe("monitor", () => {
         "sbc $0811,y",
         "end",
         "D0870",
+        "A08A0",
+        "cpx #$02",
+        "cpy #$03",
+        "cpx $1C",
+        "cpy $1D",
+        "cpx $0812",
+        "cpy $0814",
+        "end",
+        "D08A0",
       ].join("\r") + "\r",
     );
 
@@ -934,5 +943,12 @@ describe("monitor", () => {
     expect(output).toContain("087C F5 1B SBC $1B,X");
     expect(output).toContain("087E FD 11 08 SBC $0811,X");
     expect(output).toContain("0881 F9 11 08 SBC $0811,Y");
+
+    expect(output).toContain("08A0 E0 02 CPX #$02");
+    expect(output).toContain("08A2 C0 03 CPY #$03");
+    expect(output).toContain("08A4 E4 1C CPX $1C");
+    expect(output).toContain("08A6 C4 1D CPY $1D");
+    expect(output).toContain("08A8 EC 12 08 CPX $0812");
+    expect(output).toContain("08AB CC 14 08 CPY $0814");
   }, 40_000);
 });

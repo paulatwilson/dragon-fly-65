@@ -282,8 +282,10 @@ Phase 2 checklist:
   The monitor assembler and disassembler now cover direct page and indexed
   direct/absolute forms for the phase-2 accumulator ALU and compare group, with
   parity test coverage.
-- [ ] Chunk N14: Add `cpx` and `cpy`.
+- [x] Chunk N14: Add `cpx` and `cpy`.
   Add `cpx #imm8`, `cpy #imm8`, `cpx dp`, `cpy dp`, `cpx abs`, and `cpy abs`.
+  The monitor assembler and disassembler now cover the initial index-register
+  compare forms, with parity test coverage.
 - [ ] Chunk N15: Add `bit`, `inc`, and `dec`.
   Add `bit #imm8`, `bit dp`, `bit abs`, `bit dp,x`, `bit abs,x`, plus
   `inc`/`dec` accumulator, direct page, absolute, and indexed forms.
