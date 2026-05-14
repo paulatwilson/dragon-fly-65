@@ -1082,6 +1082,80 @@ Expected:
 - This parity example should not be run with `G` unless the referenced data
   bytes are initialized first.
 
+## Program 18: BIT And Increment/Decrement Forms
+
+Purpose:
+
+- Proves the monitor assembler accepts the N15 `bit`, `inc`, and `dec` forms.
+- Proves the disassembler renders the same N15 forms.
+
+Enter:
+
+```text
+* A0910
+0910> bit #$40
+0912> bit $2C
+0914> bit $03A4
+0917> bit $2C,x
+0919> bit $03A4,x
+091C> end
+OK
+* A0930
+0930> inc
+0931> inc $2D
+0933> inc $03A6
+0936> inc $2D,x
+0938> inc $03A6,x
+093B> end
+OK
+* A0950
+0950> dec
+0951> dec $2E
+0953> dec $03A8
+0956> dec $2E,x
+0958> dec $03A8,x
+095B> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0910
+0910 89 40 BIT #$40
+0912 24 2C BIT $2C
+0914 2C A4 03 BIT $03A4
+0917 34 2C BIT $2C,X
+0919 3C A4 03 BIT $03A4,X
+091C 00 DB $00
+091D 00 DB $00
+091E 00 DB $00
+* D0930
+0930 1A INC
+0931 E6 2D INC $2D
+0933 EE A6 03 INC $03A6
+0936 F6 2D INC $2D,X
+0938 FE A6 03 INC $03A6,X
+093B 00 DB $00
+093C 00 DB $00
+093D 00 DB $00
+* D0950
+0950 3A DEC
+0951 C6 2E DEC $2E
+0953 CE A8 03 DEC $03A8
+0956 D6 2E DEC $2E,X
+0958 DE A8 03 DEC $03A8,X
+095B 00 DB $00
+095C 00 DB $00
+095D 00 DB $00
+```
+
+Expected:
+
+- The three `D` commands show every N15 opcode listed above.
+- These parity examples should not be run with `G` unless the referenced data
+  bytes are initialized first.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

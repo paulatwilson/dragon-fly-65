@@ -851,6 +851,30 @@ describe("monitor", () => {
         "cpy $0814",
         "end",
         "D08A0",
+        "A08C0",
+        "bit #$40",
+        "bit $1E",
+        "bit $0816",
+        "bit $1E,x",
+        "bit $0816,x",
+        "end",
+        "D08C0",
+        "A08E0",
+        "inc",
+        "inc $1F",
+        "inc $0818",
+        "inc $1F,x",
+        "inc $0818,x",
+        "end",
+        "D08E0",
+        "A0900",
+        "dec",
+        "dec $20",
+        "dec $081A",
+        "dec $20,x",
+        "dec $081A,x",
+        "end",
+        "D0900",
       ].join("\r") + "\r",
     );
 
@@ -950,5 +974,23 @@ describe("monitor", () => {
     expect(output).toContain("08A6 C4 1D CPY $1D");
     expect(output).toContain("08A8 EC 12 08 CPX $0812");
     expect(output).toContain("08AB CC 14 08 CPY $0814");
+
+    expect(output).toContain("08C0 89 40 BIT #$40");
+    expect(output).toContain("08C2 24 1E BIT $1E");
+    expect(output).toContain("08C4 2C 16 08 BIT $0816");
+    expect(output).toContain("08C7 34 1E BIT $1E,X");
+    expect(output).toContain("08C9 3C 16 08 BIT $0816,X");
+
+    expect(output).toContain("08E0 1A INC");
+    expect(output).toContain("08E1 E6 1F INC $1F");
+    expect(output).toContain("08E3 EE 18 08 INC $0818");
+    expect(output).toContain("08E6 F6 1F INC $1F,X");
+    expect(output).toContain("08E8 FE 18 08 INC $0818,X");
+
+    expect(output).toContain("0900 3A DEC");
+    expect(output).toContain("0901 C6 20 DEC $20");
+    expect(output).toContain("0903 CE 1A 08 DEC $081A");
+    expect(output).toContain("0906 D6 20 DEC $20,X");
+    expect(output).toContain("0908 DE 1A 08 DEC $081A,X");
   }, 40_000);
 });

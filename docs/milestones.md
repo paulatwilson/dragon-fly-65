@@ -286,9 +286,11 @@ Phase 2 checklist:
   Add `cpx #imm8`, `cpy #imm8`, `cpx dp`, `cpy dp`, `cpx abs`, and `cpy abs`.
   The monitor assembler and disassembler now cover the initial index-register
   compare forms, with parity test coverage.
-- [ ] Chunk N15: Add `bit`, `inc`, and `dec`.
+- [x] Chunk N15: Add `bit`, `inc`, and `dec`.
   Add `bit #imm8`, `bit dp`, `bit abs`, `bit dp,x`, `bit abs,x`, plus
   `inc`/`dec` accumulator, direct page, absolute, and indexed forms.
+  The monitor assembler and disassembler now cover the phase-2 BIT and
+  increment/decrement memory groups, with parity test coverage.
 - [ ] Chunk N16: Add shifts and rotates.
   Add `asl`, `lsr`, `rol`, and `ror` accumulator, direct page, absolute, and
   indexed forms.
