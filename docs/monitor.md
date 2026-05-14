@@ -466,6 +466,9 @@ bcc abs
 bcs abs
 bmi abs
 bpl abs
+bra abs
+bvc abs
+bvs abs
 .byte value[,value...]
 db value[,value...]
 label:
@@ -666,6 +669,9 @@ bcc abs
 bcs abs
 bmi abs
 bpl abs
+bra abs
+bvc abs
+bvs abs
 .byte value[,value...]
 db value[,value...]
 sta abs

@@ -356,9 +356,13 @@ describe("monitor", () => {
         "bcs $0484",
         "bmi $048C",
         "bpl $0488",
+        "bra $0490",
+        "bvc $048C",
+        "bvs $0494",
         "rts",
         "end",
         "D0480",
+        "D048E",
       ].join("\r") + "\r",
     );
 
@@ -374,13 +378,23 @@ describe("monitor", () => {
     expect(machine.mem.readByte(0x0489)).toBe(0x02);
     expect(machine.mem.readByte(0x048a)).toBe(0x10);
     expect(machine.mem.readByte(0x048b)).toBe(0xfc);
+    expect(machine.mem.readByte(0x048c)).toBe(0x80);
+    expect(machine.mem.readByte(0x048d)).toBe(0x02);
+    expect(machine.mem.readByte(0x048e)).toBe(0x50);
+    expect(machine.mem.readByte(0x048f)).toBe(0xfc);
+    expect(machine.mem.readByte(0x0490)).toBe(0x70);
+    expect(machine.mem.readByte(0x0491)).toBe(0x02);
+    expect(machine.mem.readByte(0x0492)).toBe(0x60);
     expect(output).toContain("0480 F0 06 BEQ $0488");
     expect(output).toContain("0482 D0 FC BNE $0480");
     expect(output).toContain("0484 90 04 BCC $048A");
     expect(output).toContain("0486 B0 FC BCS $0484");
     expect(output).toContain("0488 30 02 BMI $048C");
     expect(output).toContain("048A 10 FC BPL $0488");
-    expect(output).toContain("048C 60 RTS");
+    expect(output).toContain("048C 80 02 BRA $0490");
+    expect(output).toContain("048E 50 FC BVC $048C");
+    expect(output).toContain("0490 70 02 BVS $0494");
+    expect(output).toContain("0492 60 RTS");
   }, 10_000);
 
   test("branch operations run in monitor programs", () => {

@@ -1021,6 +1021,18 @@ DISASM_NOT_BMI:
     bne     DISASM_NOT_BPL
     jmp     DISASM_BPL
 DISASM_NOT_BPL:
+    cmp     #$80
+    bne     DISASM_NOT_BRA
+    jmp     DISASM_BRA
+DISASM_NOT_BRA:
+    cmp     #$50
+    bne     DISASM_NOT_BVC
+    jmp     DISASM_BVC
+DISASM_NOT_BVC:
+    cmp     #$70
+    bne     DISASM_NOT_BVS
+    jmp     DISASM_BVS
+DISASM_NOT_BVS:
     cmp     #$85
     bne     DISASM_NOT_STA_DP
     jmp     DISASM_STA_DP
@@ -1761,6 +1773,30 @@ DISASM_BPL:
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
 
+DISASM_BRA:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BRA
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BVC:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BVC
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_BVS:
+    jsr     DISASM_FETCH_BRANCH
+    ldx     #STR_D_BVS
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
 DISASM_SEP_IMM:
     jsr     DISASM_FETCH_PRINT
     sta     ZP_OPER
@@ -2288,6 +2324,14 @@ ASM_PARSE_B_NOT_M:
     bne     ASM_PARSE_B_NOT_P
     jmp     ASM_PARSE_BPL
 ASM_PARSE_B_NOT_P:
+    cmp     #'R'
+    bne     ASM_PARSE_B_NOT_R
+    jmp     ASM_PARSE_BRA
+ASM_PARSE_B_NOT_R:
+    cmp     #'V'
+    bne     ASM_PARSE_B_NOT_V
+    jmp     ASM_PARSE_BV
+ASM_PARSE_B_NOT_V:
     cmp     #'I'
     beq     ASM_PARSE_BIT
     jmp     ASM_FAIL
@@ -2401,6 +2445,32 @@ ASM_PARSE_BPL:
     jmp     ASM_FAIL
 ASM_PARSE_BPL_OK:
     lda     #$10                ; BPL rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+
+ASM_PARSE_BRA:
+    jsr     ASM_READ_UPPER
+    cmp     #'A'
+    beq     ASM_PARSE_BRA_OK
+    jmp     ASM_FAIL
+ASM_PARSE_BRA_OK:
+    lda     #$80                ; BRA rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+
+ASM_PARSE_BV:
+    jsr     ASM_READ_UPPER
+    cmp     #'C'
+    beq     ASM_PARSE_BVC_OK
+    cmp     #'S'
+    beq     ASM_PARSE_BVS_OK
+    jmp     ASM_FAIL
+ASM_PARSE_BVC_OK:
+    lda     #$50                ; BVC rel8, source uses absolute target
+    jsr     ASM_PARSE_BRANCH_OPER
+    rts
+ASM_PARSE_BVS_OK:
+    lda     #$70                ; BVS rel8, source uses absolute target
     jsr     ASM_PARSE_BRANCH_OPER
     rts
 
@@ -4800,6 +4870,18 @@ STR_D_BMI:
 
 STR_D_BPL:
     .ascii "BPL $"
+    .byte 0
+
+STR_D_BRA:
+    .ascii "BRA $"
+    .byte 0
+
+STR_D_BVC:
+    .ascii "BVC $"
+    .byte 0
+
+STR_D_BVS:
+    .ascii "BVS $"
     .byte 0
 
 STR_D_STA:

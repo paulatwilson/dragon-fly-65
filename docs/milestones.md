@@ -296,8 +296,10 @@ Phase 2 checklist:
   indexed forms.
   The monitor assembler and disassembler now cover accumulator, direct page,
   absolute, and X-indexed shift/rotate forms, with parity test coverage.
-- [ ] Chunk N17: Add remaining short branches.
+- [x] Chunk N17: Add remaining short branches.
   Add `bra`, `bvc`, and `bvs` with absolute target syntax.
+  The monitor assembler and disassembler now cover all 65C02 short branches,
+  with parity test coverage.
 - [ ] Chunk N18: Add stack instructions.
   Add `pha`, `pla`, `php`, `plp`, `phx`, `plx`, `phy`, `ply`, `phb`, `plb`,
   `phd`, `pld`, and `phk`.
