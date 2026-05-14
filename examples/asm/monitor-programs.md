@@ -956,6 +956,90 @@ Expected:
 - `D085D` and `D0873` show `LDA $22`, `LDA $22,X`, `LDA $0394`,
   `LDA $0394,X`, and `LDA $0394,Y`.
 
+## Program 16: Accumulator ALU Direct Page And Indexed Forms
+
+Purpose:
+
+- Proves the monitor assembler accepts the N13 direct page and indexed forms
+  for `cmp`, `and`, `ora`, `eor`, `adc`, and `sbc`.
+- Proves the disassembler renders the same N13 forms.
+
+Enter:
+
+```text
+* A0890
+0890> cmp $24
+0892> cmp $24,x
+0894> cmp $0398,x
+0897> cmp $0398,y
+089A> and $25
+089C> and $25,x
+089E> and $0399,x
+08A1> and $0399,y
+08A4> end
+OK
+* A08B0
+08B0> ora $26
+08B2> ora $26,x
+08B4> ora $039A,x
+08B7> ora $039A,y
+08BA> eor $27
+08BC> eor $27,x
+08BE> eor $039B,x
+08C1> eor $039B,y
+08C4> end
+OK
+* A08D0
+08D0> adc $28
+08D2> adc $28,x
+08D4> adc $039C,x
+08D7> adc $039C,y
+08DA> sbc $29
+08DC> sbc $29,x
+08DE> sbc $039D,x
+08E1> sbc $039D,y
+08E4> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0890
+0890 C5 24 CMP $24
+0892 D5 24 CMP $24,X
+0894 DD 98 03 CMP $0398,X
+0897 D9 98 03 CMP $0398,Y
+089A 25 25 AND $25
+089C 35 25 AND $25,X
+089E 3D 99 03 AND $0399,X
+08A1 39 99 03 AND $0399,Y
+* D08B0
+08B0 05 26 ORA $26
+08B2 15 26 ORA $26,X
+08B4 1D 9A 03 ORA $039A,X
+08B7 19 9A 03 ORA $039A,Y
+08BA 45 27 EOR $27
+08BC 55 27 EOR $27,X
+08BE 5D 9B 03 EOR $039B,X
+08C1 59 9B 03 EOR $039B,Y
+* D08D0
+08D0 65 28 ADC $28
+08D2 75 28 ADC $28,X
+08D4 7D 9C 03 ADC $039C,X
+08D7 79 9C 03 ADC $039C,Y
+08DA E5 29 SBC $29
+08DC F5 29 SBC $29,X
+08DE FD 9D 03 SBC $039D,X
+08E1 F9 9D 03 SBC $039D,Y
+```
+
+Expected:
+
+- The three `D` commands show every N13 opcode listed above.
+- This parity example should not be run with `G` unless the referenced data
+  bytes are initialized first.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

@@ -19,17 +19,21 @@ function runWithInput(machine: Machine, input: string, maxSteps = 5_000_000): st
   let byteIdx = 0;
 
   const captured: string[] = [];
+  let capturedLength = 0;
   const originalWrite = process.stdout.write.bind(process.stdout);
   // Temporarily capture stdout by replacing the write method
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (process.stdout as any).write = (chunk: string | Uint8Array) => {
-    captured.push(typeof chunk === "string" ? chunk : String.fromCharCode(...chunk));
+    const text = typeof chunk === "string" ? chunk : String.fromCharCode(...chunk);
+    captured.push(text);
+    capturedLength += text.length;
     return true;
   };
 
   try {
     let steps = 0;
     let lastOutputStep = 0;
+    let lastOutputLength = 0;
     let inputFed = false;
 
     while (steps < maxSteps) {
@@ -44,9 +48,9 @@ function runWithInput(machine: Machine, input: string, maxSteps = 5_000_000): st
       steps++;
 
       // Track when output last happened
-      if (captured.length > 0) {
-        const lastLen = captured.join("").length;
-        if (lastLen > 0) lastOutputStep = steps;
+      if (capturedLength > lastOutputLength) {
+        lastOutputLength = capturedLength;
+        lastOutputStep = steps;
       }
 
       // Once all input is fed, stop after a quiet period.
@@ -805,6 +809,39 @@ describe("monitor", () => {
         "lda $080A,y",
         "end",
         "D0810",
+        "A0830",
+        "cmp $16",
+        "cmp $16,x",
+        "cmp $080C,x",
+        "cmp $080C,y",
+        "and $17",
+        "and $17,x",
+        "and $080D,x",
+        "and $080D,y",
+        "end",
+        "D0830",
+        "A0850",
+        "ora $18",
+        "ora $18,x",
+        "ora $080E,x",
+        "ora $080E,y",
+        "eor $19",
+        "eor $19,x",
+        "eor $080F,x",
+        "eor $080F,y",
+        "end",
+        "D0850",
+        "A0870",
+        "adc $1A",
+        "adc $1A,x",
+        "adc $0810,x",
+        "adc $0810,y",
+        "sbc $1B",
+        "sbc $1B,x",
+        "sbc $0811,x",
+        "sbc $0811,y",
+        "end",
+        "D0870",
       ].join("\r") + "\r",
     );
 
@@ -870,5 +907,32 @@ describe("monitor", () => {
     expect(output).toContain("0814 AD 0A 08 LDA $080A");
     expect(output).toContain("0817 BD 0A 08 LDA $080A,X");
     expect(output).toContain("081A B9 0A 08 LDA $080A,Y");
+
+    expect(output).toContain("0830 C5 16 CMP $16");
+    expect(output).toContain("0832 D5 16 CMP $16,X");
+    expect(output).toContain("0834 DD 0C 08 CMP $080C,X");
+    expect(output).toContain("0837 D9 0C 08 CMP $080C,Y");
+    expect(output).toContain("083A 25 17 AND $17");
+    expect(output).toContain("083C 35 17 AND $17,X");
+    expect(output).toContain("083E 3D 0D 08 AND $080D,X");
+    expect(output).toContain("0841 39 0D 08 AND $080D,Y");
+
+    expect(output).toContain("0850 05 18 ORA $18");
+    expect(output).toContain("0852 15 18 ORA $18,X");
+    expect(output).toContain("0854 1D 0E 08 ORA $080E,X");
+    expect(output).toContain("0857 19 0E 08 ORA $080E,Y");
+    expect(output).toContain("085A 45 19 EOR $19");
+    expect(output).toContain("085C 55 19 EOR $19,X");
+    expect(output).toContain("085E 5D 0F 08 EOR $080F,X");
+    expect(output).toContain("0861 59 0F 08 EOR $080F,Y");
+
+    expect(output).toContain("0870 65 1A ADC $1A");
+    expect(output).toContain("0872 75 1A ADC $1A,X");
+    expect(output).toContain("0874 7D 10 08 ADC $0810,X");
+    expect(output).toContain("0877 79 10 08 ADC $0810,Y");
+    expect(output).toContain("087A E5 1B SBC $1B");
+    expect(output).toContain("087C F5 1B SBC $1B,X");
+    expect(output).toContain("087E FD 11 08 SBC $0811,X");
+    expect(output).toContain("0881 F9 11 08 SBC $0811,Y");
   }, 40_000);
 });

@@ -276,9 +276,12 @@ Phase 2 checklist:
   Add `lda dp`, `lda dp,x`, `lda abs,x`, and `lda abs,y`.
   The monitor assembler and disassembler now cover the complete phase-2 `lda`
   direct page/indexed group, with parity test coverage.
-- [ ] Chunk N13: Expand accumulator ALU addressing.
+- [x] Chunk N13: Expand accumulator ALU addressing.
   For `cmp`, `and`, `ora`, `eor`, `adc`, and `sbc`, add `dp`, `dp,x`,
   `abs,x`, and `abs,y`.
+  The monitor assembler and disassembler now cover direct page and indexed
+  direct/absolute forms for the phase-2 accumulator ALU and compare group, with
+  parity test coverage.
 - [ ] Chunk N14: Add `cpx` and `cpy`.
   Add `cpx #imm8`, `cpy #imm8`, `cpx dp`, `cpy dp`, `cpx abs`, and `cpy abs`.
 - [ ] Chunk N15: Add `bit`, `inc`, and `dec`.

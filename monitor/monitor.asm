@@ -427,12 +427,36 @@ DO_REGS_SHOW:
 ;   eor #imm8
 ;   adc #imm8
 ;   sbc #imm8
+;   cmp dp
+;   cmp dp,x
 ;   cmp abs
+;   cmp abs,x
+;   cmp abs,y
+;   and dp
+;   and dp,x
 ;   and abs
+;   and abs,x
+;   and abs,y
+;   ora dp
+;   ora dp,x
 ;   ora abs
+;   ora abs,x
+;   ora abs,y
+;   eor dp
+;   eor dp,x
 ;   eor abs
+;   eor abs,x
+;   eor abs,y
+;   adc dp
+;   adc dp,x
 ;   adc abs
+;   adc abs,x
+;   adc abs,y
+;   sbc dp
+;   sbc dp,x
 ;   sbc abs
+;   sbc abs,x
+;   sbc abs,y
 ;   ldx #imm8
 ;   ldx dp
 ;   ldx dp,y
@@ -608,30 +632,126 @@ DISASM_NOT_LDA_ABSX:
     bne     DISASM_NOT_LDA_ABSY
     jmp     DISASM_LDA_ABSY
 DISASM_NOT_LDA_ABSY:
+    cmp     #$C5
+    bne     DISASM_NOT_CMP_DP
+    jmp     DISASM_CMP_DP
+DISASM_NOT_CMP_DP:
+    cmp     #$D5
+    bne     DISASM_NOT_CMP_DPX
+    jmp     DISASM_CMP_DPX
+DISASM_NOT_CMP_DPX:
     cmp     #$CD
     bne     DISASM_NOT_CMP_ABS
     jmp     DISASM_CMP_ABS
 DISASM_NOT_CMP_ABS:
+    cmp     #$DD
+    bne     DISASM_NOT_CMP_ABSX
+    jmp     DISASM_CMP_ABSX
+DISASM_NOT_CMP_ABSX:
+    cmp     #$D9
+    bne     DISASM_NOT_CMP_ABSY
+    jmp     DISASM_CMP_ABSY
+DISASM_NOT_CMP_ABSY:
+    cmp     #$25
+    bne     DISASM_NOT_AND_DP
+    jmp     DISASM_AND_DP
+DISASM_NOT_AND_DP:
+    cmp     #$35
+    bne     DISASM_NOT_AND_DPX
+    jmp     DISASM_AND_DPX
+DISASM_NOT_AND_DPX:
     cmp     #$2D
     bne     DISASM_NOT_AND_ABS
     jmp     DISASM_AND_ABS
 DISASM_NOT_AND_ABS:
+    cmp     #$3D
+    bne     DISASM_NOT_AND_ABSX
+    jmp     DISASM_AND_ABSX
+DISASM_NOT_AND_ABSX:
+    cmp     #$39
+    bne     DISASM_NOT_AND_ABSY
+    jmp     DISASM_AND_ABSY
+DISASM_NOT_AND_ABSY:
+    cmp     #$05
+    bne     DISASM_NOT_ORA_DP
+    jmp     DISASM_ORA_DP
+DISASM_NOT_ORA_DP:
+    cmp     #$15
+    bne     DISASM_NOT_ORA_DPX
+    jmp     DISASM_ORA_DPX
+DISASM_NOT_ORA_DPX:
     cmp     #$0D
     bne     DISASM_NOT_ORA_ABS
     jmp     DISASM_ORA_ABS
 DISASM_NOT_ORA_ABS:
+    cmp     #$1D
+    bne     DISASM_NOT_ORA_ABSX
+    jmp     DISASM_ORA_ABSX
+DISASM_NOT_ORA_ABSX:
+    cmp     #$19
+    bne     DISASM_NOT_ORA_ABSY
+    jmp     DISASM_ORA_ABSY
+DISASM_NOT_ORA_ABSY:
+    cmp     #$45
+    bne     DISASM_NOT_EOR_DP
+    jmp     DISASM_EOR_DP
+DISASM_NOT_EOR_DP:
+    cmp     #$55
+    bne     DISASM_NOT_EOR_DPX
+    jmp     DISASM_EOR_DPX
+DISASM_NOT_EOR_DPX:
     cmp     #$4D
     bne     DISASM_NOT_EOR_ABS
     jmp     DISASM_EOR_ABS
 DISASM_NOT_EOR_ABS:
+    cmp     #$5D
+    bne     DISASM_NOT_EOR_ABSX
+    jmp     DISASM_EOR_ABSX
+DISASM_NOT_EOR_ABSX:
+    cmp     #$59
+    bne     DISASM_NOT_EOR_ABSY
+    jmp     DISASM_EOR_ABSY
+DISASM_NOT_EOR_ABSY:
+    cmp     #$65
+    bne     DISASM_NOT_ADC_DP
+    jmp     DISASM_ADC_DP
+DISASM_NOT_ADC_DP:
+    cmp     #$75
+    bne     DISASM_NOT_ADC_DPX
+    jmp     DISASM_ADC_DPX
+DISASM_NOT_ADC_DPX:
     cmp     #$6D
     bne     DISASM_NOT_ADC_ABS
     jmp     DISASM_ADC_ABS
 DISASM_NOT_ADC_ABS:
+    cmp     #$7D
+    bne     DISASM_NOT_ADC_ABSX
+    jmp     DISASM_ADC_ABSX
+DISASM_NOT_ADC_ABSX:
+    cmp     #$79
+    bne     DISASM_NOT_ADC_ABSY
+    jmp     DISASM_ADC_ABSY
+DISASM_NOT_ADC_ABSY:
+    cmp     #$E5
+    bne     DISASM_NOT_SBC_DP
+    jmp     DISASM_SBC_DP
+DISASM_NOT_SBC_DP:
+    cmp     #$F5
+    bne     DISASM_NOT_SBC_DPX
+    jmp     DISASM_SBC_DPX
+DISASM_NOT_SBC_DPX:
     cmp     #$ED
     bne     DISASM_NOT_SBC_ABS
     jmp     DISASM_SBC_ABS
 DISASM_NOT_SBC_ABS:
+    cmp     #$FD
+    bne     DISASM_NOT_SBC_ABSX
+    jmp     DISASM_SBC_ABSX
+DISASM_NOT_SBC_ABSX:
+    cmp     #$F9
+    bne     DISASM_NOT_SBC_ABSY
+    jmp     DISASM_SBC_ABSY
+DISASM_NOT_SBC_ABSY:
     cmp     #$A2
     bne     DISASM_NOT_LDX_IMM
     jmp     DISASM_LDX_IMM
@@ -932,6 +1052,16 @@ DISASM_LDA_ABSY:
     stx     ZP_PTR
     jmp     DISASM_PRINT_ABSY_NEXT
 
+DISASM_CMP_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_CMP_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_CMP_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_CMP_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
 DISASM_CMP_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_CMP_ABS
@@ -939,7 +1069,27 @@ DISASM_CMP_ABS:
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
+DISASM_CMP_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_CMP_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+DISASM_CMP_ABSY:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_CMP_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSY_NEXT
 
+DISASM_AND_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_AND_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_AND_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_AND_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
 DISASM_AND_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_AND_ABS
@@ -947,7 +1097,27 @@ DISASM_AND_ABS:
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
+DISASM_AND_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_AND_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+DISASM_AND_ABSY:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_AND_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSY_NEXT
 
+DISASM_ORA_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ORA_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_ORA_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ORA_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
 DISASM_ORA_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_ORA_ABS
@@ -955,7 +1125,27 @@ DISASM_ORA_ABS:
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
+DISASM_ORA_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ORA_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+DISASM_ORA_ABSY:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ORA_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSY_NEXT
 
+DISASM_EOR_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_EOR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_EOR_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_EOR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
 DISASM_EOR_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_EOR_ABS
@@ -963,7 +1153,27 @@ DISASM_EOR_ABS:
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
+DISASM_EOR_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_EOR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+DISASM_EOR_ABSY:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_EOR_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSY_NEXT
 
+DISASM_ADC_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ADC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_ADC_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_ADC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
 DISASM_ADC_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_ADC_ABS
@@ -971,7 +1181,27 @@ DISASM_ADC_ABS:
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
+DISASM_ADC_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ADC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+DISASM_ADC_ABSY:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_ADC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSY_NEXT
 
+DISASM_SBC_DP:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_SBC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DP_NEXT
+DISASM_SBC_DPX:
+    jsr     DISASM_FETCH_DP
+    ldx     #STR_D_SBC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_DPX_NEXT
 DISASM_SBC_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_SBC_ABS
@@ -979,6 +1209,16 @@ DISASM_SBC_ABS:
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
+DISASM_SBC_ABSX:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_SBC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSX_NEXT
+DISASM_SBC_ABSY:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_SBC_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_ABSY_NEXT
 
 DISASM_LDX_IMM:
     jsr     DISASM_FETCH_PRINT
@@ -1652,12 +1892,43 @@ ASM_PARSE_ADC_OK:
     jsr     ASM_EMIT_A
     rts
 ASM_PARSE_ADC_ABS:
-    jsr     ASM_PARSE_ABS_OPER
+    jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
-    beq     ASM_PARSE_ADC_ABS_OK
+    beq     ASM_PARSE_ADC_ADDR_OK
     rts
+ASM_PARSE_ADC_ADDR_OK:
+    lda     ZP_TMP2
+    cmp     #0
+    beq     ASM_PARSE_ADC_DP
+    cmp     #1
+    beq     ASM_PARSE_ADC_ABS_OK
+    cmp     #2
+    beq     ASM_PARSE_ADC_DPX
+    cmp     #4
+    beq     ASM_PARSE_ADC_ABSX
+    cmp     #5
+    beq     ASM_PARSE_ADC_ABSY
+    jmp     ASM_FAIL
+ASM_PARSE_ADC_DP:
+    lda     #$65                ; ADC dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_ADC_DPX:
+    lda     #$75                ; ADC dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
 ASM_PARSE_ADC_ABS_OK:
     lda     #$6D                ; ADC abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_ADC_ABSX:
+    lda     #$7D                ; ADC abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_ADC_ABSY:
+    lda     #$79                ; ADC abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
@@ -1684,12 +1955,43 @@ ASM_PARSE_AND_OK:
     jsr     ASM_EMIT_A
     rts
 ASM_PARSE_AND_ABS:
-    jsr     ASM_PARSE_ABS_OPER
+    jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
-    beq     ASM_PARSE_AND_ABS_OK
+    beq     ASM_PARSE_AND_ADDR_OK
     rts
+ASM_PARSE_AND_ADDR_OK:
+    lda     ZP_TMP2
+    cmp     #0
+    beq     ASM_PARSE_AND_DP
+    cmp     #1
+    beq     ASM_PARSE_AND_ABS_OK
+    cmp     #2
+    beq     ASM_PARSE_AND_DPX
+    cmp     #4
+    beq     ASM_PARSE_AND_ABSX
+    cmp     #5
+    beq     ASM_PARSE_AND_ABSY
+    jmp     ASM_FAIL
+ASM_PARSE_AND_DP:
+    lda     #$25                ; AND dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_AND_DPX:
+    lda     #$35                ; AND dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
 ASM_PARSE_AND_ABS_OK:
     lda     #$2D                ; AND abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_AND_ABSX:
+    lda     #$3D                ; AND abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_AND_ABSY:
+    lda     #$39                ; AND abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
@@ -1746,12 +2048,43 @@ ASM_PARSE_C_OK:
     jsr     ASM_EMIT_A
     rts
 ASM_PARSE_C_ABS:
-    jsr     ASM_PARSE_ABS_OPER
+    jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
-    beq     ASM_PARSE_C_ABS_OK
+    beq     ASM_PARSE_C_ADDR_OK
     rts
+ASM_PARSE_C_ADDR_OK:
+    lda     ZP_TMP2
+    cmp     #0
+    beq     ASM_PARSE_C_DP
+    cmp     #1
+    beq     ASM_PARSE_C_ABS_OK
+    cmp     #2
+    beq     ASM_PARSE_C_DPX
+    cmp     #4
+    beq     ASM_PARSE_C_ABSX
+    cmp     #5
+    beq     ASM_PARSE_C_ABSY
+    jmp     ASM_FAIL
+ASM_PARSE_C_DP:
+    lda     #$C5                ; CMP dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_C_DPX:
+    lda     #$D5                ; CMP dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
 ASM_PARSE_C_ABS_OK:
     lda     #$CD                ; CMP abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_C_ABSX:
+    lda     #$DD                ; CMP abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_C_ABSY:
+    lda     #$D9                ; CMP abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
@@ -1783,12 +2116,43 @@ ASM_PARSE_E_OK:
     jsr     ASM_EMIT_A
     rts
 ASM_PARSE_E_ABS:
-    jsr     ASM_PARSE_ABS_OPER
+    jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
-    beq     ASM_PARSE_E_ABS_OK
+    beq     ASM_PARSE_E_ADDR_OK
     rts
+ASM_PARSE_E_ADDR_OK:
+    lda     ZP_TMP2
+    cmp     #0
+    beq     ASM_PARSE_E_DP
+    cmp     #1
+    beq     ASM_PARSE_E_ABS_OK
+    cmp     #2
+    beq     ASM_PARSE_E_DPX
+    cmp     #4
+    beq     ASM_PARSE_E_ABSX
+    cmp     #5
+    beq     ASM_PARSE_E_ABSY
+    jmp     ASM_FAIL
+ASM_PARSE_E_DP:
+    lda     #$45                ; EOR dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_E_DPX:
+    lda     #$55                ; EOR dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
 ASM_PARSE_E_ABS_OK:
     lda     #$4D                ; EOR abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_E_ABSX:
+    lda     #$5D                ; EOR abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_E_ABSY:
+    lda     #$59                ; EOR abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
@@ -1839,12 +2203,43 @@ ASM_PARSE_O_OK:
     jsr     ASM_EMIT_A
     rts
 ASM_PARSE_O_ABS:
-    jsr     ASM_PARSE_ABS_OPER
+    jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
-    beq     ASM_PARSE_O_ABS_OK
+    beq     ASM_PARSE_O_ADDR_OK
     rts
+ASM_PARSE_O_ADDR_OK:
+    lda     ZP_TMP2
+    cmp     #0
+    beq     ASM_PARSE_O_DP
+    cmp     #1
+    beq     ASM_PARSE_O_ABS_OK
+    cmp     #2
+    beq     ASM_PARSE_O_DPX
+    cmp     #4
+    beq     ASM_PARSE_O_ABSX
+    cmp     #5
+    beq     ASM_PARSE_O_ABSY
+    jmp     ASM_FAIL
+ASM_PARSE_O_DP:
+    lda     #$05                ; ORA dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_O_DPX:
+    lda     #$15                ; ORA dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
 ASM_PARSE_O_ABS_OK:
     lda     #$0D                ; ORA abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_O_ABSX:
+    lda     #$1D                ; ORA abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_O_ABSY:
+    lda     #$19                ; ORA abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
@@ -2203,12 +2598,43 @@ ASM_PARSE_SBC_OK:
     jsr     ASM_EMIT_A
     rts
 ASM_PARSE_SBC_ABS:
-    jsr     ASM_PARSE_ABS_OPER
+    jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
-    beq     ASM_PARSE_SBC_ABS_OK
+    beq     ASM_PARSE_SBC_ADDR_OK
     rts
+ASM_PARSE_SBC_ADDR_OK:
+    lda     ZP_TMP2
+    cmp     #0
+    beq     ASM_PARSE_SBC_DP
+    cmp     #1
+    beq     ASM_PARSE_SBC_ABS_OK
+    cmp     #2
+    beq     ASM_PARSE_SBC_DPX
+    cmp     #4
+    beq     ASM_PARSE_SBC_ABSX
+    cmp     #5
+    beq     ASM_PARSE_SBC_ABSY
+    jmp     ASM_FAIL
+ASM_PARSE_SBC_DP:
+    lda     #$E5                ; SBC dp
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
+ASM_PARSE_SBC_DPX:
+    lda     #$F5                ; SBC dp,x
+    jsr     ASM_EMIT_A
+    jmp     ASM_EMIT_OPER_BYTE
 ASM_PARSE_SBC_ABS_OK:
     lda     #$ED                ; SBC abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_SBC_ABSX:
+    lda     #$FD                ; SBC abs,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_SBC_ABSY:
+    lda     #$F9                ; SBC abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
