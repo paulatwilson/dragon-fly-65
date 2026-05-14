@@ -878,6 +878,84 @@ Expected:
 - `D0828` shows `STA $20`, `STA $20,X`, `STA $0390`, `STA $0390,X`, and
   `STA $0390,Y`.
 
+## Program 15: LDA Direct Page And Indexed Forms
+
+Purpose:
+
+- Proves the monitor assembler accepts the N12 `lda` direct page and indexed
+  forms.
+- Proves the disassembler renders the same N12 `lda` forms.
+- Runs the loads against direct page and absolute data.
+
+Enter:
+
+```text
+* A0840
+0840> sep #$30
+0842> ldx #$01
+0844> ldy #$02
+0846> lda #'A'
+0848> sta $22
+084A> lda #'B'
+084C> sta $23
+084E> lda #'C'
+0850> sta $0394
+0853> lda #'D'
+0855> sta $0395
+0858> lda #'E'
+085A> sta $0396
+085D> lda $22
+085F> sta $F000
+0862> lda $22,x
+0864> sta $F000
+0867> lda $0394
+086A> sta $F000
+086D> lda $0394,x
+0870> sta $F000
+0873> lda $0394,y
+0876> sta $F000
+0879> rts
+087A> end
+OK
+```
+
+Disassemble:
+
+```text
+* D085D
+085D A5 22 LDA $22
+085F 8D 00 F0 STA $F000
+0862 B5 22 LDA $22,X
+0864 8D 00 F0 STA $F000
+0867 AD 94 03 LDA $0394
+086A 8D 00 F0 STA $F000
+086D BD 94 03 LDA $0394,X
+0870 8D 00 F0 STA $F000
+* D0873
+0873 B9 94 03 LDA $0394,Y
+0876 8D 00 F0 STA $F000
+0879 60 RTS
+087A 00 DB $00
+087B 00 DB $00
+087C 00 DB $00
+087D 00 DB $00
+087E 00 DB $00
+```
+
+Run:
+
+```text
+* G0840
+ABCDE
+Returned
+```
+
+Expected:
+
+- The program prints `ABCDE`.
+- `D085D` and `D0873` show `LDA $22`, `LDA $22,X`, `LDA $0394`,
+  `LDA $0394,X`, and `LDA $0394,Y`.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

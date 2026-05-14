@@ -797,6 +797,14 @@ describe("monitor", () => {
         "sta $0808,y",
         "end",
         "D07F0",
+        "A0810",
+        "lda $15",
+        "lda $15,x",
+        "lda $080A",
+        "lda $080A,x",
+        "lda $080A,y",
+        "end",
+        "D0810",
       ].join("\r") + "\r",
     );
 
@@ -856,5 +864,11 @@ describe("monitor", () => {
     expect(output).toContain("07F4 8D 08 08 STA $0808");
     expect(output).toContain("07F7 9D 08 08 STA $0808,X");
     expect(output).toContain("07FA 99 08 08 STA $0808,Y");
+
+    expect(output).toContain("0810 A5 15 LDA $15");
+    expect(output).toContain("0812 B5 15 LDA $15,X");
+    expect(output).toContain("0814 AD 0A 08 LDA $080A");
+    expect(output).toContain("0817 BD 0A 08 LDA $080A,X");
+    expect(output).toContain("081A B9 0A 08 LDA $080A,Y");
   }, 40_000);
 });
