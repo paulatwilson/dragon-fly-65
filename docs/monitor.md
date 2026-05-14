@@ -482,6 +482,12 @@ plb
 phd
 pld
 phk
+brk
+rti
+cop #imm8
+wdm #imm8
+wai
+stp
 .byte value[,value...]
 db value[,value...]
 label:
@@ -698,6 +704,12 @@ plb
 phd
 pld
 phk
+brk
+rti
+cop #imm8
+wdm #imm8
+wai
+stp
 .byte value[,value...]
 db value[,value...]
 sta abs

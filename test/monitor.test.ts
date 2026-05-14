@@ -464,9 +464,8 @@ describe("monitor", () => {
     expect(output).toContain("0500: 41 42 43 00 44");
     expect(output).toContain("|ABC.D");
     expect(output).toContain("0500 41 DB $41");
-    expect(output).toContain("0501 42 DB $42");
-    expect(output).toContain("0502 43 DB $43");
-    expect(output).toContain("0503 00 DB $00");
+    expect(output).toContain("0501 42 43 WDM #$43");
+    expect(output).toContain("0503 00 BRK");
     expect(output).toContain("0504 44 DB $44");
   }, 10_000);
 
@@ -938,6 +937,15 @@ describe("monitor", () => {
         "end",
         "D09A0",
         "D09A8",
+        "A09C0",
+        "brk",
+        "rti",
+        "cop #$05",
+        "wdm #$06",
+        "wai",
+        "stp",
+        "end",
+        "D09C0",
       ].join("\r") + "\r",
     );
 
@@ -964,9 +972,8 @@ describe("monitor", () => {
     expect(output).toContain("075A 10 FC BPL $0758");
 
     expect(output).toContain("0770 41 DB $41");
-    expect(output).toContain("0771 42 DB $42");
-    expect(output).toContain("0772 43 DB $43");
-    expect(output).toContain("0773 00 DB $00");
+    expect(output).toContain("0771 42 43 WDM #$43");
+    expect(output).toContain("0773 00 BRK");
     expect(output).toContain("0774 44 DB $44");
 
     expect(output).toContain("0790 D0 03 BNE $0795");
@@ -1093,6 +1100,13 @@ describe("monitor", () => {
     expect(output).toContain("09AA 0B PHD");
     expect(output).toContain("09AB 2B PLD");
     expect(output).toContain("09AC 4B PHK");
+
+    expect(output).toContain("09C0 00 BRK");
+    expect(output).toContain("09C1 40 RTI");
+    expect(output).toContain("09C2 02 05 COP #$05");
+    expect(output).toContain("09C4 42 06 WDM #$06");
+    expect(output).toContain("09C6 CB WAI");
+    expect(output).toContain("09C7 DB STP");
   }, 40_000);
 
   test("A and D support stack instructions", () => {
@@ -1146,5 +1160,38 @@ describe("monitor", () => {
     expect(output).toContain("0A0A 0B PHD");
     expect(output).toContain("0A0B 2B PLD");
     expect(output).toContain("0A0C 4B PHK");
+  }, 15_000);
+
+  test("A and D support interrupt and machine-control instructions", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0B00",
+        "brk",
+        "rti",
+        "cop #$05",
+        "wdm #$06",
+        "wai",
+        "stp",
+        "end",
+        "D0B00",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0b00)).toBe(0x00);
+    expect(machine.mem.readByte(0x0b01)).toBe(0x40);
+    expect(machine.mem.readByte(0x0b02)).toBe(0x02);
+    expect(machine.mem.readByte(0x0b03)).toBe(0x05);
+    expect(machine.mem.readByte(0x0b04)).toBe(0x42);
+    expect(machine.mem.readByte(0x0b05)).toBe(0x06);
+    expect(machine.mem.readByte(0x0b06)).toBe(0xcb);
+    expect(machine.mem.readByte(0x0b07)).toBe(0xdb);
+    expect(output).toContain("0B00 00 BRK");
+    expect(output).toContain("0B01 40 RTI");
+    expect(output).toContain("0B02 02 05 COP #$05");
+    expect(output).toContain("0B04 42 06 WDM #$06");
+    expect(output).toContain("0B06 CB WAI");
+    expect(output).toContain("0B07 DB STP");
   }, 15_000);
 });

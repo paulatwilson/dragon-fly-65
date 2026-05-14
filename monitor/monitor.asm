@@ -1205,6 +1205,30 @@ DISASM_NOT_PLD:
     bne     DISASM_NOT_PHK
     jmp     DISASM_PHK
 DISASM_NOT_PHK:
+    cmp     #$00
+    bne     DISASM_NOT_BRK
+    jmp     DISASM_BRK
+DISASM_NOT_BRK:
+    cmp     #$40
+    bne     DISASM_NOT_RTI
+    jmp     DISASM_RTI
+DISASM_NOT_RTI:
+    cmp     #$02
+    bne     DISASM_NOT_COP_IMM
+    jmp     DISASM_COP_IMM
+DISASM_NOT_COP_IMM:
+    cmp     #$42
+    bne     DISASM_NOT_WDM_IMM
+    jmp     DISASM_WDM_IMM
+DISASM_NOT_WDM_IMM:
+    cmp     #$CB
+    bne     DISASM_NOT_WAI
+    jmp     DISASM_WAI
+DISASM_NOT_WAI:
+    cmp     #$DB
+    bne     DISASM_NOT_STP
+    jmp     DISASM_STP
+DISASM_NOT_STP:
     cmp     #$E2
     bne     DISASM_NOT_SEP_IMM
     jmp     DISASM_SEP_IMM
@@ -2079,6 +2103,50 @@ DISASM_PHK:
     jsr     PRINT_ZP
     jmp     DISASM_NEXT
 
+DISASM_BRK:
+    ldx     #STR_D_BRK
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
+DISASM_RTI:
+    ldx     #STR_D_RTI
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
+DISASM_COP_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_COP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_WDM_IMM:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    ldx     #STR_D_WDM
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    jmp     DISASM_NEXT
+
+DISASM_WAI:
+    ldx     #STR_D_WAI
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
+DISASM_STP:
+    ldx     #STR_D_STP
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
 DISASM_JSR_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_JSR
@@ -2335,6 +2403,10 @@ ASM_PARSE_LINE_NOT_J:
     bne     ASM_PARSE_LINE_NOT_P
     jmp     ASM_PARSE_P
 ASM_PARSE_LINE_NOT_P:
+    cmp     #'W'
+    bne     ASM_PARSE_LINE_NOT_W
+    jmp     ASM_PARSE_W
+ASM_PARSE_LINE_NOT_W:
     jmp     ASM_FAIL
 
 ASM_PARSE_DOT:
@@ -2574,11 +2646,16 @@ ASM_PARSE_BRA:
     jsr     ASM_READ_UPPER
     cmp     #'A'
     beq     ASM_PARSE_BRA_OK
+    cmp     #'K'
+    beq     ASM_PARSE_BRK
     jmp     ASM_FAIL
 ASM_PARSE_BRA_OK:
     lda     #$80                ; BRA rel8, source uses absolute target
     jsr     ASM_PARSE_BRANCH_OPER
     rts
+ASM_PARSE_BRK:
+    lda     #$00                ; BRK
+    jmp     ASM_EMIT_IMPLIED
 
 ASM_PARSE_BV:
     jsr     ASM_READ_UPPER
@@ -2835,6 +2912,10 @@ ASM_PARSE_C:
     beq     ASM_PARSE_CP
     cmp     #'L'
     beq     ASM_PARSE_CL
+    cmp     #'O'
+    bne     ASM_PARSE_C_NOT_O
+    jmp     ASM_PARSE_COP
+ASM_PARSE_C_NOT_O:
     jmp     ASM_FAIL
 ASM_PARSE_CP:
     jsr     ASM_READ_UPPER
@@ -2901,6 +2982,25 @@ ASM_PARSE_CPY_ABS:
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
+
+ASM_PARSE_COP:
+    jsr     ASM_READ_UPPER
+    cmp     #'P'
+    beq     ASM_PARSE_COP_GOT_P
+    jmp     ASM_FAIL
+ASM_PARSE_COP_GOT_P:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_COP_OK
+    rts
+ASM_PARSE_COP_OK:
+    lda     #$02                ; COP #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
 ASM_PARSE_CP_OPER:
     jsr     ASM_SKIP_SPACES
     lda     $0000,x
@@ -3451,10 +3551,15 @@ ASM_PARSE_STA:
     cmp     #'X'
     beq     ASM_PARSE_STX
     cmp     #'Y'
-    bne     ASM_PARSE_ST_NOT_Y
-    jmp     ASM_PARSE_STY
-ASM_PARSE_ST_NOT_Y:
+    beq     ASM_PARSE_ST_GOT_Y
+    cmp     #'P'
+    beq     ASM_PARSE_STP
     jmp     ASM_FAIL
+ASM_PARSE_ST_GOT_Y:
+    jmp     ASM_PARSE_STY
+ASM_PARSE_STP:
+    lda     #$DB                ; STP
+    jmp     ASM_EMIT_IMPLIED
 ASM_PARSE_STA_GOT_A:
     jsr     ASM_PARSE_ADDR_OPER
     lda     ZP_ERR
@@ -3656,11 +3761,16 @@ ASM_PARSE_R:
     jsr     ASM_READ_UPPER
     cmp     #'S'
     beq     ASM_PARSE_RTS_OK
+    cmp     #'I'
+    beq     ASM_PARSE_RTI
     jmp     ASM_FAIL
 ASM_PARSE_RTS_OK:
     lda     #$60                ; RTS
     jsr     ASM_EMIT_A
     rts
+ASM_PARSE_RTI:
+    lda     #$40                ; RTI
+    jmp     ASM_EMIT_IMPLIED
 
 ASM_PARSE_REP:
     cmp     #'E'
@@ -3972,6 +4082,45 @@ ASM_PARSE_PLB:
 ASM_PARSE_PLD:
     lda     #$2B                ; PLD
     jmp     ASM_EMIT_IMPLIED
+
+ASM_PARSE_W:
+    jsr     ASM_READ_UPPER
+    cmp     #'A'
+    bne     ASM_PARSE_W_NOT_A
+    jmp     ASM_PARSE_WAI
+ASM_PARSE_W_NOT_A:
+    cmp     #'D'
+    bne     ASM_PARSE_W_NOT_D
+    jmp     ASM_PARSE_WDM
+ASM_PARSE_W_NOT_D:
+    jmp     ASM_FAIL
+
+ASM_PARSE_WAI:
+    jsr     ASM_READ_UPPER
+    cmp     #'I'
+    beq     ASM_PARSE_WAI_OK
+    jmp     ASM_FAIL
+ASM_PARSE_WAI_OK:
+    lda     #$CB                ; WAI
+    jmp     ASM_EMIT_IMPLIED
+
+ASM_PARSE_WDM:
+    jsr     ASM_READ_UPPER
+    cmp     #'M'
+    beq     ASM_PARSE_WDM_GOT_M
+    jmp     ASM_FAIL
+ASM_PARSE_WDM_GOT_M:
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_WDM_OK
+    rts
+ASM_PARSE_WDM_OK:
+    lda     #$42                ; WDM #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
 
 ASM_LINE_IS_END:
     sep     #$20
@@ -5229,6 +5378,30 @@ STR_D_PLD:
 
 STR_D_PHK:
     .ascii "PHK"
+    .byte 0
+
+STR_D_BRK:
+    .ascii "BRK"
+    .byte 0
+
+STR_D_RTI:
+    .ascii "RTI"
+    .byte 0
+
+STR_D_COP:
+    .ascii "COP #$"
+    .byte 0
+
+STR_D_WDM:
+    .ascii "WDM #$"
+    .byte 0
+
+STR_D_WAI:
+    .ascii "WAI"
+    .byte 0
+
+STR_D_STP:
+    .ascii "STP"
     .byte 0
 
 STR_D_SEP:
