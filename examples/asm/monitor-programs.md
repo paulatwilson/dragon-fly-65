@@ -1358,6 +1358,47 @@ Expected:
   cannot infer them unless disassembly starts from a byte stream that changes
   width explicitly.
 
+## Program 22: Word And String Data Directives
+
+Purpose:
+
+- Proves the monitor assembler accepts N22 word, long, string,
+  NUL-terminated string, reserve-byte directives, and string literals in
+  `.byte`/`db`.
+
+Enter:
+
+```text
+* A0B90
+0B90> .byte "HI", $21, '?'
+0B94> db "DB"
+0B96> .word $1234, 65
+0B9A> .dw $ABCD
+0B9C> .long $123456, 7
+0BA2> .dl $ABCDEF
+0BA5> .ascii "OK"
+0BA7> .asciiz "!"
+0BA9> .resb 3
+0BAC> end
+OK
+```
+
+Memory Check:
+
+```text
+* M0B90
+0B90: 48 49 21 3F 44 42 34 12 41 00 CD AB 56 34 12 07  |HI!?DB4.A...V4..|
+* M0BA0
+0BA0: 00 00 EF CD AB 4F 4B 21 00 00 00 00 00 00 00 00  |.....OK!........|
+```
+
+Expected:
+
+- `.word`/`.dw` emit little-endian two-byte values.
+- `.long`/`.dl` emit little-endian three-byte values.
+- `.ascii` emits raw string bytes; `.asciiz` appends one zero byte.
+- `.resb` emits zero bytes.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

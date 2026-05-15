@@ -468,6 +468,45 @@ describe("monitor", () => {
     expect(output).toContain("0503 00 44 BRK #$44");
   }, 10_000);
 
+  test("A command supports word, long, string, and reserve data directives", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0B90",
+        ".byte \"HI\", $21, '?'",
+        "db \"DB\"",
+        ".word $1234, 65",
+        ".dw $ABCD",
+        ".long $123456, 7",
+        ".dl $ABCDEF",
+        ".ascii \"OK\"",
+        ".asciiz \"!\"",
+        ".resb 3",
+        "end",
+        "M0B90",
+      ].join("\r") + "\r",
+    );
+
+    const expected = [
+      0x48, 0x49, 0x21, 0x3f,
+      0x44, 0x42,
+      0x34, 0x12, 0x41, 0x00,
+      0xcd, 0xab,
+      0x56, 0x34, 0x12, 0x07, 0x00, 0x00,
+      0xef, 0xcd, 0xab,
+      0x4f, 0x4b,
+      0x21, 0x00,
+      0x00, 0x00, 0x00,
+    ];
+
+    for (let index = 0; index < expected.length; index++) {
+      expect(machine.mem.readByte(0x0b90 + index)).toBe(expected[index]!);
+    }
+    expect(output).toContain("0B90: 48 49 21 3F 44 42 34 12 41 00 CD AB 56 34 12 07");
+    expect(output).toContain("|HI!?DB4.A...V4..|");
+  }, 15_000);
+
   test("byte data emitted by A can be used by monitor programs", () => {
     const machine = buildMonitor();
     const output = runWithInput(

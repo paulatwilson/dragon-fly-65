@@ -322,9 +322,11 @@ Phase 2 checklist:
   `D` renders width-sensitive immediates from its disassembly state: default
   `.a8`/`.i8`, with 8/16-bit changes tracked from visible `sep`/`rep`
   instructions in the byte stream.
-- [ ] Chunk N22: Add word and string data directives.
+- [x] Chunk N22: Add word and string data directives.
   Add `.word`/`.dw`, `.long`/`.dl`, `.ascii`, `.asciiz`, `.resb`, and string
   literals in `.byte`/`db`.
+  The monitor assembler now supports byte, word, long, string, NUL-terminated
+  string, and reserve-byte data entry, with monitor test coverage.
 - [ ] Chunk N23: Improve symbol support.
   Add labels on instruction lines, `.equ` constants, larger or documented
   label/fixup limits, duplicate-label errors, and unresolved-label diagnostics.

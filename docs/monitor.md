@@ -488,8 +488,15 @@ cop #imm8
 wdm #imm8
 wai
 stp
-.byte value[,value...]
-db value[,value...]
+.byte value-or-string[,value-or-string...]
+db value-or-string[,value-or-string...]
+.word value[,value...]
+.dw value[,value...]
+.long value[,value...]
+.dl value[,value...]
+.ascii "text"
+.asciiz "text"
+.resb count
 .a8
 .a16
 .a32
@@ -530,15 +537,20 @@ Current parser limits:
 - branch targets may be written as absolute addresses such as `$0310` or as
   labels; the monitor emits the relative byte internally,
 - branch targets must fit the signed 8-bit relative branch range,
-- no directives except `.byte`, `db`, and the native width directives,
+- no directives except `.byte`, `db`, `.word`, `.dw`, `.long`, `.dl`,
+  `.ascii`, `.asciiz`, `.resb`, and the native width directives,
 - no expressions beyond literal values,
 - case-insensitive mnemonics,
 - hex immediates such as `$41`,
 - one- or two-digit decimal immediates such as `65`,
 - character literals such as `'A'`,
 - absolute addresses such as `$F000`.
-- `.byte` and `db` accept comma-separated hex byte, decimal byte, and character
-  literals such as `.byte $41, 66, 'C'`.
+- `.byte` and `db` accept comma-separated hex byte, decimal byte, character
+  literals, and double-quoted string literals such as `.byte "AB", $43, 'D'`.
+- `.word`/`.dw` emit little-endian two-byte values, and `.long`/`.dl` emit
+  little-endian three-byte values.
+- `.ascii` emits raw double-quoted string bytes, `.asciiz` appends one zero
+  byte, and `.resb` emits a run of zero bytes.
 - `D` starts with `.a8`/`.i8` disassembly state and updates 8/16-bit immediate
   rendering when it sees `sep`/`rep` in the bytes being disassembled; it cannot
   infer source-only `.a16`, `.a32`, `.i16`, or `.i32` directives that emitted no
@@ -725,14 +737,6 @@ cop #imm8
 wdm #imm8
 wai
 stp
-.byte value[,value...]
-db value[,value...]
-.a8
-.a16
-.a32
-.i8
-.i16
-.i32
 sta abs
 rts
 nop
@@ -869,7 +873,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda` immediate/direct page/absolute forms, accumulator immediate/direct page/absolute ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `cpx`/`cpy` immediate/direct page/absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), byte data entry (`.byte`, `db`), native immediate-width directives (`.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`), `sta` direct page/absolute forms, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda` immediate/direct page/absolute forms, accumulator immediate/direct page/absolute ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `cpx`/`cpy` immediate/direct page/absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), `sta` direct page/absolute forms, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. `A` also supports data entry (`.byte`, `db`, `.word`, `.dw`, `.long`, `.dl`, `.ascii`, `.asciiz`, `.resb`) and native immediate-width directives (`.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`); `D` renders bytes back as instructions or `DB $xx`, not source-only directives. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

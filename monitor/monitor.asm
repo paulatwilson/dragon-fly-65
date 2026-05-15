@@ -2477,8 +2477,29 @@ ASM_PARSE_DOT:
     beq     ASM_PARSE_DOT_A
     cmp     #'I'
     beq     ASM_PARSE_DOT_I
+    cmp     #'W'
+    beq     ASM_PARSE_DOT_WORD
+    cmp     #'D'
+    beq     ASM_PARSE_DOT_D
+    cmp     #'L'
+    bne     ASM_PARSE_DOT_NOT_L
+    jmp     ASM_PARSE_DOT_LONG
+ASM_PARSE_DOT_NOT_L:
+    cmp     #'R'
+    bne     ASM_PARSE_DOT_NOT_R
+    jmp     ASM_PARSE_DOT_RESB
+ASM_PARSE_DOT_NOT_R:
     jmp     ASM_FAIL
 ASM_PARSE_DOT_A:
+    lda     $0000,x
+    cmp     #'s'
+    bcc     ASM_PARSE_DOT_A_CHECK
+    and     #$DF
+ASM_PARSE_DOT_A_CHECK:
+    cmp     #'S'
+    bne     ASM_PARSE_DOT_A_NOT_S
+    jmp     ASM_PARSE_DOT_ASCII
+ASM_PARSE_DOT_A_NOT_S:
     jsr     ASM_PARSE_WIDTH_DIRECTIVE
     lda     ZP_ERR
     beq     ASM_PARSE_DOT_A_OK
@@ -2513,6 +2534,121 @@ ASM_PARSE_DOT_BYT:
     jmp     ASM_PARSE_BYTE_LIST
 ASM_PARSE_DOT_BYT_NOT_E:
     jmp     ASM_FAIL
+
+ASM_PARSE_DOT_WORD:
+    jsr     ASM_READ_UPPER
+    cmp     #'O'
+    beq     ASM_PARSE_DOT_WO
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_WO:
+    jsr     ASM_READ_UPPER
+    cmp     #'R'
+    beq     ASM_PARSE_DOT_WOR
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_WOR:
+    jsr     ASM_READ_UPPER
+    cmp     #'D'
+    bne     ASM_PARSE_DOT_WOR_NOT_D
+    jmp     ASM_PARSE_WORD_LIST
+ASM_PARSE_DOT_WOR_NOT_D:
+    jmp     ASM_FAIL
+
+ASM_PARSE_DOT_D:
+    jsr     ASM_READ_UPPER
+    cmp     #'W'
+    bne     ASM_PARSE_DOT_D_NOT_W
+    jmp     ASM_PARSE_WORD_LIST
+ASM_PARSE_DOT_D_NOT_W:
+    cmp     #'L'
+    bne     ASM_PARSE_DOT_D_NOT_L
+    jmp     ASM_PARSE_LONG_LIST
+ASM_PARSE_DOT_D_NOT_L:
+    jmp     ASM_FAIL
+
+ASM_PARSE_DOT_LONG:
+    jsr     ASM_READ_UPPER
+    cmp     #'O'
+    beq     ASM_PARSE_DOT_LO
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_LO:
+    jsr     ASM_READ_UPPER
+    cmp     #'N'
+    beq     ASM_PARSE_DOT_LON
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_LON:
+    jsr     ASM_READ_UPPER
+    cmp     #'G'
+    bne     ASM_PARSE_DOT_LON_NOT_G
+    jmp     ASM_PARSE_LONG_LIST
+ASM_PARSE_DOT_LON_NOT_G:
+    jmp     ASM_FAIL
+
+ASM_PARSE_DOT_RESB:
+    jsr     ASM_READ_UPPER
+    cmp     #'E'
+    beq     ASM_PARSE_DOT_RE
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_RE:
+    jsr     ASM_READ_UPPER
+    cmp     #'S'
+    beq     ASM_PARSE_DOT_RES
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_RES:
+    jsr     ASM_READ_UPPER
+    cmp     #'B'
+    bne     ASM_PARSE_DOT_RES_NOT_B
+    jmp     ASM_PARSE_RESB
+ASM_PARSE_DOT_RES_NOT_B:
+    jmp     ASM_FAIL
+
+ASM_PARSE_DOT_ASCII:
+    jsr     ASM_READ_UPPER
+    cmp     #'S'
+    beq     ASM_PARSE_DOT_AS
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_AS:
+    jsr     ASM_READ_UPPER
+    cmp     #'C'
+    beq     ASM_PARSE_DOT_ASC
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_ASC:
+    jsr     ASM_READ_UPPER
+    cmp     #'I'
+    beq     ASM_PARSE_DOT_ASCI
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_ASCI:
+    jsr     ASM_READ_UPPER
+    cmp     #'I'
+    beq     ASM_PARSE_DOT_ASCII_GOT
+    jmp     ASM_FAIL
+ASM_PARSE_DOT_ASCII_GOT:
+    lda     $0000,x
+    cmp     #'z'
+    beq     ASM_PARSE_DOT_ASCIIZ_SKIP
+    cmp     #'Z'
+    beq     ASM_PARSE_DOT_ASCIIZ_SKIP
+    jsr     ASM_PARSE_STRING
+    lda     ZP_ERR
+    beq     ASM_PARSE_ASCII_EOL
+    rts
+ASM_PARSE_ASCII_EOL:
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_ASCII_DONE
+    jmp     ASM_FAIL
+ASM_PARSE_ASCII_DONE:
+    rts
+ASM_PARSE_DOT_ASCIIZ_SKIP:
+    inx
+    jsr     ASM_PARSE_STRING
+    lda     ZP_ERR
+    beq     ASM_PARSE_ASCIIZ_ZERO
+    rts
+ASM_PARSE_ASCIIZ_ZERO:
+    lda     #0
+    jsr     ASM_EMIT_A
+    jmp     ASM_PARSE_ASCII_EOL
 
 ASM_PARSE_WIDTH_DIRECTIVE:
     jsr     ASM_READ_UPPER
@@ -2561,6 +2697,14 @@ ASM_PARSE_D:
     bne     ASM_PARSE_D_NOT_B
     jmp     ASM_PARSE_BYTE_LIST
 ASM_PARSE_D_NOT_B:
+    cmp     #'W'
+    bne     ASM_PARSE_D_NOT_W
+    jmp     ASM_PARSE_WORD_LIST
+ASM_PARSE_D_NOT_W:
+    cmp     #'L'
+    bne     ASM_PARSE_D_NOT_L
+    jmp     ASM_PARSE_LONG_LIST
+ASM_PARSE_D_NOT_L:
     cmp     #'E'
     bne     ASM_PARSE_D_NOT_E
     jsr     ASM_READ_UPPER
@@ -4546,7 +4690,50 @@ ASM_PARSE_DEC8_FAIL:
     lda     #0
     rts
 
+ASM_PARSE_VALUE16:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'$'
+    beq     ASM_PARSE_HEX16_VALUE
+    jsr     ASM_PARSE_VALUE8
+    sta     ZP_OPER
+    lda     #0
+    sta     ZP_OPER+1
+    rts
+ASM_PARSE_HEX16_VALUE:
+    inx
+    jsr     PARSE_HEX2
+    sta     ZP_OPER+1
+    jsr     PARSE_HEX2
+    sta     ZP_OPER
+    rts
+
+ASM_PARSE_VALUE24:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'$'
+    beq     ASM_PARSE_HEX24_VALUE
+    jsr     ASM_PARSE_VALUE8
+    sta     ASM_IMM_BYTES
+    lda     #0
+    sta     ASM_IMM_BYTES+1
+    sta     ASM_IMM_BYTES+2
+    rts
+ASM_PARSE_HEX24_VALUE:
+    inx
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES+2
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES+1
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES
+    rts
+
 ASM_PARSE_BYTE_LIST:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'"'
+    beq     ASM_PARSE_BYTE_STRING
     jsr     ASM_PARSE_VALUE8
     pha
     lda     ZP_ERR
@@ -4569,6 +4756,118 @@ ASM_PARSE_BYTE_LIST_MORE:
     jmp     ASM_PARSE_BYTE_LIST
 ASM_PARSE_BYTE_LIST_DONE:
     rts
+
+ASM_PARSE_BYTE_STRING:
+    jsr     ASM_PARSE_STRING
+    lda     ZP_ERR
+    beq     ASM_PARSE_BYTE_AFTER_VALUE
+    rts
+ASM_PARSE_BYTE_AFTER_VALUE:
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_BYTE_LIST_DONE
+    lda     $0000,x
+    cmp     #','
+    beq     ASM_PARSE_BYTE_LIST_MORE
+    jmp     ASM_FAIL
+
+ASM_PARSE_WORD_LIST:
+    jsr     ASM_PARSE_VALUE16
+    lda     ZP_ERR
+    beq     ASM_PARSE_WORD_LIST_OK
+    rts
+ASM_PARSE_WORD_LIST_OK:
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER+1
+    jsr     ASM_EMIT_A
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_WORD_LIST_DONE
+    lda     $0000,x
+    cmp     #','
+    beq     ASM_PARSE_WORD_LIST_MORE
+    jmp     ASM_FAIL
+ASM_PARSE_WORD_LIST_MORE:
+    inx
+    jmp     ASM_PARSE_WORD_LIST
+ASM_PARSE_WORD_LIST_DONE:
+    rts
+
+ASM_PARSE_LONG_LIST:
+    jsr     ASM_PARSE_VALUE24
+    lda     ZP_ERR
+    beq     ASM_PARSE_LONG_LIST_OK
+    rts
+ASM_PARSE_LONG_LIST_OK:
+    lda     ASM_IMM_BYTES
+    jsr     ASM_EMIT_A
+    lda     ASM_IMM_BYTES+1
+    jsr     ASM_EMIT_A
+    lda     ASM_IMM_BYTES+2
+    jsr     ASM_EMIT_A
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_LONG_LIST_DONE
+    lda     $0000,x
+    cmp     #','
+    beq     ASM_PARSE_LONG_LIST_MORE
+    jmp     ASM_FAIL
+ASM_PARSE_LONG_LIST_MORE:
+    inx
+    jmp     ASM_PARSE_LONG_LIST
+ASM_PARSE_LONG_LIST_DONE:
+    rts
+
+ASM_PARSE_RESB:
+    jsr     ASM_PARSE_VALUE8
+    sta     ZP_TMP
+    lda     ZP_ERR
+    beq     ASM_PARSE_RESB_OK
+    rts
+ASM_PARSE_RESB_OK:
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_RESB_LOOP_CHECK
+    jmp     ASM_FAIL
+ASM_PARSE_RESB_LOOP_CHECK:
+    lda     ZP_TMP
+    beq     ASM_PARSE_RESB_DONE
+ASM_PARSE_RESB_LOOP:
+    lda     #0
+    jsr     ASM_EMIT_A
+    dec     ZP_TMP
+    bne     ASM_PARSE_RESB_LOOP
+ASM_PARSE_RESB_DONE:
+    rts
+
+ASM_PARSE_STRING:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'"'
+    beq     ASM_PARSE_STRING_START
+    jmp     ASM_FAIL
+ASM_PARSE_STRING_START:
+    inx
+ASM_PARSE_STRING_LOOP:
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_STRING_UNTERMINATED
+    lda     $0000,x
+    cmp     #'"'
+    beq     ASM_PARSE_STRING_DONE
+    jsr     ASM_EMIT_A
+    inx
+    jmp     ASM_PARSE_STRING_LOOP
+ASM_PARSE_STRING_DONE:
+    inx
+    rts
+ASM_PARSE_STRING_UNTERMINATED:
+    jmp     ASM_FAIL
 
 ASM_X_AT_EOL:
     rep     #$20
