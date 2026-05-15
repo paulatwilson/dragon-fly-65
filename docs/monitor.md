@@ -482,7 +482,7 @@ plb
 phd
 pld
 phk
-brk
+brk [#imm8]
 rti
 cop #imm8
 wdm #imm8
@@ -704,7 +704,7 @@ plb
 phd
 pld
 phk
-brk
+brk [#imm8]
 rti
 cop #imm8
 wdm #imm8
@@ -844,7 +844,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, `lda` direct page/absolute forms (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), accumulator immediate ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), accumulator direct page/absolute forms for those same ALU and compare ops (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), `cpx`/`cpy` immediate, direct page, and absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`) with absolute target syntax, byte data entry (`.byte`, `db`), `sta` direct page/absolute forms (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, `lda` direct page/absolute forms (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), accumulator immediate ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), accumulator direct page/absolute forms for those same ALU and compare ops (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), `cpx`/`cpy` immediate, direct page, and absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), byte data entry (`.byte`, `db`), `sta` direct page/absolute forms (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, and `jmp abs`. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

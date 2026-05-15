@@ -465,8 +465,7 @@ describe("monitor", () => {
     expect(output).toContain("|ABC.D");
     expect(output).toContain("0500 41 DB $41");
     expect(output).toContain("0501 42 43 WDM #$43");
-    expect(output).toContain("0503 00 BRK");
-    expect(output).toContain("0504 44 DB $44");
+    expect(output).toContain("0503 00 44 BRK #$44");
   }, 10_000);
 
   test("byte data emitted by A can be used by monitor programs", () => {
@@ -938,7 +937,7 @@ describe("monitor", () => {
         "D09A0",
         "D09A8",
         "A09C0",
-        "brk",
+        "brk #$07",
         "rti",
         "cop #$05",
         "wdm #$06",
@@ -973,8 +972,7 @@ describe("monitor", () => {
 
     expect(output).toContain("0770 41 DB $41");
     expect(output).toContain("0771 42 43 WDM #$43");
-    expect(output).toContain("0773 00 BRK");
-    expect(output).toContain("0774 44 DB $44");
+    expect(output).toContain("0773 00 44 BRK #$44");
 
     expect(output).toContain("0790 D0 03 BNE $0795");
     expect(output).toContain("0792 AD 90 07 LDA $0790");
@@ -1101,12 +1099,12 @@ describe("monitor", () => {
     expect(output).toContain("09AB 2B PLD");
     expect(output).toContain("09AC 4B PHK");
 
-    expect(output).toContain("09C0 00 BRK");
-    expect(output).toContain("09C1 40 RTI");
-    expect(output).toContain("09C2 02 05 COP #$05");
-    expect(output).toContain("09C4 42 06 WDM #$06");
-    expect(output).toContain("09C6 CB WAI");
-    expect(output).toContain("09C7 DB STP");
+    expect(output).toContain("09C0 00 07 BRK #$07");
+    expect(output).toContain("09C2 40 RTI");
+    expect(output).toContain("09C3 02 05 COP #$05");
+    expect(output).toContain("09C5 42 06 WDM #$06");
+    expect(output).toContain("09C7 CB WAI");
+    expect(output).toContain("09C8 DB STP");
   }, 40_000);
 
   test("A and D support stack instructions", () => {
@@ -1180,18 +1178,19 @@ describe("monitor", () => {
     );
 
     expect(machine.mem.readByte(0x0b00)).toBe(0x00);
-    expect(machine.mem.readByte(0x0b01)).toBe(0x40);
-    expect(machine.mem.readByte(0x0b02)).toBe(0x02);
-    expect(machine.mem.readByte(0x0b03)).toBe(0x05);
-    expect(machine.mem.readByte(0x0b04)).toBe(0x42);
-    expect(machine.mem.readByte(0x0b05)).toBe(0x06);
-    expect(machine.mem.readByte(0x0b06)).toBe(0xcb);
-    expect(machine.mem.readByte(0x0b07)).toBe(0xdb);
-    expect(output).toContain("0B00 00 BRK");
-    expect(output).toContain("0B01 40 RTI");
-    expect(output).toContain("0B02 02 05 COP #$05");
-    expect(output).toContain("0B04 42 06 WDM #$06");
-    expect(output).toContain("0B06 CB WAI");
-    expect(output).toContain("0B07 DB STP");
+    expect(machine.mem.readByte(0x0b01)).toBe(0x00);
+    expect(machine.mem.readByte(0x0b02)).toBe(0x40);
+    expect(machine.mem.readByte(0x0b03)).toBe(0x02);
+    expect(machine.mem.readByte(0x0b04)).toBe(0x05);
+    expect(machine.mem.readByte(0x0b05)).toBe(0x42);
+    expect(machine.mem.readByte(0x0b06)).toBe(0x06);
+    expect(machine.mem.readByte(0x0b07)).toBe(0xcb);
+    expect(machine.mem.readByte(0x0b08)).toBe(0xdb);
+    expect(output).toContain("0B00 00 00 BRK #$00");
+    expect(output).toContain("0B02 40 RTI");
+    expect(output).toContain("0B03 02 05 COP #$05");
+    expect(output).toContain("0B05 42 06 WDM #$06");
+    expect(output).toContain("0B07 CB WAI");
+    expect(output).toContain("0B08 DB STP");
   }, 15_000);
 });

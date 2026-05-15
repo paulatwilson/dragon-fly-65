@@ -568,6 +568,7 @@ function selectMode(
 
   switch (kind) {
     case "none":
+      if (mnemonic === "brk" && ENCODE.has("brk:imm8")) return "imm8";
       return tryModes(["implied"]);
 
     case "imm": {

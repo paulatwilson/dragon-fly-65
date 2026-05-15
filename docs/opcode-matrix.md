@@ -9,7 +9,7 @@ Each cell shows the mnemonic (abbreviated where needed). Addressing mode abbrevi
 
 ```
      x0        x1        x2        x3        x4        x5        x6        x7
-0x   BRK✓imp   ORA—dpX   COP✓imp   ORA—sr    TSB✓dp    ORA✓dp    ASL✓dp    ORA—[dp]
+0x   BRK✓imm8  ORA—dpX   COP✓imm8  ORA—sr    TSB✓dp    ORA✓dp    ASL✓dp    ORA—[dp]
 1x   BPL✓rel   ORA—dpYi  ORA—ind   ORA—sri   TRB✓dp    ORA—dpX   ASL—dpX   ORA—[dp]X
 2x   JSR✓abs   AND—dpX   JSL✓lng   AND—sr    BIT✓dp    AND✓dp    ROL✓dp    AND—[dp]
 3x   BMI✓rel   AND—dpYi  AND—ind   AND—sri   BIT—dpX   AND—dpX   ROL—dpX   AND—[dp]X

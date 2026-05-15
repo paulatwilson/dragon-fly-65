@@ -9,7 +9,7 @@ import type { AsmMode, ImmKind } from "./types";
 
 // [opcode, mnemonic, mode] for all 256 W65C816 opcodes
 const RAW: [number, string, AsmMode][] = [
-  [0x00, "brk", "implied"],
+  [0x00, "brk", "imm8"],
   [0x01, "ora", "(dp,x)"],
   [0x02, "cop", "imm8"],
   [0x03, "ora", "sr"],
@@ -301,7 +301,7 @@ ENCODE.set("jml:[abs]", 0xdc);
 // Whether an instruction's "imm" operand uses accumulator or index width
 // Default (absent) = acc width
 const IDX_IMM = new Set(["ldx", "ldy", "cpx", "cpy", "stx", "sty"]);
-const FIXED8_IMM = new Set(["rep", "sep", "cop", "wdm"]);
+const FIXED8_IMM = new Set(["brk", "rep", "sep", "cop", "wdm"]);
 
 export function immKind(mnemonic: string): ImmKind {
   if (FIXED8_IMM.has(mnemonic)) return "fixed8";

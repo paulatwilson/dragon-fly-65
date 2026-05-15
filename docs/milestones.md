@@ -306,9 +306,11 @@ Phase 2 checklist:
   The monitor assembler and disassembler now cover all W65C832 push and pull
   instructions, with parity test coverage.
 - [x] Chunk N19: Add interrupt and machine-control instructions.
-  Add `brk`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, and `stp`.
+  Add `brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, and `stp`.
   The monitor assembler and disassembler now cover all W65C832 interrupt and
-  machine-control instructions, with parity test coverage.
+  machine-control instructions, with parity test coverage. Plain `brk` emits a
+  zero signature byte so the assembled instruction matches emulator runtime
+  length.
 - [ ] Chunk N20: Add more jump forms.
   Add `jmp (abs)`, `jmp (abs,x)`, `jmp [abs]`, and `jsr (abs,x)`.
 - [ ] Chunk N21: Add native width directives.

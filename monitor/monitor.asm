@@ -2104,9 +2104,13 @@ DISASM_PHK:
     jmp     DISASM_NEXT
 
 DISASM_BRK:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
     ldx     #STR_D_BRK
     stx     ZP_PTR
     jsr     PRINT_ZP
+    lda     ZP_OPER
+    jsr     PUT_HEX2
     jmp     DISASM_NEXT
 
 DISASM_RTI:
@@ -2654,8 +2658,24 @@ ASM_PARSE_BRA_OK:
     jsr     ASM_PARSE_BRANCH_OPER
     rts
 ASM_PARSE_BRK:
-    lda     #$00                ; BRK
-    jmp     ASM_EMIT_IMPLIED
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_BRK_DEFAULT
+    jsr     ASM_PARSE_HASH_VALUE8
+    sta     ZP_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_BRK_OK
+    rts
+ASM_PARSE_BRK_DEFAULT:
+    lda     #0
+    sta     ZP_OPER
+ASM_PARSE_BRK_OK:
+    lda     #$00                ; BRK #imm8
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
 
 ASM_PARSE_BV:
     jsr     ASM_READ_UPPER
@@ -5381,7 +5401,7 @@ STR_D_PHK:
     .byte 0
 
 STR_D_BRK:
-    .ascii "BRK"
+    .ascii "BRK #$"
     .byte 0
 
 STR_D_RTI:

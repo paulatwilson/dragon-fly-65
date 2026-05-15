@@ -208,7 +208,8 @@ describe("block move", () => {
 // ─── Special instructions ─────────────────────────────────────────────────────
 
 describe("special instructions", () => {
-  it("brk", () => expect(asm("brk")).toEqual([0x00]));
+  it("brk defaults to signature byte 0", () => expect(asm("brk")).toEqual([0x00, 0x00]));
+  it("brk #$12", () => expect(asm("brk #$12")).toEqual([0x00, 0x12]));
   it("pea $1234", () => expect(asm("pea $1234")).toEqual([0xf4, 0x34, 0x12]));
   it("per label", () => {
     // PER: relative long — encodes offset to label
