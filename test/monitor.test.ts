@@ -945,6 +945,13 @@ describe("monitor", () => {
         "stp",
         "end",
         "D09C0",
+        "A09E0",
+        "jmp ($0C00)",
+        "jmp ($0C02,x)",
+        "jmp [$0C04]",
+        "jsr ($0C06,x)",
+        "end",
+        "D09E0",
       ].join("\r") + "\r",
     );
 
@@ -1105,6 +1112,11 @@ describe("monitor", () => {
     expect(output).toContain("09C5 42 06 WDM #$06");
     expect(output).toContain("09C7 CB WAI");
     expect(output).toContain("09C8 DB STP");
+
+    expect(output).toContain("09E0 6C 00 0C JMP ($0C00)");
+    expect(output).toContain("09E3 7C 02 0C JMP ($0C02,X)");
+    expect(output).toContain("09E6 DC 04 0C JMP [$0C04]");
+    expect(output).toContain("09E9 FC 06 0C JSR ($0C06,X)");
   }, 40_000);
 
   test("A and D support stack instructions", () => {
@@ -1192,5 +1204,38 @@ describe("monitor", () => {
     expect(output).toContain("0B05 42 06 WDM #$06");
     expect(output).toContain("0B07 CB WAI");
     expect(output).toContain("0B08 DB STP");
+  }, 15_000);
+
+  test("A and D support indirect jump forms", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0B20",
+        "jmp ($0C00)",
+        "jmp ($0C02,x)",
+        "jmp [$0C04]",
+        "jsr ($0C06,x)",
+        "end",
+        "D0B20",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0b20)).toBe(0x6c);
+    expect(machine.mem.readByte(0x0b21)).toBe(0x00);
+    expect(machine.mem.readByte(0x0b22)).toBe(0x0c);
+    expect(machine.mem.readByte(0x0b23)).toBe(0x7c);
+    expect(machine.mem.readByte(0x0b24)).toBe(0x02);
+    expect(machine.mem.readByte(0x0b25)).toBe(0x0c);
+    expect(machine.mem.readByte(0x0b26)).toBe(0xdc);
+    expect(machine.mem.readByte(0x0b27)).toBe(0x04);
+    expect(machine.mem.readByte(0x0b28)).toBe(0x0c);
+    expect(machine.mem.readByte(0x0b29)).toBe(0xfc);
+    expect(machine.mem.readByte(0x0b2a)).toBe(0x06);
+    expect(machine.mem.readByte(0x0b2b)).toBe(0x0c);
+    expect(output).toContain("0B20 6C 00 0C JMP ($0C00)");
+    expect(output).toContain("0B23 7C 02 0C JMP ($0C02,X)");
+    expect(output).toContain("0B26 DC 04 0C JMP [$0C04]");
+    expect(output).toContain("0B29 FC 06 0C JSR ($0C06,X)");
   }, 15_000);
 });

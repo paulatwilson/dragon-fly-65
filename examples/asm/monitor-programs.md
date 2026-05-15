@@ -1248,6 +1248,46 @@ Expected:
 - These parity examples should not be run with `G` unless the referenced data
   bytes are initialized first.
 
+## Program 20: Indirect Jump Forms
+
+Purpose:
+
+- Proves the monitor assembler accepts the N20 `jmp (abs)`, `jmp (abs,x)`,
+  `jmp [abs]`, and `jsr (abs,x)` forms.
+- Proves the disassembler renders the same N20 forms.
+
+Enter:
+
+```text
+* A09E0
+09E0> jmp ($0C00)
+09E3> jmp ($0C02,x)
+09E6> jmp [$0C04]
+09E9> jsr ($0C06,x)
+09EC> end
+OK
+```
+
+Disassemble:
+
+```text
+* D09E0
+09E0 6C 00 0C JMP ($0C00)
+09E3 7C 02 0C JMP ($0C02,X)
+09E6 DC 04 0C JMP [$0C04]
+09E9 FC 06 0C JSR ($0C06,X)
+09EC 00 00 BRK #$00
+09EE 00 00 BRK #$00
+09F0 00 00 BRK #$00
+09F2 00 00 BRK #$00
+```
+
+Expected:
+
+- The `D` command shows every N20 opcode listed above.
+- This parity example should not be run with `G` unless the referenced jump
+  tables are initialized first.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

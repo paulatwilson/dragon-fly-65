@@ -1241,10 +1241,26 @@ DISASM_NOT_REP_IMM:
     bne     DISASM_NOT_JSR_ABS
     jmp     DISASM_JSR_ABS
 DISASM_NOT_JSR_ABS:
+    cmp     #$FC
+    bne     DISASM_NOT_JSR_ABSX_IND
+    jmp     DISASM_JSR_ABSX_IND
+DISASM_NOT_JSR_ABSX_IND:
     cmp     #$4C
     bne     DISASM_NOT_JMP_ABS
     jmp     DISASM_JMP_ABS
 DISASM_NOT_JMP_ABS:
+    cmp     #$6C
+    bne     DISASM_NOT_JMP_ABS_IND
+    jmp     DISASM_JMP_ABS_IND
+DISASM_NOT_JMP_ABS_IND:
+    cmp     #$7C
+    bne     DISASM_NOT_JMP_ABSX_IND
+    jmp     DISASM_JMP_ABSX_IND
+DISASM_NOT_JMP_ABSX_IND:
+    cmp     #$DC
+    bne     DISASM_NOT_JMP_ABS_LONG_IND
+    jmp     DISASM_JMP_ABS_LONG_IND
+DISASM_NOT_JMP_ABS_LONG_IND:
     jmp     DISASM_UNKNOWN
 
 DISASM_LDA_IMM:
@@ -2159,12 +2175,58 @@ DISASM_JSR_ABS:
     jsr     DISASM_PRINT_OPER
     jmp     DISASM_NEXT
 
+DISASM_JSR_ABSX_IND:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_JSR_ABSX_IND
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    ldx     #STR_D_SUFFIX_X
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     #')'
+    sta     CHAR_OUT
+    jmp     DISASM_NEXT
+
 DISASM_JMP_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_JMP
     stx     ZP_PTR
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
+    jmp     DISASM_NEXT
+
+DISASM_JMP_ABS_IND:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_JMP_ABS_IND
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    lda     #')'
+    sta     CHAR_OUT
+    jmp     DISASM_NEXT
+
+DISASM_JMP_ABSX_IND:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_JMP_ABSX_IND
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    ldx     #STR_D_SUFFIX_X
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    lda     #')'
+    sta     CHAR_OUT
+    jmp     DISASM_NEXT
+
+DISASM_JMP_ABS_LONG_IND:
+    jsr     DISASM_FETCH_ABS
+    ldx     #STR_D_JMP_ABS_LONG_IND
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_OPER
+    lda     #']'
+    sta     CHAR_OUT
     jmp     DISASM_NEXT
 
 DISASM_RTS:
@@ -3932,6 +3994,10 @@ ASM_PARSE_JSR:
     beq     ASM_PARSE_JSR_GOT_R
     jmp     ASM_FAIL
 ASM_PARSE_JSR_GOT_R:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'('
+    beq     ASM_PARSE_JSR_ABSX_IND
     jsr     ASM_PARSE_ABS_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_JSR_OK
@@ -3941,15 +4007,63 @@ ASM_PARSE_JSR_OK:
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
+ASM_PARSE_JSR_ABSX_IND:
+    jsr     ASM_PARSE_PAREN_ABSX_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_JSR_ABSX_IND_OK
+    rts
+ASM_PARSE_JSR_ABSX_IND_OK:
+    lda     #$FC                ; JSR (abs,x)
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
 
 ASM_PARSE_JMP:
     jsr     ASM_READ_UPPER
     cmp     #'P'
-    bne     ASM_FAIL
+    beq     ASM_PARSE_JMP_GOT_P
+    jmp     ASM_FAIL
+ASM_PARSE_JMP_GOT_P:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'('
+    beq     ASM_PARSE_JMP_PAREN
+    cmp     #'['
+    beq     ASM_PARSE_JMP_BRACKET
     jsr     ASM_PARSE_ABS_OPER
     lda     ZP_ERR
-    bne     ASM_PARSE_DONE
+    beq     ASM_PARSE_JMP_ABS_OK
+    rts
+ASM_PARSE_JMP_ABS_OK:
     lda     #$4C                ; JMP abs
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_JMP_PAREN:
+    jsr     ASM_PARSE_PAREN_ABS_OR_ABSX_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_JMP_PAREN_OK
+    rts
+ASM_PARSE_JMP_PAREN_OK:
+    lda     ZP_TMP2
+    cmp     #4
+    beq     ASM_PARSE_JMP_ABSX_IND_OK
+    lda     #$6C                ; JMP (abs)
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_JMP_ABSX_IND_OK:
+    lda     #$7C                ; JMP (abs,x)
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_JMP_BRACKET:
+    jsr     ASM_PARSE_BRACKET_ABS_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_JMP_BRACKET_OK
+    rts
+ASM_PARSE_JMP_BRACKET_OK:
+    lda     #$DC                ; JMP [abs]
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
@@ -4403,6 +4517,94 @@ ASM_PARSE_ABS_HEX:
     sta     ZP_OPER+1
     jsr     PARSE_HEX2
     sta     ZP_OPER
+    rts
+
+ASM_PARSE_PAREN_ABS_OR_ABSX_OPER:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'('
+    beq     ASM_PARSE_PAREN_ABS_START
+    jmp     ASM_FAIL
+ASM_PARSE_PAREN_ABS_START:
+    inx
+    jsr     ASM_PARSE_ABS_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_PAREN_ABS_AFTER_OPER
+    rts
+ASM_PARSE_PAREN_ABS_AFTER_OPER:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #','
+    beq     ASM_PARSE_PAREN_ABSX_SUFFIX
+    cmp     #')'
+    beq     ASM_PARSE_PAREN_ABS_CLOSE
+    jmp     ASM_FAIL
+ASM_PARSE_PAREN_ABS_CLOSE:
+    inx
+    lda     #1                  ; absolute indirect marker
+    sta     ZP_TMP2
+    jmp     ASM_PARSE_INDIRECT_EOL
+ASM_PARSE_PAREN_ABSX_SUFFIX:
+    inx
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_READ_UPPER
+    cmp     #'X'
+    beq     ASM_PARSE_PAREN_ABSX_GOT_X
+    jmp     ASM_FAIL
+ASM_PARSE_PAREN_ABSX_GOT_X:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #')'
+    beq     ASM_PARSE_PAREN_ABSX_CLOSE
+    jmp     ASM_FAIL
+ASM_PARSE_PAREN_ABSX_CLOSE:
+    inx
+    lda     #4                  ; absolute,X indirect marker
+    sta     ZP_TMP2
+    jmp     ASM_PARSE_INDIRECT_EOL
+
+ASM_PARSE_PAREN_ABSX_OPER:
+    jsr     ASM_PARSE_PAREN_ABS_OR_ABSX_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_PAREN_ABSX_CHECK
+    rts
+ASM_PARSE_PAREN_ABSX_CHECK:
+    lda     ZP_TMP2
+    cmp     #4
+    beq     ASM_PARSE_PAREN_ABSX_OK
+    jmp     ASM_FAIL
+ASM_PARSE_PAREN_ABSX_OK:
+    rts
+
+ASM_PARSE_BRACKET_ABS_OPER:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'['
+    beq     ASM_PARSE_BRACKET_ABS_START
+    jmp     ASM_FAIL
+ASM_PARSE_BRACKET_ABS_START:
+    inx
+    jsr     ASM_PARSE_ABS_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_BRACKET_ABS_AFTER_OPER
+    rts
+ASM_PARSE_BRACKET_ABS_AFTER_OPER:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #']'
+    beq     ASM_PARSE_BRACKET_ABS_CLOSE
+    jmp     ASM_FAIL
+ASM_PARSE_BRACKET_ABS_CLOSE:
+    inx
+    jmp     ASM_PARSE_INDIRECT_EOL
+
+ASM_PARSE_INDIRECT_EOL:
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_INDIRECT_OK
+    jmp     ASM_FAIL
+ASM_PARSE_INDIRECT_OK:
     rts
 
 ; Address modes emitted in ZP_TMP2:
@@ -5436,8 +5638,24 @@ STR_D_JSR:
     .ascii "JSR $"
     .byte 0
 
+STR_D_JSR_ABSX_IND:
+    .ascii "JSR ($"
+    .byte 0
+
 STR_D_JMP:
     .ascii "JMP $"
+    .byte 0
+
+STR_D_JMP_ABS_IND:
+    .ascii "JMP ($"
+    .byte 0
+
+STR_D_JMP_ABSX_IND:
+    .ascii "JMP ($"
+    .byte 0
+
+STR_D_JMP_ABS_LONG_IND:
+    .ascii "JMP [$"
     .byte 0
 
 STR_D_DB:

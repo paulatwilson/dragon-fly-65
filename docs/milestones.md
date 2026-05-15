@@ -311,8 +311,10 @@ Phase 2 checklist:
   machine-control instructions, with parity test coverage. Plain `brk` emits a
   zero signature byte so the assembled instruction matches emulator runtime
   length.
-- [ ] Chunk N20: Add more jump forms.
+- [x] Chunk N20: Add more jump forms.
   Add `jmp (abs)`, `jmp (abs,x)`, `jmp [abs]`, and `jsr (abs,x)`.
+  The monitor assembler and disassembler now cover the phase-2 indirect jump
+  forms, with parity test coverage.
 - [ ] Chunk N21: Add native width directives.
   Add `.a8`, `.a16`, `.a32`, `.i8`, `.i16`, and `.i32`, and define how `D`
   renders width-sensitive immediates.

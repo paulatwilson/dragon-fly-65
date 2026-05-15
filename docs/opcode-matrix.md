@@ -34,15 +34,15 @@ Fx   BEQ✓rel   SBC—dpYi  SBC—ind   SBC—sri   PEA—abs   SBC—dpX   INC
 4x   PHA✓imp   EOR✓imm   LSR✓A     PHK✓imp   JMP✓abs   EOR—abs   LSR✓abs   EOR—lng
 5x   CLI✓imp   EOR✓absY  PHY✓imp   TCD—imp   JML✓lng   EOR—absX  LSR—absX  EOR—lngX
 6x   PLA✓imp   ADC✓imm   ROR✓A     RTL✓imp   JMP✓iabs  ADC—abs   ROR✓abs   ADC—lng
-7x   SEI✓imp   ADC✓absY  PLY✓imp   TDC—imp   JMP—absX  ADC—absX  ROR—absX  ADC—lngX
+7x   SEI✓imp   ADC✓absY  PLY✓imp   TDC—imp   JMP✓absX  ADC—absX  ROR—absX  ADC—lngX
 8x   DEY✓imp   BIT✓imm   TXA✓imp   PHB✓imp   STY✓abs   STA✓abs   STX✓abs   STA✓lng
 9x   BCC✓rel   STA✓absY  TXS✓imp   TXY—imp   STZ✓abs   STA✓absX  STX—·     STA—lngX
 Ax   TAY✓imp   LDA✓imm   TAX✓imp   PLB✓imp   LDY✓abs   LDA✓abs   LDX✓abs   LDA✓lng
 Bx   CLV✓imp   LDA✓absY  TSX✓imp   TYX—imp   LDY—absX  LDA✓absX  LDX✓absY  LDA—lngX
 Cx   INY✓imp   CMP✓imm   DEX✓imp   WAI—imp   CPY—abs   CMP—abs   DEC✓abs   CMP—lng
-Dx   CLD✓imp   CMP✓absY  PHX✓imp   STP✓imp   JML—[abs] CMP—absX  DEC—absX  CMP—lngX
+Dx   CLD✓imp   CMP✓absY  PHX✓imp   STP✓imp   JMP✓[abs] CMP—absX  DEC—absX  CMP—lngX
 Ex   INX✓imp   SBC✓imm   ·         XBA—imp   CPX—abs   SBC—abs   INC✓abs   SBC—lng
-Fx   SED✓imp   SBC✓absY  PLX✓imp   XCE✓imp   JSR—absX  SBC—absX  INC—absX  SBC—lngX
+Fx   SED✓imp   SBC✓absY  PLX✓imp   XCE✓imp   JSR✓absX  SBC—absX  INC—absX  SBC—lngX
 ```
 
 ## Extended W65C832 Opcodes
