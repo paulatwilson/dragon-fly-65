@@ -5128,15 +5128,43 @@ ASM_EQU_OK:
 ASM_PARSE_ABS_OPER:
     jsr     ASM_SKIP_SPACES
     lda     $0000,x
+    cmp     #'!'
+    beq     ASM_PARSE_ABS_FORCE
+ASM_PARSE_ABS_AFTER_FORCE:
+    lda     $0000,x
     cmp     #'$'
     beq     ASM_PARSE_ABS_HEX
     jmp     ASM_PARSE_LABEL_REF
+ASM_PARSE_ABS_FORCE:
+    inx
+    jsr     ASM_SKIP_SPACES
+    jmp     ASM_PARSE_ABS_AFTER_FORCE
 ASM_PARSE_ABS_HEX:
     lda     #0
     sta     ASM_PENDING_KIND
     inx
     jsr     PARSE_HEX2
+    sta     ZP_OPER
     sta     ZP_OPER+1
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_ABS_HEX_ONE
+    lda     $0000,x
+    cmp     #')'
+    beq     ASM_PARSE_ABS_HEX_ONE
+    cmp     #']'
+    beq     ASM_PARSE_ABS_HEX_ONE
+    cmp     #','
+    beq     ASM_PARSE_ABS_HEX_ONE
+    jsr     ASM_IS_HEX_CHAR
+    cmp     #1
+    beq     ASM_PARSE_ABS_HEX_TWO
+    jmp     ASM_FAIL
+ASM_PARSE_ABS_HEX_ONE:
+    lda     #0
+    sta     ZP_OPER+1
+    rts
+ASM_PARSE_ABS_HEX_TWO:
     jsr     PARSE_HEX2
     sta     ZP_OPER
     rts
@@ -5230,11 +5258,22 @@ ASM_PARSE_INDIRECT_OK:
     rts
 
 ; Address modes emitted in ZP_TMP2:
-;   0 dp, 1 abs, 2 dp,x, 3 dp,y, 4 abs,x, 5 abs,y
+;   0 dp, 1 abs, 2 dp,x, 3 dp,y, 4 abs,x, 5 abs,y, 6 long, 7 long,x
 ASM_PARSE_ADDR_OPER:
     jsr     ASM_SKIP_SPACES
     lda     #0
     sta     ASM_PENDING_KIND
+    sta     ASM_IMM_BYTES+2     ; parsed hex byte count: 1 or 2
+    sta     ASM_IMM_BYTES+3     ; address force: 0 auto, 1 dp, 2 abs, 3 long
+    lda     $0000,x
+    cmp     #'<'
+    beq     ASM_PARSE_ADDR_FORCE_DP
+    cmp     #'!'
+    beq     ASM_PARSE_ADDR_FORCE_ABS
+    cmp     #'>'
+    beq     ASM_PARSE_ADDR_FORCE_LONG
+ASM_PARSE_ADDR_AFTER_FORCE:
+    jsr     ASM_SKIP_SPACES
     lda     $0000,x
     cmp     #'$'
     beq     ASM_PARSE_ADDR_HEX
@@ -5242,25 +5281,47 @@ ASM_PARSE_ADDR_OPER:
     lda     ZP_ERR
     beq     ASM_PARSE_ADDR_LABEL_OK
     rts
+ASM_PARSE_ADDR_FORCE_DP:
+    inx
+    lda     #1
+    sta     ASM_IMM_BYTES+3
+    jmp     ASM_PARSE_ADDR_AFTER_FORCE
+ASM_PARSE_ADDR_FORCE_ABS:
+    inx
+    lda     #2
+    sta     ASM_IMM_BYTES+3
+    jmp     ASM_PARSE_ADDR_AFTER_FORCE
+ASM_PARSE_ADDR_FORCE_LONG:
+    inx
+    lda     #3
+    sta     ASM_IMM_BYTES+3
+    jmp     ASM_PARSE_ADDR_AFTER_FORCE
 ASM_PARSE_ADDR_LABEL_OK:
     lda     #1                  ; labels are absolute-address operands
     sta     ZP_TMP2
+    jsr     ASM_PARSE_ADDR_APPLY_FORCE
     jmp     ASM_PARSE_ADDR_SUFFIX
 ASM_PARSE_ADDR_HEX:
     inx
     jsr     PARSE_HEX2
     sta     ZP_OPER
     sta     ZP_OPER+1
+    lda     #1
+    sta     ASM_IMM_BYTES+2
     lda     #0
     sta     ZP_TMP2             ; one-byte hex defaults to direct page
     jsr     ASM_X_AT_EOL
     cmp     #1
     bne     ASM_PARSE_ADDR_NOT_EOL
+    jsr     ASM_PARSE_ADDR_APPLY_FORCE
     jmp     ASM_PARSE_ADDR_DONE
 ASM_PARSE_ADDR_NOT_EOL:
     lda     $0000,x
     cmp     #','
-    beq     ASM_PARSE_ADDR_SUFFIX
+    bne     ASM_PARSE_ADDR_NOT_COMMA
+    jsr     ASM_PARSE_ADDR_APPLY_FORCE
+    jmp     ASM_PARSE_ADDR_SUFFIX
+ASM_PARSE_ADDR_NOT_COMMA:
     jsr     ASM_IS_HEX_CHAR
     cmp     #1
     beq     ASM_PARSE_ADDR_HEX_HIGH
@@ -5268,8 +5329,11 @@ ASM_PARSE_ADDR_NOT_EOL:
 ASM_PARSE_ADDR_HEX_HIGH:
     jsr     PARSE_HEX2
     sta     ZP_OPER
+    lda     #2
+    sta     ASM_IMM_BYTES+2
     lda     #1
     sta     ZP_TMP2             ; two-byte hex is absolute
+    jsr     ASM_PARSE_ADDR_APPLY_FORCE
 ASM_PARSE_ADDR_SUFFIX:
     jsr     ASM_SKIP_SPACES
     jsr     ASM_X_AT_EOL
@@ -5294,6 +5358,8 @@ ASM_PARSE_ADDR_INDEX_X:
     beq     ASM_PARSE_ADDR_DPX
     cmp     #1
     beq     ASM_PARSE_ADDR_ABSX
+    cmp     #6
+    beq     ASM_PARSE_ADDR_LONGX
     jmp     ASM_FAIL
 ASM_PARSE_ADDR_DPX:
     lda     #2
@@ -5301,6 +5367,10 @@ ASM_PARSE_ADDR_DPX:
     jmp     ASM_PARSE_ADDR_SUFFIX_EOL
 ASM_PARSE_ADDR_ABSX:
     lda     #4
+    sta     ZP_TMP2
+    jmp     ASM_PARSE_ADDR_SUFFIX_EOL
+ASM_PARSE_ADDR_LONGX:
+    lda     #7
     sta     ZP_TMP2
     jmp     ASM_PARSE_ADDR_SUFFIX_EOL
 ASM_PARSE_ADDR_INDEX_Y:
@@ -5324,6 +5394,40 @@ ASM_PARSE_ADDR_SUFFIX_EOL:
     beq     ASM_PARSE_ADDR_DONE
     jmp     ASM_FAIL
 ASM_PARSE_ADDR_DONE:
+    rts
+
+ASM_PARSE_ADDR_APPLY_FORCE:
+    lda     ASM_IMM_BYTES+3
+    cmp     #1
+    beq     ASM_PARSE_ADDR_FORCE_APPLY_DP
+    cmp     #2
+    beq     ASM_PARSE_ADDR_FORCE_APPLY_ABS
+    cmp     #3
+    beq     ASM_PARSE_ADDR_FORCE_APPLY_LONG
+    rts
+ASM_PARSE_ADDR_FORCE_APPLY_DP:
+    lda     #0
+    sta     ZP_TMP2
+    rts
+ASM_PARSE_ADDR_FORCE_APPLY_ABS:
+    lda     ASM_IMM_BYTES+2
+    cmp     #1
+    bne     ASM_PARSE_ADDR_FORCE_APPLY_ABS_MODE
+    lda     #0
+    sta     ZP_OPER+1
+ASM_PARSE_ADDR_FORCE_APPLY_ABS_MODE:
+    lda     #1
+    sta     ZP_TMP2
+    rts
+ASM_PARSE_ADDR_FORCE_APPLY_LONG:
+    lda     ASM_IMM_BYTES+2
+    cmp     #1
+    bne     ASM_PARSE_ADDR_FORCE_APPLY_LONG_MODE
+    lda     #0
+    sta     ZP_OPER+1
+ASM_PARSE_ADDR_FORCE_APPLY_LONG_MODE:
+    lda     #6
+    sta     ZP_TMP2
     rts
 
 ASM_PARSE_LABEL_REF:

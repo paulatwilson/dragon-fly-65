@@ -1467,6 +1467,74 @@ Expected:
 - Duplicate compact symbol hashes print `?DUP`; unresolved symbols at `end`
   print `?UNRES`.
 
+## Program 24: Address Force Modifiers
+
+Purpose:
+
+- Proves `<expr` forces direct page addressing.
+- Proves `!expr` forces absolute addressing.
+- Records that `>expr` selects long addressing, with long opcode emission
+  arriving in N25.
+
+Enter:
+
+```text
+* A0C10
+0C10> OUT .equ $F000
+0C10> lda <$1000
+0C12> sta !$10
+0C15> sta !OUT
+0C18> lda <$1234,x
+0C1A> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0C10
+0C10 A5 00 LDA $00
+0C12 8D 10 00 STA $0010
+0C15 8D 00 F0 STA $F000
+0C18 B5 34 LDA $34,X
+0C1A 00 00 BRK #$00
+0C1C 00 00 BRK #$00
+0C1E 00 00 BRK #$00
+0C20 00 00 BRK #$00
+```
+
+Jump Operand Check:
+
+```text
+* A0C30
+0C30> jsr !$10
+0C33> jmp !$20
+0C36> end
+OK
+* D0C30
+0C30 20 10 00 JSR $0010
+0C33 4C 20 00 JMP $0020
+```
+
+Long Force Probe:
+
+```text
+* A0C40
+0C40> lda >$1000
+?
+0C40> rts
+0C41> end
+OK
+```
+
+Expected:
+
+- `<$1000` emits direct-page operand `$00`.
+- `!$10` emits absolute operand `$0010`.
+- `!OUT` resolves the `.equ` constant and emits absolute `$F000`.
+- `>$1000` is parsed as a long addressing request; the generic `?` is expected
+  until N25 adds long opcode forms.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

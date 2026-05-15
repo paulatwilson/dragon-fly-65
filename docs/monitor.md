@@ -523,6 +523,9 @@ db value-or-string[,value-or-string...]
 label:
 label: instruction
 NAME .equ value
+<expr
+!expr
+>expr
 sta abs
 rts
 nop
@@ -546,6 +549,11 @@ Current parser limits:
   address syntax,
 - direct page syntax uses two hex digits, such as `$10`; absolute syntax uses
   four hex digits, such as `$0010`,
+- `<expr` forces direct page addressing and emits the low byte of the value,
+  such as `lda <$1000`,
+- `!expr` forces absolute addressing, such as `lda !$10` or `jsr !$10`,
+- `>expr` selects long addressing, but long opcode forms are not emitted until
+  the next native assembler chunk,
 - labels may be on their own line or before an instruction, such as `loop:` or
   `loop: lda #0`,
 - constants use host-compatible `NAME .equ value` syntax,
@@ -899,7 +907,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda` immediate/direct page/absolute forms, accumulator immediate/direct page/absolute ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `cpx`/`cpy` immediate/direct page/absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), `sta` direct page/absolute forms, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. `A` also supports labels, `NAME .equ` constants, data entry (`.byte`, `db`, `.word`, `.dw`, `.long`, `.dl`, `.ascii`, `.asciiz`, `.resb`), and native immediate-width directives (`.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`); `D` renders bytes back as instructions or `DB $xx`, not source-only directives. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda` immediate/direct page/absolute forms, accumulator immediate/direct page/absolute ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `cpx`/`cpy` immediate/direct page/absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), `sta` direct page/absolute forms, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. `A` also supports labels, `NAME .equ` constants, address force modifiers (`<`, `!`, `>`), data entry (`.byte`, `db`, `.word`, `.dw`, `.long`, `.dl`, `.ascii`, `.asciiz`, `.resb`), and native immediate-width directives (`.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`); `D` renders bytes back as instructions or `DB $xx`, not source-only directives. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

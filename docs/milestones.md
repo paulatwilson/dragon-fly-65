@@ -333,8 +333,12 @@ Phase 2 checklist:
   The monitor assembler now supports labels before instructions, `NAME .equ`
   constants, 16 compact symbol and fixup entries per `A` session, and specific
   `?DUP`, `?UNRES`, and `?TABLE` diagnostics.
-- [ ] Chunk N24: Add address force modifiers.
+- [x] Chunk N24: Add address force modifiers.
   Add `<expr` for direct page, `!expr` for absolute, and `>expr` for long.
+  The monitor assembler now supports `<` direct-page and `!` absolute force
+  modifiers across shared address operands and absolute jump operands. `>` is
+  parsed as long-address selection and currently reports the expected generic
+  unsupported-form error until N25 adds long opcodes.
 - [ ] Chunk N25: Add long addressing.
   Add `lda long`, `sta long`, `lda long,x`, `sta long,x`, `jsl long`, and
   `jml long`.

@@ -704,6 +704,82 @@ describe("monitor", () => {
     expect(output).not.toContain("?TABLE");
   }, 10_000);
 
+  test("A command supports direct page and absolute address force modifiers", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0680",
+        "OUT .equ $F000",
+        "lda <$1000",
+        "sta !$10",
+        "sta !OUT",
+        "lda <$1234,x",
+        "end",
+        "D0680",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0680)).toBe(0xa5);
+    expect(machine.mem.readByte(0x0681)).toBe(0x00);
+    expect(machine.mem.readByte(0x0682)).toBe(0x8d);
+    expect(machine.mem.readByte(0x0683)).toBe(0x10);
+    expect(machine.mem.readByte(0x0684)).toBe(0x00);
+    expect(machine.mem.readByte(0x0685)).toBe(0x8d);
+    expect(machine.mem.readByte(0x0686)).toBe(0x00);
+    expect(machine.mem.readByte(0x0687)).toBe(0xf0);
+    expect(machine.mem.readByte(0x0688)).toBe(0xb5);
+    expect(machine.mem.readByte(0x0689)).toBe(0x34);
+    expect(output).toContain("0680 A5 00 LDA $00");
+    expect(output).toContain("0682 8D 10 00 STA $0010");
+    expect(output).toContain("0685 8D 00 F0 STA $F000");
+    expect(output).toContain("0688 B5 34 LDA $34,X");
+    expect(output).toContain("OK");
+    expect(output).not.toContain("?");
+  }, 10_000);
+
+  test("A command reserves long address force for long opcode forms", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0690",
+        "lda >$1000",
+        "rts",
+        "end",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0690)).toBe(0x60);
+    expect(output).toContain("?");
+    expect(output).toContain("OK");
+  }, 10_000);
+
+  test("A command supports absolute force on jump operands", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A06A0",
+        "jsr !$10",
+        "jmp !$20",
+        "end",
+        "D06A0",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x06a0)).toBe(0x20);
+    expect(machine.mem.readByte(0x06a1)).toBe(0x10);
+    expect(machine.mem.readByte(0x06a2)).toBe(0x00);
+    expect(machine.mem.readByte(0x06a3)).toBe(0x4c);
+    expect(machine.mem.readByte(0x06a4)).toBe(0x20);
+    expect(machine.mem.readByte(0x06a5)).toBe(0x00);
+    expect(output).toContain("06A0 20 10 00 JSR $0010");
+    expect(output).toContain("06A3 4C 20 00 JMP $0020");
+    expect(output).toContain("OK");
+    expect(output).not.toContain("?");
+  }, 10_000);
+
   test("A and D support index register load and store forms", () => {
     const machine = buildMonitor();
     const output = runWithInput(
