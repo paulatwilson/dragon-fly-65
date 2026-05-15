@@ -49,7 +49,7 @@ The monitor currently uses bank 0 and a 64 KiB machine profile.
 
 ```text
 $0000-$01FF   zero page + hardware stack
-$0200-$0293   monitor work RAM
+$0200-$02D2   monitor work RAM
 $0300-$BFFF   user program RAM
 $C000-$FFFF   monitor ROM and vectors, with I/O hole at $F000-$F002
 $F000-$F002   memory-mapped I/O
@@ -65,13 +65,16 @@ $F002  CHAR_STS   read 1 if input is available, otherwise 0
 
 ### Zero-Page Layout
 
-The monitor reserves four bytes of zero page for its own use. Programs must
+The monitor reserves nine bytes of zero page for its own use. Programs must
 not clobber these while inside a monitor subroutine call.
 
 ```text
 $00-$01  ZP_PTR    16-bit pointer used by PRINT_ZP
 $02-$03  ZP_ADDR   16-bit working address (parse target and dump address)
 $04      ZP_TMP    temporary byte (also used as a 2-byte spill at $04-$05)
+$05      ZP_TMP2   temporary byte
+$06-$07  ZP_OPER   parsed operand word for assembly mode
+$08      ZP_ERR    non-zero when assembly parsing fails
 ```
 
 ### Monitor Work RAM
@@ -84,6 +87,20 @@ $0251-$0252  X_SAVE      X register saved after last G return (little-endian)
 $0253-$0254  Y_SAVE      Y register saved after last G return (little-endian)
 $0255        P_SAVE      processor status byte saved after last G return
 $0256        REG_VALID   0 = no program run yet; 1 = save area is valid
+$0257        ASM_LABEL_COUNT
+$0258-$0267  ASM_LABEL_HASHES  16 compact symbol hashes
+$0268-$0287  ASM_LABEL_ADDRS   16 two-byte symbol values
+$0288        ASM_FIXUP_COUNT
+$0289        ASM_PENDING_KIND
+$028A        ASM_PENDING_HASH
+$028B-$029A  ASM_FIXUP_HASHES  16 compact unresolved symbol hashes
+$029B-$02BA  ASM_FIXUP_ADDRS   16 two-byte patch addresses
+$02BB-$02CA  ASM_FIXUP_KINDS   16 one-byte patch kinds
+$02CB        ASM_ACC_BYTES     assembly-mode accumulator immediate width
+$02CC        ASM_IDX_BYTES     assembly-mode index immediate width
+$02CD        DISASM_ACC_BYTES  disassembly-mode accumulator immediate width
+$02CE        DISASM_IDX_BYTES  disassembly-mode index immediate width
+$02CF-$02D2  ASM_IMM_BYTES     4-byte immediate scratch
 ```
 
 ### Interrupt Vectors
@@ -504,6 +521,8 @@ db value-or-string[,value-or-string...]
 .i16
 .i32
 label:
+label: instruction
+NAME .equ value
 sta abs
 rts
 nop
@@ -527,18 +546,25 @@ Current parser limits:
   address syntax,
 - direct page syntax uses two hex digits, such as `$10`; absolute syntax uses
   four hex digits, such as `$0010`,
-- labels must be on their own line, such as `loop:`,
+- labels may be on their own line or before an instruction, such as `loop:` or
+  `loop: lda #0`,
+- constants use host-compatible `NAME .equ value` syntax,
 - labels are scoped to one `A` assembly session,
+- `.equ` constants are scoped to one `A` assembly session,
 - label references may point backward or forward within the current session,
 - unresolved labels are rejected when `end` is entered,
-- the first native label table stores eight compact one-byte-hashed label
-  entries, and the first fixup table stores eight unresolved references, so
-  collision handling and larger tables are future assembler improvements,
+- the native symbol table stores 16 compact one-byte-hashed label/constant
+  entries, and the fixup table stores 16 unresolved references; names with the
+  same compact hash are treated as duplicates until full symbol storage is
+  added,
+- assembly errors print `?` for a generic parse failure, `?DUP` for duplicate
+  symbol hashes, `?UNRES` for unresolved symbols at `end`, and `?TABLE` when a
+  compact symbol or fixup table is full,
 - branch targets may be written as absolute addresses such as `$0310` or as
   labels; the monitor emits the relative byte internally,
 - branch targets must fit the signed 8-bit relative branch range,
 - no directives except `.byte`, `db`, `.word`, `.dw`, `.long`, `.dl`,
-  `.ascii`, `.asciiz`, `.resb`, and the native width directives,
+  `.ascii`, `.asciiz`, `.resb`, `.equ`, and the native width directives,
 - no expressions beyond literal values,
 - case-insensitive mnemonics,
 - hex immediates such as `$41`,
@@ -873,7 +899,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda` immediate/direct page/absolute forms, accumulator immediate/direct page/absolute ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `cpx`/`cpy` immediate/direct page/absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), `sta` direct page/absolute forms, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. `A` also supports data entry (`.byte`, `db`, `.word`, `.dw`, `.long`, `.dl`, `.ascii`, `.asciiz`, `.resb`) and native immediate-width directives (`.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`); `D` renders bytes back as instructions or `DB $xx`, not source-only directives. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda` immediate/direct page/absolute forms, accumulator immediate/direct page/absolute ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `cpx`/`cpy` immediate/direct page/absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), `sta` direct page/absolute forms, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. `A` also supports labels, `NAME .equ` constants, data entry (`.byte`, `db`, `.word`, `.dw`, `.long`, `.dl`, `.ascii`, `.asciiz`, `.resb`), and native immediate-width directives (`.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`); `D` renders bytes back as instructions or `DB $xx`, not source-only directives. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

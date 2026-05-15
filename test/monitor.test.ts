@@ -591,6 +591,71 @@ describe("monitor", () => {
     expect(output).not.toContain("?");
   }, 10_000);
 
+  test("A command supports labels on instruction lines", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0630",
+        "start: lda #0",
+        "cmp #0",
+        "bne start",
+        "rts",
+        "end",
+        "D0630",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0630)).toBe(0xa9);
+    expect(machine.mem.readByte(0x0631)).toBe(0x00);
+    expect(machine.mem.readByte(0x0634)).toBe(0xd0);
+    expect(machine.mem.readByte(0x0635)).toBe(0xfa);
+    expect(output).toContain("0634 D0 FA BNE $0630");
+    expect(output).toContain("OK");
+    expect(output).not.toContain("?");
+  }, 10_000);
+
+  test("A command supports .equ constants", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0640",
+        "OUT .equ $F000",
+        "lda #'E'",
+        "sta OUT",
+        "rts",
+        "end",
+        "D0640",
+        "G0640",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0640)).toBe(0xa9);
+    expect(machine.mem.readByte(0x0641)).toBe(0x45);
+    expect(machine.mem.readByte(0x0642)).toBe(0x8d);
+    expect(machine.mem.readByte(0x0643)).toBe(0x00);
+    expect(machine.mem.readByte(0x0644)).toBe(0xf0);
+    expect(output).toContain("0642 8D 00 F0 STA $F000");
+    expect(output).toContain("E");
+    expect(output).toContain("Returned");
+  }, 10_000);
+
+  test("A command reports duplicate labels", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0650",
+        "same:",
+        "same:",
+        "end",
+      ].join("\r") + "\r",
+    );
+
+    expect(output).toContain("?DUP");
+  }, 10_000);
+
   test("A command rejects unresolved forward labels on end", () => {
     const machine = buildMonitor();
     const output = runWithInput(
@@ -604,8 +669,39 @@ describe("monitor", () => {
 
     expect(machine.mem.readByte(0x0640)).toBe(0xd0);
     expect(machine.mem.readByte(0x0641)).toBe(0x00);
-    expect(output).toContain("?");
+    expect(output).toContain("?UNRES");
     expect(output).not.toContain("OK");
+  }, 10_000);
+
+  test("A command supports sixteen compact label table entries", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0660",
+        "a0:",
+        "a1:",
+        "a2:",
+        "a3:",
+        "a4:",
+        "a5:",
+        "a6:",
+        "a7:",
+        "a8:",
+        "a9:",
+        "k0:",
+        "k1:",
+        "k2:",
+        "k3:",
+        "k4:",
+        "k5: rts",
+        "end",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0660)).toBe(0x60);
+    expect(output).toContain("OK");
+    expect(output).not.toContain("?TABLE");
   }, 10_000);
 
   test("A and D support index register load and store forms", () => {

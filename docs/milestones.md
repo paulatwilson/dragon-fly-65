@@ -327,9 +327,12 @@ Phase 2 checklist:
   literals in `.byte`/`db`.
   The monitor assembler now supports byte, word, long, string, NUL-terminated
   string, and reserve-byte data entry, with monitor test coverage.
-- [ ] Chunk N23: Improve symbol support.
+- [x] Chunk N23: Improve symbol support.
   Add labels on instruction lines, `.equ` constants, larger or documented
   label/fixup limits, duplicate-label errors, and unresolved-label diagnostics.
+  The monitor assembler now supports labels before instructions, `NAME .equ`
+  constants, 16 compact symbol and fixup entries per `A` session, and specific
+  `?DUP`, `?UNRES`, and `?TABLE` diagnostics.
 - [ ] Chunk N24: Add address force modifiers.
   Add `<expr` for direct page, `!expr` for absolute, and `>expr` for long.
 - [ ] Chunk N25: Add long addressing.

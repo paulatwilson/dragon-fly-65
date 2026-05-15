@@ -1399,6 +1399,74 @@ Expected:
 - `.ascii` emits raw string bytes; `.asciiz` appends one zero byte.
 - `.resb` emits zero bytes.
 
+## Program 23: Improved Symbol Support
+
+Purpose:
+
+- Proves labels can appear before instructions.
+- Proves `NAME .equ value` constants resolve as operands.
+- Proves unresolved and duplicate symbols produce specific diagnostics.
+
+Enter:
+
+```text
+* A0BC0
+0BC0> OUT .equ $F000
+0BC0> start: lda #'S'
+0BC2> sta OUT
+0BC5> bne start
+0BC7> rts
+0BC8> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0BC0
+0BC0 A9 53 LDA #$53
+0BC2 8D 00 F0 STA $F000
+0BC5 D0 F9 BNE $0BC0
+0BC7 60 RTS
+0BC8 00 00 BRK #$00
+0BCA 00 00 BRK #$00
+0BCC 00 00 BRK #$00
+0BCE 00 00 BRK #$00
+```
+
+Run:
+
+```text
+* G0BC0
+S
+Returned
+```
+
+Diagnostic Checks:
+
+```text
+* A0BE0
+0BE0> same:
+0BE0> same:
+?DUP
+0BE0> end
+OK
+* A0BF0
+0BF0> bne missing
+0BF2> end
+?UNRES
+```
+
+Expected:
+
+- `OUT .equ $F000` defines a session-local constant for the monitor terminal
+  output address.
+- `start: lda #'S'` defines `start` at `$0BC0` and assembles the instruction on
+  the same line.
+- The compact symbol and fixup tables each hold 16 entries per `A` session.
+- Duplicate compact symbol hashes print `?DUP`; unresolved symbols at `end`
+  print `?UNRES`.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

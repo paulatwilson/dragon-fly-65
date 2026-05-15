@@ -6,7 +6,7 @@
 ; Memory map
 ; ----------
 ;   $0000–$01FF   Zero page + hardware stack
-;   $0200–$029A   Monitor work RAM (input buffer, register save area,
+;   $0200–$02D2   Monitor work RAM (input buffer, register save area,
 ;                  native assembler label/fixup tables)
 ;   $0300–$BFFF   Free RAM (user programs)
 ;   $C000–$EFFF   Monitor ROM  ← loaded here
@@ -44,19 +44,19 @@
 ;   $06–$07  ZP_OPER  parsed operand word for assembly mode
 ;   $08      ZP_ERR   non-zero when assembly parsing fails
 ;   $0257    ASM_LABEL_COUNT
-;   $0258    ASM_LABEL_HASHES  8 one-byte label hashes
-;   $0260    ASM_LABEL_ADDRS   8 two-byte label addresses
-;   $0270    ASM_FIXUP_COUNT
-;   $0271    ASM_PENDING_KIND  pending operand kind: 0 none, 1 abs16, 2 branch
-;   $0272    ASM_PENDING_HASH
-;   $0273    ASM_FIXUP_HASHES  8 one-byte unresolved label hashes
-;   $027B    ASM_FIXUP_ADDRS   8 two-byte patch addresses
-;   $028B    ASM_FIXUP_KINDS   8 one-byte patch kinds
-;   $0293    ASM_ACC_BYTES     assembly-mode accumulator immediate width
-;   $0294    ASM_IDX_BYTES     assembly-mode index immediate width
-;   $0295    DISASM_ACC_BYTES  disassembly-mode accumulator immediate width
-;   $0296    DISASM_IDX_BYTES  disassembly-mode index immediate width
-;   $0297    ASM_IMM_BYTES     4-byte immediate scratch, little-endian
+;   $0258    ASM_LABEL_HASHES  16 one-byte label/symbol hashes
+;   $0268    ASM_LABEL_ADDRS   16 two-byte label/symbol values
+;   $0288    ASM_FIXUP_COUNT
+;   $0289    ASM_PENDING_KIND  pending operand kind: 0 none, 1 abs16, 2 branch
+;   $028A    ASM_PENDING_HASH
+;   $028B    ASM_FIXUP_HASHES  16 one-byte unresolved label hashes
+;   $029B    ASM_FIXUP_ADDRS   16 two-byte patch addresses
+;   $02BB    ASM_FIXUP_KINDS   16 one-byte patch kinds
+;   $02CB    ASM_ACC_BYTES     assembly-mode accumulator immediate width
+;   $02CC    ASM_IDX_BYTES     assembly-mode index immediate width
+;   $02CD    DISASM_ACC_BYTES  disassembly-mode accumulator immediate width
+;   $02CE    DISASM_IDX_BYTES  disassembly-mode index immediate width
+;   $02CF    ASM_IMM_BYTES     4-byte immediate scratch, little-endian
 ;
 ; Register save area (written by DO_GO_RETURNED)
 ;   $0250    A_SAVE    A register from last G return
@@ -102,18 +102,18 @@ P_SAVE      .equ $0255
 REG_VALID   .equ $0256
 ASM_LABEL_COUNT  .equ $0257
 ASM_LABEL_HASHES .equ $0258
-ASM_LABEL_ADDRS  .equ $0260
-ASM_FIXUP_COUNT  .equ $0270
-ASM_PENDING_KIND .equ $0271
-ASM_PENDING_HASH .equ $0272
-ASM_FIXUP_HASHES .equ $0273
-ASM_FIXUP_ADDRS  .equ $027B
-ASM_FIXUP_KINDS  .equ $028B
-ASM_ACC_BYTES    .equ $0293
-ASM_IDX_BYTES    .equ $0294
-DISASM_ACC_BYTES .equ $0295
-DISASM_IDX_BYTES .equ $0296
-ASM_IMM_BYTES    .equ $0297          ; 4 bytes, little-endian immediate scratch
+ASM_LABEL_ADDRS  .equ $0268
+ASM_FIXUP_COUNT  .equ $0288
+ASM_PENDING_KIND .equ $0289
+ASM_PENDING_HASH .equ $028A
+ASM_FIXUP_HASHES .equ $028B
+ASM_FIXUP_ADDRS  .equ $029B
+ASM_FIXUP_KINDS  .equ $02BB
+ASM_ACC_BYTES    .equ $02CB
+ASM_IDX_BYTES    .equ $02CC
+DISASM_ACC_BYTES .equ $02CD
+DISASM_IDX_BYTES .equ $02CE
+ASM_IMM_BYTES    .equ $02CF          ; 4 bytes, little-endian immediate scratch
 
 ; ---------------------------------------------------------------------------
 ; Boot / monitor entry
@@ -547,9 +547,9 @@ DO_REGS_SHOW:
 ;   bcs abs
 ;   bmi abs
 ;   bpl abs
-;   .byte value[,value...]
-;   db value[,value...]
-;   labels on label-only lines, e.g. loop:
+;   data directives: .byte/db, .word/.dw, .long/.dl, .ascii/.asciiz, .resb
+;   labels on their own line or before instructions, e.g. loop: lda #0
+;   constants: NAME .equ value
 ;
 ; On entry: X = INBUF+1 (parse pointer)
 ; ---------------------------------------------------------------------------
@@ -590,18 +590,14 @@ ASM_LOOP:
     lda     ZP_ERR
     beq     ASM_LOOP
 
-    ldx     #STR_UNKNOWN
-    stx     ZP_PTR
-    jsr     PRINT_ZP
+    jsr     ASM_PRINT_ERROR
     jmp     ASM_LOOP
 
 ASM_DONE:
     jsr     ASM_CHECK_UNRESOLVED
     lda     ZP_ERR
     beq     ASM_DONE_OK
-    ldx     #STR_UNKNOWN
-    stx     ZP_PTR
-    jsr     PRINT_ZP
+    jsr     ASM_PRINT_ERROR
     jmp     ASM_LOOP
 ASM_DONE_OK:
     ldx     #STR_OK
@@ -2392,10 +2388,44 @@ ASM_PARSE_LINE:
     sta     ZP_PTR              ; restore point if this is not a label
     sep     #$20
     .a8
+    jsr     ASM_PARSE_EQU_DEF
+    pha
+    lda     ZP_ERR
+    beq     ASM_PARSE_LINE_EQU_NO_ERR
+    pla
+    rts
+ASM_PARSE_LINE_EQU_NO_ERR:
+    pla
+    cmp     #1
+    bne     ASM_PARSE_LINE_NOT_EQU
+    rts
+ASM_PARSE_LINE_NOT_EQU:
+    rep     #$20
+    .a16
+    ldx     ZP_PTR
+    sep     #$20
+    .a8
     jsr     ASM_PARSE_LABEL_DEF
+    pha
+    lda     ZP_ERR
+    beq     ASM_PARSE_LINE_LABEL_NO_ERR
+    pla
+    rts
+ASM_PARSE_LINE_LABEL_NO_ERR:
+    pla
     cmp     #1
     bne     ASM_PARSE_LINE_NOT_LABEL
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    bne     ASM_PARSE_LINE_AFTER_LABEL
     rts
+ASM_PARSE_LINE_AFTER_LABEL:
+    rep     #$20
+    .a16
+    txa
+    sta     ZP_PTR
+    sep     #$20
+    .a8
 ASM_PARSE_LINE_NOT_LABEL:
     rep     #$20
     .a16
@@ -4307,6 +4337,44 @@ ASM_FAIL:
 ASM_PARSE_DONE:
     rts
 
+ASM_FAIL_DUP_LABEL:
+    lda     #2
+    sta     ZP_ERR
+    rts
+
+ASM_FAIL_UNRESOLVED:
+    lda     #3
+    sta     ZP_ERR
+    rts
+
+ASM_FAIL_TABLE_FULL:
+    lda     #4
+    sta     ZP_ERR
+    rts
+
+ASM_PRINT_ERROR:
+    lda     ZP_ERR
+    cmp     #2
+    beq     ASM_PRINT_ERROR_DUP
+    cmp     #3
+    beq     ASM_PRINT_ERROR_UNRES
+    cmp     #4
+    beq     ASM_PRINT_ERROR_TABLE
+    ldx     #STR_UNKNOWN
+    jmp     ASM_PRINT_ERROR_DO
+ASM_PRINT_ERROR_DUP:
+    ldx     #STR_ASM_DUP
+    jmp     ASM_PRINT_ERROR_DO
+ASM_PRINT_ERROR_UNRES:
+    ldx     #STR_ASM_UNRES
+    jmp     ASM_PRINT_ERROR_DO
+ASM_PRINT_ERROR_TABLE:
+    ldx     #STR_ASM_TABLE
+ASM_PRINT_ERROR_DO:
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    rts
+
 ASM_EMIT_IMPLIED:
     jsr     ASM_EMIT_A
     rts
@@ -4920,19 +4988,20 @@ ASM_LABEL_DEF_FOUND:
     lda     ZP_TMP
     sta     ZP_OPER
     jsr     ASM_SKIP_SPACES
-    jsr     ASM_AT_EOL
-    cmp     #1
-    beq     ASM_LABEL_DEF_STORE
-    jmp     ASM_FAIL
 ASM_LABEL_DEF_STORE:
     lda     ZP_OPER
     sta     ZP_TMP
+    jsr     ASM_SYMBOL_EXISTS
+    cmp     #1
+    bne     ASM_LABEL_DEF_NOT_DUP
+    jmp     ASM_FAIL_DUP_LABEL
+ASM_LABEL_DEF_NOT_DUP:
     lda     ASM_LABEL_COUNT
     tay
     tya
-    cmp     #8
+    cmp     #16
     bcc     ASM_LABEL_DEF_ROOM
-    jmp     ASM_FAIL
+    jmp     ASM_FAIL_TABLE_FULL
 ASM_LABEL_DEF_ROOM:
     lda     ZP_TMP
     sta     ASM_LABEL_HASHES,y
@@ -4957,6 +5026,102 @@ ASM_LABEL_DEF_ROOM:
     beq     ASM_LABEL_DEF_OK
     rts
 ASM_LABEL_DEF_OK:
+    lda     #1
+    rts
+
+ASM_PARSE_EQU_DEF:
+    lda     #0
+    sta     ZP_TMP
+    lda     $0000,x
+    jsr     ASM_IS_LABEL_START
+    cmp     #1
+    beq     ASM_EQU_NAME_LOOP
+    lda     #0
+    rts
+ASM_EQU_NAME_LOOP:
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_EQU_NOT_DEF
+    lda     $0000,x
+    jsr     ASM_IS_LABEL_CHAR
+    cmp     #1
+    beq     ASM_EQU_NAME_ADD
+    jmp     ASM_EQU_AFTER_NAME
+ASM_EQU_NAME_ADD:
+    lda     $0000,x
+    jsr     ASM_UPPER_A
+    clc
+    adc     ZP_TMP
+    sta     ZP_TMP
+    inx
+    jmp     ASM_EQU_NAME_LOOP
+ASM_EQU_AFTER_NAME:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'.'
+    beq     ASM_EQU_DOT
+ASM_EQU_NOT_DEF:
+    lda     #0
+    rts
+ASM_EQU_DOT:
+    inx
+    jsr     ASM_READ_UPPER
+    cmp     #'E'
+    bne     ASM_EQU_NOT_DEF
+    jsr     ASM_READ_UPPER
+    cmp     #'Q'
+    bne     ASM_EQU_NOT_DEF
+    jsr     ASM_READ_UPPER
+    cmp     #'U'
+    beq     ASM_EQU_PARSE_VALUE
+    jmp     ASM_FAIL
+ASM_EQU_PARSE_VALUE:
+    lda     ZP_TMP
+    sta     ASM_PENDING_HASH
+    jsr     ASM_PARSE_VALUE16
+    lda     ASM_PENDING_HASH
+    sta     ZP_TMP
+    lda     ZP_ERR
+    beq     ASM_EQU_CHECK_EOL
+    rts
+ASM_EQU_CHECK_EOL:
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_EQU_STORE
+    jmp     ASM_FAIL
+ASM_EQU_STORE:
+    jsr     ASM_SYMBOL_EXISTS
+    cmp     #1
+    bne     ASM_EQU_NOT_DUP
+    jmp     ASM_FAIL_DUP_LABEL
+ASM_EQU_NOT_DUP:
+    lda     ASM_LABEL_COUNT
+    tay
+    tya
+    cmp     #16
+    bcc     ASM_EQU_ROOM
+    jmp     ASM_FAIL_TABLE_FULL
+ASM_EQU_ROOM:
+    lda     ZP_TMP
+    sta     ASM_LABEL_HASHES,y
+    rep     #$20
+    .a16
+    tya
+    asl     a
+    tay
+    sep     #$20
+    .a8
+    lda     ZP_OPER
+    sta     ASM_LABEL_ADDRS,y
+    lda     ZP_OPER+1
+    sta     ASM_LABEL_ADDRS+1,y
+    inc     ASM_LABEL_COUNT
+    jsr     ASM_RESOLVE_FIXUPS_FOR_LABEL
+    lda     ZP_ERR
+    beq     ASM_EQU_OK
+    rts
+ASM_EQU_OK:
     lda     #1
     rts
 
@@ -5222,6 +5387,24 @@ ASM_LABEL_REF_FOUND:
     sta     ZP_OPER+1
     rts
 
+ASM_SYMBOL_EXISTS:
+    ldy     #0
+ASM_SYMBOL_EXISTS_LOOP:
+    tya
+    cmp     ASM_LABEL_COUNT
+    bcc     ASM_SYMBOL_EXISTS_CHECK
+    lda     #0
+    rts
+ASM_SYMBOL_EXISTS_CHECK:
+    lda     ASM_LABEL_HASHES,y
+    cmp     ZP_TMP
+    beq     ASM_SYMBOL_EXISTS_YES
+    iny
+    jmp     ASM_SYMBOL_EXISTS_LOOP
+ASM_SYMBOL_EXISTS_YES:
+    lda     #1
+    rts
+
 ASM_UPPER_A:
     cmp     #'a'
     bcc     ASM_UPPER_DONE
@@ -5282,9 +5465,9 @@ ASM_ADD_FIXUP:
     lda     ASM_FIXUP_COUNT
     tay
     tya
-    cmp     #8
+    cmp     #16
     bcc     ASM_ADD_FIXUP_ROOM
-    jmp     ASM_FAIL
+    jmp     ASM_FAIL_TABLE_FULL
 ASM_ADD_FIXUP_ROOM:
     lda     ASM_PENDING_HASH
     sta     ASM_FIXUP_HASHES,y
@@ -5316,7 +5499,7 @@ ASM_CHECK_UNRESOLVED_LOOP:
 ASM_CHECK_UNRESOLVED_KIND:
     lda     ASM_FIXUP_KINDS,y
     beq     ASM_CHECK_UNRESOLVED_NEXT
-    jmp     ASM_FAIL
+    jmp     ASM_FAIL_UNRESOLVED
 ASM_CHECK_UNRESOLVED_NEXT:
     iny
     jmp     ASM_CHECK_UNRESOLVED_LOOP
@@ -5785,6 +5968,18 @@ STR_HELP:
 
 STR_UNKNOWN:
     .ascii "?"
+    .byte $0D,$0A,0
+
+STR_ASM_DUP:
+    .ascii "?DUP"
+    .byte $0D,$0A,0
+
+STR_ASM_UNRES:
+    .ascii "?UNRES"
+    .byte $0D,$0A,0
+
+STR_ASM_TABLE:
+    .ascii "?TABLE"
     .byte $0D,$0A,0
 
 STR_OK:
