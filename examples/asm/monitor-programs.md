@@ -1288,6 +1288,76 @@ Expected:
 - This parity example should not be run with `G` unless the referenced jump
   tables are initialized first.
 
+## Program 21: Width Directives And Immediate Rendering
+
+Purpose:
+
+- Proves the monitor assembler accepts `.a8`, `.a16`, `.a32`, `.i8`, `.i16`,
+  and `.i32`.
+- Proves `D` renders width-sensitive immediates when the width changes are
+  visible in the byte stream through `rep` and `sep`.
+
+Enter:
+
+```text
+* A0B40
+0B40> .a16
+0B40> lda #$1234
+0B43> cmp #$5678
+0B46> .a8
+0B46> lda #$9A
+0B48> .i16
+0B48> ldx #$1234
+0B4B> ldy #$5678
+0B4E> cpx #$9ABC
+0B51> cpy #$DEF0
+0B54> .i8
+0B54> ldx #$12
+0B56> .a32
+0B56> lda #$12345678
+0B5B> end
+OK
+```
+
+Memory Check:
+
+```text
+* M0B40
+0B40: A9 34 12 C9 78 56 A9 9A A2 34 12 A0 78 56 E0 BC  |.4..xV...4..xV..|
+```
+
+Disassemble:
+
+```text
+* A0B70
+0B70> rep #$30
+0B72> lda #$1234
+0B75> ldx #$5678
+0B78> sep #$30
+0B7A> lda #$9A
+0B7C> ldx #$BC
+0B7E> end
+OK
+* D0B70
+0B70 C2 30 REP #$30
+0B72 A9 34 12 LDA #$1234
+0B75 A2 78 56 LDX #$5678
+0B78 E2 30 SEP #$30
+0B7A A9 9A LDA #$9A
+0B7C A2 BC LDX #$BC
+0B7E 00 00 BRK #$00
+0B80 00 00 BRK #$00
+```
+
+Expected:
+
+- The first assembly block encodes accumulator and index immediates at the
+  selected source directive widths, including the four-byte `.a32` immediate.
+- `D` starts from `.a8`/`.i8` and updates immediate rendering from visible
+  `rep`/`sep` bytes. Source-only width directives do not emit bytes, so `D`
+  cannot infer them unless disassembly starts from a byte stream that changes
+  width explicitly.
+
 ## Growth Test Template
 
 Every new native assembler/disassembler chunk should add examples in this

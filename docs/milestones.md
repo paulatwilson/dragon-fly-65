@@ -315,9 +315,13 @@ Phase 2 checklist:
   Add `jmp (abs)`, `jmp (abs,x)`, `jmp [abs]`, and `jsr (abs,x)`.
   The monitor assembler and disassembler now cover the phase-2 indirect jump
   forms, with parity test coverage.
-- [ ] Chunk N21: Add native width directives.
+- [x] Chunk N21: Add native width directives.
   Add `.a8`, `.a16`, `.a32`, `.i8`, `.i16`, and `.i32`, and define how `D`
   renders width-sensitive immediates.
+  The monitor assembler now supports native immediate-width directives, and
+  `D` renders width-sensitive immediates from its disassembly state: default
+  `.a8`/`.i8`, with 8/16-bit changes tracked from visible `sep`/`rep`
+  instructions in the byte stream.
 - [ ] Chunk N22: Add word and string data directives.
   Add `.word`/`.dw`, `.long`/`.dl`, `.ascii`, `.asciiz`, `.resb`, and string
   literals in `.byte`/`db`.

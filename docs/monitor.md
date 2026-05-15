@@ -490,6 +490,12 @@ wai
 stp
 .byte value[,value...]
 db value[,value...]
+.a8
+.a16
+.a32
+.i8
+.i16
+.i32
 label:
 sta abs
 rts
@@ -506,9 +512,10 @@ jmp [abs]
 
 Current parser limits:
 
-- accumulator and index immediate forms currently emit one-byte immediates;
-  `ldx #imm8` and `ldy #imm8` should be used only after switching to 8-bit
-  index mode, such as with `sep #$10`,
+- accumulator and index immediate forms default to one-byte immediates and can
+  be changed with `.a8`, `.a16`, `.a32`, `.i8`, `.i16`, and `.i32`; visible
+  `sep #$10`/`rep #$10` and `sep #$20`/`rep #$20` also update assembly width
+  state for following immediates,
 - memory load/store width is controlled by CPU status flags at runtime, not by
   address syntax,
 - direct page syntax uses two hex digits, such as `$10`; absolute syntax uses
@@ -523,7 +530,7 @@ Current parser limits:
 - branch targets may be written as absolute addresses such as `$0310` or as
   labels; the monitor emits the relative byte internally,
 - branch targets must fit the signed 8-bit relative branch range,
-- no directives except `.byte` and `db`,
+- no directives except `.byte`, `db`, and the native width directives,
 - no expressions beyond literal values,
 - case-insensitive mnemonics,
 - hex immediates such as `$41`,
@@ -532,6 +539,10 @@ Current parser limits:
 - absolute addresses such as `$F000`.
 - `.byte` and `db` accept comma-separated hex byte, decimal byte, and character
   literals such as `.byte $41, 66, 'C'`.
+- `D` starts with `.a8`/`.i8` disassembly state and updates 8/16-bit immediate
+  rendering when it sees `sep`/`rep` in the bytes being disassembled; it cannot
+  infer source-only `.a16`, `.a32`, `.i16`, or `.i32` directives that emitted no
+  bytes before the disassembly start address.
 
 The full TypeScript assembler remains useful as a cross-assembler for ROM
 builds and tests. It should not be treated as the implementation for monitor
@@ -716,6 +727,12 @@ wai
 stp
 .byte value[,value...]
 db value[,value...]
+.a8
+.a16
+.a32
+.i8
+.i16
+.i32
 sta abs
 rts
 nop
@@ -852,7 +869,7 @@ These are known gaps in the current monitor implementation.
 | Limitation | Detail |
 | --- | --- |
 | Bank 0 only | All addresses are 16-bit. Programs and data must reside in bank 0. |
-| Small assembly/disassembly subset | `A` and `D` support only `lda #imm8`, `lda` direct page/absolute forms (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), accumulator immediate ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), accumulator direct page/absolute forms for those same ALU and compare ops (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), `cpx`/`cpy` immediate, direct page, and absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), byte data entry (`.byte`, `db`), `sta` direct page/absolute forms (`dp`, `dp,x`, `abs`, `abs,x`, `abs,y`), `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. |
+| Small assembly/disassembly subset | `A` and `D` support only `lda` immediate/direct page/absolute forms, accumulator immediate/direct page/absolute ops (`cmp`, `and`, `ora`, `eor`, `adc`, `sbc`), `cpx`/`cpy` immediate/direct page/absolute forms, `bit` immediate/direct page/absolute forms, `inc`/`dec` accumulator/direct page/absolute forms, `asl`/`lsr`/`rol`/`ror` accumulator/direct page/absolute forms, branch ops (`beq`, `bne`, `bcc`, `bcs`, `bmi`, `bpl`, `bra`, `bvc`, `bvs`) with absolute target syntax, stack push/pull forms, interrupt and machine-control forms (`brk [#imm8]`, `rti`, `cop #imm8`, `wdm #imm8`, `wai`, `stp`), byte data entry (`.byte`, `db`), native immediate-width directives (`.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`), `sta` direct page/absolute forms, `rts`, `nop`, `sep #imm8`, `rep #imm8`, `jsr abs`, `jsr (abs,x)`, `jmp abs`, `jmp (abs)`, `jmp (abs,x)`, and `jmp [abs]`. |
 | M shows 16 bytes | A single `M` command displays exactly one 16-byte row. |
 | S has no read-back | The `S` command writes silently; use `M` to verify. |
 | 63-char line limit | Input lines longer than 63 characters are truncated. |

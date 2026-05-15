@@ -6,7 +6,7 @@
 ; Memory map
 ; ----------
 ;   $0000–$01FF   Zero page + hardware stack
-;   $0200–$0293   Monitor work RAM (input buffer, register save area,
+;   $0200–$029A   Monitor work RAM (input buffer, register save area,
 ;                  native assembler label/fixup tables)
 ;   $0300–$BFFF   Free RAM (user programs)
 ;   $C000–$EFFF   Monitor ROM  ← loaded here
@@ -52,6 +52,11 @@
 ;   $0273    ASM_FIXUP_HASHES  8 one-byte unresolved label hashes
 ;   $027B    ASM_FIXUP_ADDRS   8 two-byte patch addresses
 ;   $028B    ASM_FIXUP_KINDS   8 one-byte patch kinds
+;   $0293    ASM_ACC_BYTES     assembly-mode accumulator immediate width
+;   $0294    ASM_IDX_BYTES     assembly-mode index immediate width
+;   $0295    DISASM_ACC_BYTES  disassembly-mode accumulator immediate width
+;   $0296    DISASM_IDX_BYTES  disassembly-mode index immediate width
+;   $0297    ASM_IMM_BYTES     4-byte immediate scratch, little-endian
 ;
 ; Register save area (written by DO_GO_RETURNED)
 ;   $0250    A_SAVE    A register from last G return
@@ -104,6 +109,11 @@ ASM_PENDING_HASH .equ $0272
 ASM_FIXUP_HASHES .equ $0273
 ASM_FIXUP_ADDRS  .equ $027B
 ASM_FIXUP_KINDS  .equ $028B
+ASM_ACC_BYTES    .equ $0293
+ASM_IDX_BYTES    .equ $0294
+DISASM_ACC_BYTES .equ $0295
+DISASM_IDX_BYTES .equ $0296
+ASM_IMM_BYTES    .equ $0297          ; 4 bytes, little-endian immediate scratch
 
 ; ---------------------------------------------------------------------------
 ; Boot / monitor entry
@@ -549,6 +559,9 @@ DO_ASSEMBLE:
     sta     ASM_LABEL_COUNT      ; labels are scoped to one A session
     sta     ASM_FIXUP_COUNT
     sta     ASM_PENDING_KIND
+    lda     #1
+    sta     ASM_ACC_BYTES
+    sta     ASM_IDX_BYTES
 
 ASM_LOOP:
     jsr     CRLF
@@ -609,6 +622,9 @@ DO_DISASSEMBLE:
     jsr     PARSE_HEX4          ; ZP_ADDR ← current disassembly address
     lda     #8
     sta     ZP_ERR
+    lda     #1
+    sta     DISASM_ACC_BYTES
+    sta     DISASM_IDX_BYTES
 
 DISASM_LOOP:
     jsr     CRLF
@@ -1264,103 +1280,83 @@ DISASM_NOT_JMP_ABS_LONG_IND:
     jmp     DISASM_UNKNOWN
 
 DISASM_LDA_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_LDA
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_CMP_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_CMP
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_CPX_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_IDX_IMM
     ldx     #STR_D_CPX
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_CPY_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_IDX_IMM
     ldx     #STR_D_CPY
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_BIT_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_BIT
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_AND_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_AND
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_ORA_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_ORA
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_EOR_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_EOR
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_ADC_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_ADC
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_SBC_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_ACC_IMM
     ldx     #STR_D_SBC
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 
 DISASM_LDA_DP:
@@ -1758,13 +1754,11 @@ DISASM_SBC_ABSY:
     jmp     DISASM_PRINT_ABSY_NEXT
 
 DISASM_LDX_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_IDX_IMM
     ldx     #STR_D_LDX
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 DISASM_LDX_DP:
     jsr     DISASM_FETCH_DP
@@ -1788,13 +1782,11 @@ DISASM_LDX_ABSY:
     jmp     DISASM_PRINT_ABSY_NEXT
 
 DISASM_LDY_IMM:
-    jsr     DISASM_FETCH_PRINT
-    sta     ZP_OPER
+    jsr     DISASM_FETCH_IDX_IMM
     ldx     #STR_D_LDY
     stx     ZP_PTR
     jsr     PRINT_ZP
-    lda     ZP_OPER
-    jsr     PUT_HEX2
+    jsr     DISASM_PRINT_IMM
     jmp     DISASM_NEXT
 DISASM_LDY_DP:
     jsr     DISASM_FETCH_DP
@@ -1897,6 +1889,7 @@ DISASM_SEP_IMM:
     jsr     PRINT_ZP
     lda     ZP_OPER
     jsr     PUT_HEX2
+    jsr     DISASM_APPLY_SEP
     jmp     DISASM_NEXT
 
 DISASM_REP_IMM:
@@ -1907,6 +1900,7 @@ DISASM_REP_IMM:
     jsr     PRINT_ZP
     lda     ZP_OPER
     jsr     PUT_HEX2
+    jsr     DISASM_APPLY_REP
     jmp     DISASM_NEXT
 
 DISASM_STA_DP:
@@ -2479,7 +2473,29 @@ ASM_PARSE_DOT:
     jsr     ASM_READ_UPPER
     cmp     #'B'
     beq     ASM_PARSE_DOT_B
+    cmp     #'A'
+    beq     ASM_PARSE_DOT_A
+    cmp     #'I'
+    beq     ASM_PARSE_DOT_I
     jmp     ASM_FAIL
+ASM_PARSE_DOT_A:
+    jsr     ASM_PARSE_WIDTH_DIRECTIVE
+    lda     ZP_ERR
+    beq     ASM_PARSE_DOT_A_OK
+    rts
+ASM_PARSE_DOT_A_OK:
+    lda     ZP_TMP
+    sta     ASM_ACC_BYTES
+    rts
+ASM_PARSE_DOT_I:
+    jsr     ASM_PARSE_WIDTH_DIRECTIVE
+    lda     ZP_ERR
+    beq     ASM_PARSE_DOT_I_OK
+    rts
+ASM_PARSE_DOT_I_OK:
+    lda     ZP_TMP
+    sta     ASM_IDX_BYTES
+    rts
 ASM_PARSE_DOT_B:
     jsr     ASM_READ_UPPER
     cmp     #'Y'
@@ -2497,6 +2513,47 @@ ASM_PARSE_DOT_BYT:
     jmp     ASM_PARSE_BYTE_LIST
 ASM_PARSE_DOT_BYT_NOT_E:
     jmp     ASM_FAIL
+
+ASM_PARSE_WIDTH_DIRECTIVE:
+    jsr     ASM_READ_UPPER
+    cmp     #'8'
+    beq     ASM_PARSE_WIDTH_8
+    cmp     #'1'
+    beq     ASM_PARSE_WIDTH_16
+    cmp     #'3'
+    beq     ASM_PARSE_WIDTH_32
+    jmp     ASM_FAIL
+ASM_PARSE_WIDTH_8:
+    lda     #1
+    sta     ASM_IMM_BYTES
+    jmp     ASM_PARSE_WIDTH_EOL
+ASM_PARSE_WIDTH_16:
+    jsr     ASM_READ_UPPER
+    cmp     #'6'
+    beq     ASM_PARSE_WIDTH_16_OK
+    jmp     ASM_FAIL
+ASM_PARSE_WIDTH_16_OK:
+    lda     #2
+    sta     ASM_IMM_BYTES
+    jmp     ASM_PARSE_WIDTH_EOL
+ASM_PARSE_WIDTH_32:
+    jsr     ASM_READ_UPPER
+    cmp     #'2'
+    beq     ASM_PARSE_WIDTH_32_OK
+    jmp     ASM_FAIL
+ASM_PARSE_WIDTH_32_OK:
+    lda     #4
+    sta     ASM_IMM_BYTES
+ASM_PARSE_WIDTH_EOL:
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_WIDTH_OK
+    jmp     ASM_FAIL
+ASM_PARSE_WIDTH_OK:
+    lda     ASM_IMM_BYTES
+    sta     ZP_TMP
+    rts
 
 ASM_PARSE_D:
     jsr     ASM_READ_UPPER
@@ -2606,16 +2663,14 @@ ASM_PARSE_BIT_GOT_T:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_BIT_ADDR
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_BIT_IMM_OK
     rts
 ASM_PARSE_BIT_IMM_OK:
-    lda     #$89                ; BIT #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$89                ; BIT #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_BIT_ADDR:
     jsr     ASM_PARSE_ADDR_OPER
@@ -2824,16 +2879,14 @@ ASM_PARSE_ADC_GOT_C:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_ADC_ABS
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_ADC_OK
     rts
 ASM_PARSE_ADC_OK:
-    lda     #$69                ; ADC #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$69                ; ADC #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_ADC_ABS:
     jsr     ASM_PARSE_ADDR_OPER
@@ -2887,16 +2940,14 @@ ASM_PARSE_AND_GOT_D:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_AND_ABS
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_AND_OK
     rts
 ASM_PARSE_AND_OK:
-    lda     #$29                ; AND #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$29                ; AND #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_AND_ABS:
     jsr     ASM_PARSE_ADDR_OPER
@@ -2975,16 +3026,14 @@ ASM_PARSE_C_GOT_P:
     beq     ASM_PARSE_C_IMM
     jmp     ASM_PARSE_C_ADDR
 ASM_PARSE_C_IMM:
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_C_OK
     rts
 ASM_PARSE_C_OK:
-    lda     #$C9                ; CMP #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$C9                ; CMP #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_C:
     jsr     ASM_READ_UPPER
@@ -3021,10 +3070,8 @@ ASM_PARSE_CPX_OK:
     beq     ASM_PARSE_CPX_ABS
     jmp     ASM_FAIL
 ASM_PARSE_CPX_IMM:
-    lda     #$E0                ; CPX #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$E0                ; CPX #imm
+    jsr     ASM_EMIT_IDX_IMM
     rts
 ASM_PARSE_CPX_DP:
     lda     #$E4                ; CPX dp
@@ -3050,10 +3097,8 @@ ASM_PARSE_CPY_OK:
     beq     ASM_PARSE_CPY_ABS
     jmp     ASM_FAIL
 ASM_PARSE_CPY_IMM:
-    lda     #$C0                ; CPY #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$C0                ; CPY #imm
+    jsr     ASM_EMIT_IDX_IMM
     rts
 ASM_PARSE_CPY_DP:
     lda     #$C4                ; CPY dp
@@ -3088,7 +3133,7 @@ ASM_PARSE_CP_OPER:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_CP_ADDR
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_IDX_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_CP_IMM_OK
@@ -3207,16 +3252,14 @@ ASM_PARSE_E_GOT_R:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_E_ABS
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_E_OK
     rts
 ASM_PARSE_E_OK:
-    lda     #$49                ; EOR #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$49                ; EOR #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_E_ABS:
     jsr     ASM_PARSE_ADDR_OPER
@@ -3335,16 +3378,14 @@ ASM_PARSE_O_GOT_A:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_O_ABS
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_O_OK
     rts
 ASM_PARSE_O_OK:
-    lda     #$09                ; ORA #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$09                ; ORA #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_O_ABS:
     jsr     ASM_PARSE_ADDR_OPER
@@ -3457,16 +3498,14 @@ ASM_PARSE_L_GOT_A:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_L_ABS
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_L_OK
     rts
 ASM_PARSE_L_OK:
-    lda     #$A9                ; LDA #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$A9                ; LDA #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_L_ABS:
     jsr     ASM_PARSE_ADDR_OPER
@@ -3515,16 +3554,14 @@ ASM_PARSE_LDX:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_LDX_ADDR
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_IDX_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_LDX_IMM_OK
     rts
 ASM_PARSE_LDX_IMM_OK:
-    lda     #$A2                ; LDX #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$A2                ; LDX #imm
+    jsr     ASM_EMIT_IDX_IMM
     rts
 ASM_PARSE_LDX_ADDR:
     jsr     ASM_PARSE_ADDR_OPER
@@ -3566,16 +3603,14 @@ ASM_PARSE_LDY:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_LDY_ADDR
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_IDX_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_LDY_IMM_OK
     rts
 ASM_PARSE_LDY_IMM_OK:
-    lda     #$A0                ; LDY #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$A0                ; LDY #imm
+    jsr     ASM_EMIT_IDX_IMM
     rts
 ASM_PARSE_LDY_ADDR:
     jsr     ASM_PARSE_ADDR_OPER
@@ -3771,6 +3806,7 @@ ASM_PARSE_SEP_OK:
     jsr     ASM_EMIT_A
     lda     ZP_OPER
     jsr     ASM_EMIT_A
+    jsr     ASM_APPLY_SEP
     rts
 
 ASM_PARSE_SBC:
@@ -3783,16 +3819,14 @@ ASM_PARSE_SBC_GOT_C:
     lda     $0000,x
     cmp     #'#'
     bne     ASM_PARSE_SBC_ABS
-    jsr     ASM_PARSE_HASH_VALUE8
+    jsr     ASM_PARSE_HASH_ACC_VALUE
     sta     ZP_OPER
     lda     ZP_ERR
     beq     ASM_PARSE_SBC_OK
     rts
 ASM_PARSE_SBC_OK:
-    lda     #$E9                ; SBC #imm8
-    jsr     ASM_EMIT_A
-    lda     ZP_OPER
-    jsr     ASM_EMIT_A
+    lda     #$E9                ; SBC #imm
+    jsr     ASM_EMIT_ACC_IMM
     rts
 ASM_PARSE_SBC_ABS:
     jsr     ASM_PARSE_ADDR_OPER
@@ -3963,6 +3997,7 @@ ASM_PARSE_REP_OK:
     jsr     ASM_EMIT_A
     lda     ZP_OPER
     jsr     ASM_EMIT_A
+    jsr     ASM_APPLY_REP
     rts
 
 ASM_PARSE_N:
@@ -4320,6 +4355,129 @@ ASM_PARSE_HASH_VALUE8:
 ASM_HASH_OK:
     inx
     jsr     ASM_PARSE_VALUE8
+    rts
+
+ASM_PARSE_HASH_ACC_VALUE:
+    lda     ASM_ACC_BYTES
+    jmp     ASM_PARSE_HASH_WIDTH_VALUE
+
+ASM_PARSE_HASH_IDX_VALUE:
+    lda     ASM_IDX_BYTES
+    jmp     ASM_PARSE_HASH_WIDTH_VALUE
+
+ASM_PARSE_HASH_WIDTH_VALUE:
+    sta     ZP_TMP
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #'#'
+    beq     ASM_HASH_WIDTH_OK
+    jmp     ASM_FAIL
+ASM_HASH_WIDTH_OK:
+    inx
+    jsr     ASM_SKIP_SPACES
+    lda     ZP_TMP
+    cmp     #1
+    bne     ASM_PARSE_HASH_NOT_BYTE
+    jsr     ASM_PARSE_VALUE8
+    sta     ASM_IMM_BYTES
+    sta     ZP_OPER
+    lda     #0
+    sta     ASM_IMM_BYTES+1
+    sta     ASM_IMM_BYTES+2
+    sta     ASM_IMM_BYTES+3
+    sta     ZP_OPER+1
+    rts
+ASM_PARSE_HASH_NOT_BYTE:
+    lda     $0000,x
+    cmp     #'$'
+    beq     ASM_PARSE_HASH_HEX_WIDTH
+    jmp     ASM_FAIL
+ASM_PARSE_HASH_HEX_WIDTH:
+    inx
+    lda     ZP_TMP
+    cmp     #2
+    beq     ASM_PARSE_HASH_HEX16
+    cmp     #4
+    beq     ASM_PARSE_HASH_HEX32
+    jmp     ASM_FAIL
+ASM_PARSE_HASH_HEX16:
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES+1
+    sta     ZP_OPER+1
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES
+    sta     ZP_OPER
+    rts
+ASM_PARSE_HASH_HEX32:
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES+3
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES+2
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES+1
+    sta     ZP_OPER+1
+    jsr     PARSE_HEX2
+    sta     ASM_IMM_BYTES
+    sta     ZP_OPER
+    rts
+
+ASM_EMIT_ACC_IMM:
+    jsr     ASM_EMIT_A
+    lda     ASM_ACC_BYTES
+    jmp     ASM_EMIT_IMM_BYTES
+
+ASM_EMIT_IDX_IMM:
+    jsr     ASM_EMIT_A
+    lda     ASM_IDX_BYTES
+    jmp     ASM_EMIT_IMM_BYTES
+
+ASM_EMIT_IMM_BYTES:
+    sta     ZP_TMP
+    lda     ASM_IMM_BYTES
+    jsr     ASM_EMIT_A
+    lda     ZP_TMP
+    cmp     #1
+    beq     ASM_EMIT_IMM_DONE
+    lda     ASM_IMM_BYTES+1
+    jsr     ASM_EMIT_A
+    lda     ZP_TMP
+    cmp     #2
+    beq     ASM_EMIT_IMM_DONE
+    lda     ASM_IMM_BYTES+2
+    jsr     ASM_EMIT_A
+    lda     ASM_IMM_BYTES+3
+    jsr     ASM_EMIT_A
+ASM_EMIT_IMM_DONE:
+    rts
+
+ASM_APPLY_SEP:
+    lda     ZP_OPER
+    and     #$20
+    beq     ASM_APPLY_SEP_INDEX
+    lda     #1
+    sta     ASM_ACC_BYTES
+ASM_APPLY_SEP_INDEX:
+    lda     ZP_OPER
+    and     #$10
+    beq     ASM_APPLY_SEP_DONE
+    lda     #1
+    sta     ASM_IDX_BYTES
+ASM_APPLY_SEP_DONE:
+    rts
+
+ASM_APPLY_REP:
+    lda     ZP_OPER
+    and     #$20
+    beq     ASM_APPLY_REP_INDEX
+    lda     #2
+    sta     ASM_ACC_BYTES
+ASM_APPLY_REP_INDEX:
+    lda     ZP_OPER
+    and     #$10
+    beq     ASM_APPLY_REP_DONE
+    lda     #2
+    sta     ASM_IDX_BYTES
+ASM_APPLY_REP_DONE:
     rts
 
 ASM_PARSE_VALUE8:
@@ -5074,6 +5232,33 @@ DISASM_FETCH_DONE:
     pla
     rts
 
+DISASM_FETCH_ACC_IMM:
+    lda     DISASM_ACC_BYTES
+    jmp     DISASM_FETCH_IMM_BYTES
+
+DISASM_FETCH_IDX_IMM:
+    lda     DISASM_IDX_BYTES
+    jmp     DISASM_FETCH_IMM_BYTES
+
+DISASM_FETCH_IMM_BYTES:
+    sta     ZP_TMP
+    jsr     DISASM_FETCH_PRINT
+    sta     ASM_IMM_BYTES
+    lda     ZP_TMP
+    cmp     #1
+    beq     DISASM_FETCH_IMM_DONE
+    jsr     DISASM_FETCH_PRINT
+    sta     ASM_IMM_BYTES+1
+    lda     ZP_TMP
+    cmp     #2
+    beq     DISASM_FETCH_IMM_DONE
+    jsr     DISASM_FETCH_PRINT
+    sta     ASM_IMM_BYTES+2
+    jsr     DISASM_FETCH_PRINT
+    sta     ASM_IMM_BYTES+3
+DISASM_FETCH_IMM_DONE:
+    rts
+
 DISASM_FETCH_DP:
     jsr     DISASM_FETCH_PRINT
     sta     ZP_OPER
@@ -5119,6 +5304,62 @@ DISASM_PRINT_OPER:
 DISASM_PRINT_DP_OPER:
     lda     ZP_OPER
     jsr     PUT_HEX2
+    rts
+
+DISASM_PRINT_IMM:
+    lda     ZP_TMP
+    cmp     #4
+    beq     DISASM_PRINT_IMM_32
+    cmp     #2
+    beq     DISASM_PRINT_IMM_16
+    lda     ASM_IMM_BYTES
+    jsr     PUT_HEX2
+    rts
+DISASM_PRINT_IMM_16:
+    lda     ASM_IMM_BYTES+1
+    jsr     PUT_HEX2
+    lda     ASM_IMM_BYTES
+    jsr     PUT_HEX2
+    rts
+DISASM_PRINT_IMM_32:
+    lda     ASM_IMM_BYTES+3
+    jsr     PUT_HEX2
+    lda     ASM_IMM_BYTES+2
+    jsr     PUT_HEX2
+    lda     ASM_IMM_BYTES+1
+    jsr     PUT_HEX2
+    lda     ASM_IMM_BYTES
+    jsr     PUT_HEX2
+    rts
+
+DISASM_APPLY_SEP:
+    lda     ZP_OPER
+    and     #$20
+    beq     DISASM_APPLY_SEP_INDEX
+    lda     #1
+    sta     DISASM_ACC_BYTES
+DISASM_APPLY_SEP_INDEX:
+    lda     ZP_OPER
+    and     #$10
+    beq     DISASM_APPLY_SEP_DONE
+    lda     #1
+    sta     DISASM_IDX_BYTES
+DISASM_APPLY_SEP_DONE:
+    rts
+
+DISASM_APPLY_REP:
+    lda     ZP_OPER
+    and     #$20
+    beq     DISASM_APPLY_REP_INDEX
+    lda     #2
+    sta     DISASM_ACC_BYTES
+DISASM_APPLY_REP_INDEX:
+    lda     ZP_OPER
+    and     #$10
+    beq     DISASM_APPLY_REP_DONE
+    lda     #2
+    sta     DISASM_IDX_BYTES
+DISASM_APPLY_REP_DONE:
     rts
 
 DISASM_PRINT_ABS_NEXT:

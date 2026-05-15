@@ -1238,4 +1238,80 @@ describe("monitor", () => {
     expect(output).toContain("0B26 DC 04 0C JMP [$0C04]");
     expect(output).toContain("0B29 FC 06 0C JSR ($0C06,X)");
   }, 15_000);
+
+  test("A supports width directives and D tracks width-sensitive immediates", () => {
+    const machine = buildMonitor();
+    const directiveOutput = runWithInput(
+      machine,
+      [
+        "A0B40",
+        ".a16",
+        "lda #$1234",
+        "cmp #$5678",
+        ".a8",
+        "lda #$9A",
+        ".i16",
+        "ldx #$1234",
+        "ldy #$5678",
+        "cpx #$9ABC",
+        "cpy #$DEF0",
+        ".i8",
+        "ldx #$12",
+        ".a32",
+        "lda #$12345678",
+        "end",
+      ].join("\r") + "\r",
+    );
+
+    expect(directiveOutput).toContain("OK");
+    expect(machine.mem.readByte(0x0b40)).toBe(0xa9);
+    expect(machine.mem.readByte(0x0b41)).toBe(0x34);
+    expect(machine.mem.readByte(0x0b42)).toBe(0x12);
+    expect(machine.mem.readByte(0x0b43)).toBe(0xc9);
+    expect(machine.mem.readByte(0x0b44)).toBe(0x78);
+    expect(machine.mem.readByte(0x0b45)).toBe(0x56);
+    expect(machine.mem.readByte(0x0b46)).toBe(0xa9);
+    expect(machine.mem.readByte(0x0b47)).toBe(0x9a);
+    expect(machine.mem.readByte(0x0b48)).toBe(0xa2);
+    expect(machine.mem.readByte(0x0b49)).toBe(0x34);
+    expect(machine.mem.readByte(0x0b4a)).toBe(0x12);
+    expect(machine.mem.readByte(0x0b4b)).toBe(0xa0);
+    expect(machine.mem.readByte(0x0b4c)).toBe(0x78);
+    expect(machine.mem.readByte(0x0b4d)).toBe(0x56);
+    expect(machine.mem.readByte(0x0b4e)).toBe(0xe0);
+    expect(machine.mem.readByte(0x0b4f)).toBe(0xbc);
+    expect(machine.mem.readByte(0x0b50)).toBe(0x9a);
+    expect(machine.mem.readByte(0x0b51)).toBe(0xc0);
+    expect(machine.mem.readByte(0x0b52)).toBe(0xf0);
+    expect(machine.mem.readByte(0x0b53)).toBe(0xde);
+    expect(machine.mem.readByte(0x0b54)).toBe(0xa2);
+    expect(machine.mem.readByte(0x0b55)).toBe(0x12);
+    expect(machine.mem.readByte(0x0b56)).toBe(0xa9);
+    expect(machine.mem.readByte(0x0b57)).toBe(0x78);
+    expect(machine.mem.readByte(0x0b58)).toBe(0x56);
+    expect(machine.mem.readByte(0x0b59)).toBe(0x34);
+    expect(machine.mem.readByte(0x0b5a)).toBe(0x12);
+
+    const disasmOutput = runWithInput(
+      machine,
+      [
+        "A0B70",
+        "rep #$30",
+        "lda #$1234",
+        "ldx #$5678",
+        "sep #$30",
+        "lda #$9A",
+        "ldx #$BC",
+        "end",
+        "D0B70",
+      ].join("\r") + "\r",
+    );
+
+    expect(disasmOutput).toContain("0B70 C2 30 REP #$30");
+    expect(disasmOutput).toContain("0B72 A9 34 12 LDA #$1234");
+    expect(disasmOutput).toContain("0B75 A2 78 56 LDX #$5678");
+    expect(disasmOutput).toContain("0B78 E2 30 SEP #$30");
+    expect(disasmOutput).toContain("0B7A A9 9A LDA #$9A");
+    expect(disasmOutput).toContain("0B7C A2 BC LDX #$BC");
+  }, 15_000);
 });
