@@ -738,21 +738,32 @@ describe("monitor", () => {
     expect(output).not.toContain("?");
   }, 10_000);
 
-  test("A command reserves long address force for long opcode forms", () => {
+  test("A command supports long address force for long opcode forms", () => {
     const machine = buildMonitor();
     const output = runWithInput(
       machine,
       [
         "A0690",
         "lda >$1000",
+        "sta >$1000,x",
         "rts",
         "end",
+        "D0690",
       ].join("\r") + "\r",
     );
 
-    expect(machine.mem.readByte(0x0690)).toBe(0x60);
-    expect(output).toContain("?");
+    expect(machine.mem.readByte(0x0690)).toBe(0xaf);
+    expect(machine.mem.readByte(0x0691)).toBe(0x00);
+    expect(machine.mem.readByte(0x0692)).toBe(0x10);
+    expect(machine.mem.readByte(0x0693)).toBe(0x00);
+    expect(machine.mem.readByte(0x0694)).toBe(0x9f);
+    expect(machine.mem.readByte(0x0695)).toBe(0x00);
+    expect(machine.mem.readByte(0x0696)).toBe(0x10);
+    expect(machine.mem.readByte(0x0697)).toBe(0x00);
+    expect(output).toContain("0690 AF 00 10 00 LDA $001000");
+    expect(output).toContain("0694 9F 00 10 00 STA $001000,X");
     expect(output).toContain("OK");
+    expect(output).not.toContain("?");
   }, 10_000);
 
   test("A command supports absolute force on jump operands", () => {
@@ -1163,6 +1174,15 @@ describe("monitor", () => {
         "jsr ($0C06,x)",
         "end",
         "D09E0",
+        "A0A40",
+        "lda $010000",
+        "sta $010004",
+        "lda $010008,x",
+        "sta $01000C,x",
+        "jsl $010010",
+        "jml $010014",
+        "end",
+        "D0A40",
       ].join("\r") + "\r",
     );
 
@@ -1328,6 +1348,13 @@ describe("monitor", () => {
     expect(output).toContain("09E3 7C 02 0C JMP ($0C02,X)");
     expect(output).toContain("09E6 DC 04 0C JMP [$0C04]");
     expect(output).toContain("09E9 FC 06 0C JSR ($0C06,X)");
+
+    expect(output).toContain("0A40 AF 00 00 01 LDA $010000");
+    expect(output).toContain("0A44 8F 04 00 01 STA $010004");
+    expect(output).toContain("0A48 BF 08 00 01 LDA $010008,X");
+    expect(output).toContain("0A4C 9F 0C 00 01 STA $01000C,X");
+    expect(output).toContain("0A50 22 10 00 01 JSL $010010");
+    expect(output).toContain("0A54 5C 14 00 01 JML $010014");
   }, 40_000);
 
   test("A and D support stack instructions", () => {

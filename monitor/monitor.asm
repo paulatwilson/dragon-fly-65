@@ -56,7 +56,7 @@
 ;   $02CC    ASM_IDX_BYTES     assembly-mode index immediate width
 ;   $02CD    DISASM_ACC_BYTES  disassembly-mode accumulator immediate width
 ;   $02CE    DISASM_IDX_BYTES  disassembly-mode index immediate width
-;   $02CF    ASM_IMM_BYTES     4-byte immediate scratch, little-endian
+;   $02CF    ASM_IMM_BYTES     4-byte immediate/address scratch, little-endian
 ;
 ; Register save area (written by DO_GO_RETURNED)
 ;   $0250    A_SAVE    A register from last G return
@@ -113,7 +113,7 @@ ASM_ACC_BYTES    .equ $02CB
 ASM_IDX_BYTES    .equ $02CC
 DISASM_ACC_BYTES .equ $02CD
 DISASM_IDX_BYTES .equ $02CE
-ASM_IMM_BYTES    .equ $02CF          ; 4 bytes, little-endian immediate scratch
+ASM_IMM_BYTES    .equ $02CF          ; 4 bytes, little-endian immediate/address scratch
 
 ; ---------------------------------------------------------------------------
 ; Boot / monitor entry
@@ -697,6 +697,14 @@ DISASM_NOT_LDA_ABSX:
     bne     DISASM_NOT_LDA_ABSY
     jmp     DISASM_LDA_ABSY
 DISASM_NOT_LDA_ABSY:
+    cmp     #$AF
+    bne     DISASM_NOT_LDA_LONG
+    jmp     DISASM_LDA_LONG
+DISASM_NOT_LDA_LONG:
+    cmp     #$BF
+    bne     DISASM_NOT_LDA_LONGX
+    jmp     DISASM_LDA_LONGX
+DISASM_NOT_LDA_LONGX:
     cmp     #$C5
     bne     DISASM_NOT_CMP_DP
     jmp     DISASM_CMP_DP
@@ -1065,6 +1073,14 @@ DISASM_NOT_STA_ABSX:
     bne     DISASM_NOT_STA_ABSY
     jmp     DISASM_STA_ABSY
 DISASM_NOT_STA_ABSY:
+    cmp     #$8F
+    bne     DISASM_NOT_STA_LONG
+    jmp     DISASM_STA_LONG
+DISASM_NOT_STA_LONG:
+    cmp     #$9F
+    bne     DISASM_NOT_STA_LONGX
+    jmp     DISASM_STA_LONGX
+DISASM_NOT_STA_LONGX:
     cmp     #$86
     bne     DISASM_NOT_STX_DP
     jmp     DISASM_STX_DP
@@ -1257,6 +1273,10 @@ DISASM_NOT_JSR_ABS:
     bne     DISASM_NOT_JSR_ABSX_IND
     jmp     DISASM_JSR_ABSX_IND
 DISASM_NOT_JSR_ABSX_IND:
+    cmp     #$22
+    bne     DISASM_NOT_JSL_LONG
+    jmp     DISASM_JSL_LONG
+DISASM_NOT_JSL_LONG:
     cmp     #$4C
     bne     DISASM_NOT_JMP_ABS
     jmp     DISASM_JMP_ABS
@@ -1273,6 +1293,10 @@ DISASM_NOT_JMP_ABSX_IND:
     bne     DISASM_NOT_JMP_ABS_LONG_IND
     jmp     DISASM_JMP_ABS_LONG_IND
 DISASM_NOT_JMP_ABS_LONG_IND:
+    cmp     #$5C
+    bne     DISASM_NOT_JML_LONG
+    jmp     DISASM_JML_LONG
+DISASM_NOT_JML_LONG:
     jmp     DISASM_UNKNOWN
 
 DISASM_LDA_IMM:
@@ -1382,6 +1406,16 @@ DISASM_LDA_ABSY:
     ldx     #STR_D_LDA_ABS
     stx     ZP_PTR
     jmp     DISASM_PRINT_ABSY_NEXT
+DISASM_LDA_LONG:
+    jsr     DISASM_FETCH_LONG
+    ldx     #STR_D_LDA_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_LONG_NEXT
+DISASM_LDA_LONGX:
+    jsr     DISASM_FETCH_LONG
+    ldx     #STR_D_LDA_ABS
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_LONGX_NEXT
 
 DISASM_CMP_DP:
     jsr     DISASM_FETCH_DP
@@ -1924,6 +1958,16 @@ DISASM_STA_ABSY:
     ldx     #STR_D_STA
     stx     ZP_PTR
     jmp     DISASM_PRINT_ABSY_NEXT
+DISASM_STA_LONG:
+    jsr     DISASM_FETCH_LONG
+    ldx     #STR_D_STA
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_LONG_NEXT
+DISASM_STA_LONGX:
+    jsr     DISASM_FETCH_LONG
+    ldx     #STR_D_STA
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_LONGX_NEXT
 
 DISASM_STX_DP:
     jsr     DISASM_FETCH_DP
@@ -2178,6 +2222,12 @@ DISASM_JSR_ABSX_IND:
     sta     CHAR_OUT
     jmp     DISASM_NEXT
 
+DISASM_JSL_LONG:
+    jsr     DISASM_FETCH_LONG
+    ldx     #STR_D_JSL
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_LONG_NEXT
+
 DISASM_JMP_ABS:
     jsr     DISASM_FETCH_ABS
     ldx     #STR_D_JMP
@@ -2218,6 +2268,12 @@ DISASM_JMP_ABS_LONG_IND:
     lda     #']'
     sta     CHAR_OUT
     jmp     DISASM_NEXT
+
+DISASM_JML_LONG:
+    jsr     DISASM_FETCH_LONG
+    ldx     #STR_D_JML
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_LONG_NEXT
 
 DISASM_RTS:
     ldx     #STR_D_RTS
@@ -3661,7 +3717,9 @@ ASM_PARSE_L_GOT_D:
     cmp     #'A'
     beq     ASM_PARSE_L_GOT_A
     cmp     #'X'
-    beq     ASM_PARSE_LDX
+    bne     ASM_PARSE_L_NOT_X
+    jmp     ASM_PARSE_LDX
+ASM_PARSE_L_NOT_X:
     cmp     #'Y'
     bne     ASM_PARSE_L_NOT_Y
     jmp     ASM_PARSE_LDY
@@ -3698,6 +3756,10 @@ ASM_PARSE_L_ADDR_OK:
     beq     ASM_PARSE_L_ABSX
     cmp     #5
     beq     ASM_PARSE_L_ABSY
+    cmp     #6
+    beq     ASM_PARSE_L_LONG
+    cmp     #7
+    beq     ASM_PARSE_L_LONGX
     jmp     ASM_FAIL
 ASM_PARSE_L_DP:
     lda     #$A5                ; LDA dp
@@ -3721,6 +3783,16 @@ ASM_PARSE_L_ABSY:
     lda     #$B9                ; LDA abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_L_LONG:
+    lda     #$AF                ; LDA long
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_LONG
+    rts
+ASM_PARSE_L_LONGX:
+    lda     #$BF                ; LDA long,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_LONG
     rts
 
 ASM_PARSE_LDX:
@@ -3868,6 +3940,10 @@ ASM_PARSE_STA_OK:
     beq     ASM_PARSE_STA_ABSX
     cmp     #5
     beq     ASM_PARSE_STA_ABSY
+    cmp     #6
+    beq     ASM_PARSE_STA_LONG
+    cmp     #7
+    beq     ASM_PARSE_STA_LONGX
     jmp     ASM_FAIL
 ASM_PARSE_STA_DP:
     lda     #$85                ; STA dp
@@ -3891,6 +3967,16 @@ ASM_PARSE_STA_ABSY:
     lda     #$99                ; STA abs,y
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_STA_LONG:
+    lda     #$8F                ; STA long
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_LONG
+    rts
+ASM_PARSE_STA_LONGX:
+    lda     #$9F                ; STA long,x
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_LONG
     rts
 
 ASM_PARSE_STX:
@@ -4201,6 +4287,8 @@ ASM_PARSE_JSR:
     jsr     ASM_READ_UPPER
     cmp     #'R'
     beq     ASM_PARSE_JSR_GOT_R
+    cmp     #'L'
+    beq     ASM_PARSE_JSL_GOT_L
     jmp     ASM_FAIL
 ASM_PARSE_JSR_GOT_R:
     jsr     ASM_SKIP_SPACES
@@ -4226,11 +4314,28 @@ ASM_PARSE_JSR_ABSX_IND_OK:
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
+ASM_PARSE_JSL_GOT_L:
+    jsr     ASM_PARSE_ADDR_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_JSL_OK
+    rts
+ASM_PARSE_JSL_OK:
+    lda     ZP_TMP2
+    cmp     #6
+    beq     ASM_PARSE_JSL_LONG
+    jmp     ASM_FAIL
+ASM_PARSE_JSL_LONG:
+    lda     #$22                ; JSL long
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_LONG
+    rts
 
 ASM_PARSE_JMP:
     jsr     ASM_READ_UPPER
     cmp     #'P'
     beq     ASM_PARSE_JMP_GOT_P
+    cmp     #'L'
+    beq     ASM_PARSE_JML_GOT_L
     jmp     ASM_FAIL
 ASM_PARSE_JMP_GOT_P:
     jsr     ASM_SKIP_SPACES
@@ -4275,6 +4380,21 @@ ASM_PARSE_JMP_BRACKET_OK:
     lda     #$DC                ; JMP [abs]
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
+    rts
+ASM_PARSE_JML_GOT_L:
+    jsr     ASM_PARSE_ADDR_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_JML_OK
+    rts
+ASM_PARSE_JML_OK:
+    lda     ZP_TMP2
+    cmp     #6
+    beq     ASM_PARSE_JML_LONG
+    jmp     ASM_FAIL
+ASM_PARSE_JML_LONG:
+    lda     #$5C                ; JML long
+    jsr     ASM_EMIT_A
+    jsr     ASM_EMIT_OPER_LONG
     rts
 
 ASM_PARSE_T:
@@ -5263,7 +5383,7 @@ ASM_PARSE_ADDR_OPER:
     jsr     ASM_SKIP_SPACES
     lda     #0
     sta     ASM_PENDING_KIND
-    sta     ASM_IMM_BYTES+2     ; parsed hex byte count: 1 or 2
+    sta     ASM_IMM_BYTES+2     ; long bank byte scratch
     sta     ASM_IMM_BYTES+3     ; address force: 0 auto, 1 dp, 2 abs, 3 long
     lda     $0000,x
     cmp     #'<'
@@ -5306,7 +5426,6 @@ ASM_PARSE_ADDR_HEX:
     jsr     PARSE_HEX2
     sta     ZP_OPER
     sta     ZP_OPER+1
-    lda     #1
     sta     ASM_IMM_BYTES+2
     lda     #0
     sta     ZP_TMP2             ; one-byte hex defaults to direct page
@@ -5329,10 +5448,31 @@ ASM_PARSE_ADDR_NOT_COMMA:
 ASM_PARSE_ADDR_HEX_HIGH:
     jsr     PARSE_HEX2
     sta     ZP_OPER
-    lda     #2
-    sta     ASM_IMM_BYTES+2
     lda     #1
     sta     ZP_TMP2             ; two-byte hex is absolute
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    bne     ASM_PARSE_ADDR_HEX_HIGH_NOT_EOL
+    jsr     ASM_PARSE_ADDR_APPLY_FORCE
+    jmp     ASM_PARSE_ADDR_DONE
+ASM_PARSE_ADDR_HEX_HIGH_NOT_EOL:
+    lda     $0000,x
+    cmp     #','
+    bne     ASM_PARSE_ADDR_HEX_HIGH_NOT_COMMA
+    jsr     ASM_PARSE_ADDR_APPLY_FORCE
+    jmp     ASM_PARSE_ADDR_SUFFIX
+ASM_PARSE_ADDR_HEX_HIGH_NOT_COMMA:
+    jsr     ASM_IS_HEX_CHAR
+    cmp     #1
+    beq     ASM_PARSE_ADDR_HEX_LONG_LOW
+    jmp     ASM_FAIL
+ASM_PARSE_ADDR_HEX_LONG_LOW:
+    lda     ZP_OPER
+    sta     ZP_OPER+1
+    jsr     PARSE_HEX2
+    sta     ZP_OPER
+    lda     #6
+    sta     ZP_TMP2             ; six-byte hex is long
     jsr     ASM_PARSE_ADDR_APPLY_FORCE
 ASM_PARSE_ADDR_SUFFIX:
     jsr     ASM_SKIP_SPACES
@@ -5410,8 +5550,8 @@ ASM_PARSE_ADDR_FORCE_APPLY_DP:
     sta     ZP_TMP2
     rts
 ASM_PARSE_ADDR_FORCE_APPLY_ABS:
-    lda     ASM_IMM_BYTES+2
-    cmp     #1
+    lda     ZP_TMP2
+    cmp     #0
     bne     ASM_PARSE_ADDR_FORCE_APPLY_ABS_MODE
     lda     #0
     sta     ZP_OPER+1
@@ -5420,11 +5560,16 @@ ASM_PARSE_ADDR_FORCE_APPLY_ABS_MODE:
     sta     ZP_TMP2
     rts
 ASM_PARSE_ADDR_FORCE_APPLY_LONG:
-    lda     ASM_IMM_BYTES+2
-    cmp     #1
-    bne     ASM_PARSE_ADDR_FORCE_APPLY_LONG_MODE
+    lda     ZP_TMP2
+    cmp     #6
+    beq     ASM_PARSE_ADDR_FORCE_APPLY_LONG_MODE
+    cmp     #0
+    bne     ASM_PARSE_ADDR_FORCE_APPLY_LONG_BANK
     lda     #0
     sta     ZP_OPER+1
+ASM_PARSE_ADDR_FORCE_APPLY_LONG_BANK:
+    lda     #0
+    sta     ASM_IMM_BYTES+2
 ASM_PARSE_ADDR_FORCE_APPLY_LONG_MODE:
     lda     #6
     sta     ZP_TMP2
@@ -5778,6 +5923,31 @@ ASM_EMIT_OPER_WORD_RESOLVED:
 
     .org $F003                  ; skip memory-mapped I/O at $F000-$F002
 
+ASM_EMIT_OPER_LONG:
+    lda     ASM_PENDING_KIND
+    beq     ASM_EMIT_OPER_LONG_RESOLVED
+    lda     #1
+    sta     ASM_PENDING_KIND
+    jsr     ASM_ADD_FIXUP
+    lda     ZP_ERR
+    beq     ASM_EMIT_OPER_LONG_FORWARD_OK
+    rts
+ASM_EMIT_OPER_LONG_FORWARD_OK:
+    lda     #0
+    sta     ZP_OPER
+    sta     ZP_OPER+1
+    sta     ASM_IMM_BYTES+2
+ASM_EMIT_OPER_LONG_RESOLVED:
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER+1
+    jsr     ASM_EMIT_A
+    lda     ASM_IMM_BYTES+2
+    jsr     ASM_EMIT_A
+    lda     #0
+    sta     ASM_PENDING_KIND
+    rts
+
 ASM_EMIT_OPER_BYTE:
     lda     ASM_PENDING_KIND
     bne     ASM_EMIT_OPER_BYTE_FAIL
@@ -5859,6 +6029,15 @@ DISASM_FETCH_ABS:
     sta     ZP_OPER+1
     rts
 
+DISASM_FETCH_LONG:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER+1
+    jsr     DISASM_FETCH_PRINT
+    sta     ASM_IMM_BYTES+2
+    rts
+
 DISASM_FETCH_BRANCH:
     jsr     DISASM_FETCH_PRINT
     sta     ZP_TMP
@@ -5881,6 +6060,15 @@ DISASM_BRANCH_POSITIVE:
     rts
 
 DISASM_PRINT_OPER:
+    lda     ZP_OPER+1
+    jsr     PUT_HEX2
+    lda     ZP_OPER
+    jsr     PUT_HEX2
+    rts
+
+DISASM_PRINT_LONG_OPER:
+    lda     ASM_IMM_BYTES+2
+    jsr     PUT_HEX2
     lda     ZP_OPER+1
     jsr     PUT_HEX2
     lda     ZP_OPER
@@ -5986,6 +6174,19 @@ DISASM_PRINT_ABSY_NEXT:
     jsr     PRINT_ZP
     jsr     DISASM_PRINT_OPER
     ldx     #STR_D_SUFFIX_Y
+    stx     ZP_PTR
+    jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
+DISASM_PRINT_LONG_NEXT:
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_LONG_OPER
+    jmp     DISASM_NEXT
+
+DISASM_PRINT_LONGX_NEXT:
+    jsr     PRINT_ZP
+    jsr     DISASM_PRINT_LONG_OPER
+    ldx     #STR_D_SUFFIX_X
     stx     ZP_PTR
     jsr     PRINT_ZP
     jmp     DISASM_NEXT
@@ -6481,6 +6682,10 @@ STR_D_JSR_ABSX_IND:
     .ascii "JSR ($"
     .byte 0
 
+STR_D_JSL:
+    .ascii "JSL $"
+    .byte 0
+
 STR_D_JMP:
     .ascii "JMP $"
     .byte 0
@@ -6495,6 +6700,10 @@ STR_D_JMP_ABSX_IND:
 
 STR_D_JMP_ABS_LONG_IND:
     .ascii "JMP [$"
+    .byte 0
+
+STR_D_JML:
+    .ascii "JML $"
     .byte 0
 
 STR_D_DB:

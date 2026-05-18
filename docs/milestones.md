@@ -339,7 +339,7 @@ Phase 2 checklist:
   modifiers across shared address operands and absolute jump operands. `>` is
   parsed as long-address selection and currently reports the expected generic
   unsupported-form error until N25 adds long opcodes.
-- [ ] Chunk N25: Add long addressing.
+- [x] Chunk N25: Add long addressing.
   Add `lda long`, `sta long`, `lda long,x`, `sta long,x`, `jsl long`, and
   `jml long`.
 - [ ] Chunk N26: Add indirect addressing.
