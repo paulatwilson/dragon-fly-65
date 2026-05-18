@@ -1173,6 +1173,14 @@ DISASM_NOT_SBC_STACK_REL:
     bne     DISASM_NOT_SBC_STACK_REL_INDY
     jmp     DISASM_SBC_STACK_REL_INDY
 DISASM_NOT_SBC_STACK_REL_INDY:
+    cmp     #$54
+    bne     DISASM_NOT_MVN
+    jmp     DISASM_MVN
+DISASM_NOT_MVN:
+    cmp     #$44
+    bne     DISASM_NOT_MVP
+    jmp     DISASM_MVP
+DISASM_NOT_MVP:
     cmp     #$A2
     bne     DISASM_NOT_LDX_IMM
     jmp     DISASM_LDX_IMM
@@ -2252,6 +2260,17 @@ DISASM_SBC_STACK_REL_INDY:
     stx     ZP_PTR
     jmp     DISASM_PRINT_STACK_REL_INDY_NEXT
 
+DISASM_MVN:
+    jsr     DISASM_FETCH_BLOCK
+    ldx     #STR_D_MVN
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_BLOCK_NEXT
+DISASM_MVP:
+    jsr     DISASM_FETCH_BLOCK
+    ldx     #STR_D_MVP
+    stx     ZP_PTR
+    jmp     DISASM_PRINT_BLOCK_NEXT
+
 DISASM_LDX_IMM:
     jsr     DISASM_FETCH_IDX_IMM
     ldx     #STR_D_LDX
@@ -3053,6 +3072,10 @@ ASM_PARSE_LINE_NOT_J:
     bne     ASM_PARSE_LINE_NOT_P
     jmp     ASM_PARSE_P
 ASM_PARSE_LINE_NOT_P:
+    cmp     #'M'
+    bne     ASM_PARSE_LINE_NOT_M
+    jmp     ASM_PARSE_M
+ASM_PARSE_LINE_NOT_M:
     cmp     #'W'
     bne     ASM_PARSE_LINE_NOT_W
     jmp     ASM_PARSE_W
@@ -5083,6 +5106,41 @@ ASM_PARSE_ROR_ABSX:
     jsr     ASM_EMIT_A
     jsr     ASM_EMIT_OPER_WORD
     rts
+
+ASM_PARSE_M:
+    jsr     ASM_READ_UPPER
+    cmp     #'V'
+    beq     ASM_PARSE_MV
+    jmp     ASM_FAIL
+ASM_PARSE_MV:
+    jsr     ASM_READ_UPPER
+    cmp     #'N'
+    beq     ASM_PARSE_MVN
+    cmp     #'P'
+    beq     ASM_PARSE_MVP
+    jmp     ASM_FAIL
+ASM_PARSE_MVN:
+    lda     #$54                ; MVN src,dst
+    jmp     ASM_PARSE_BLOCK_MOVE
+ASM_PARSE_MVP:
+    lda     #$44                ; MVP src,dst
+    jmp     ASM_PARSE_BLOCK_MOVE
+ASM_PARSE_BLOCK_MOVE:
+    pha
+    jsr     ASM_PARSE_BLOCK_OPER
+    lda     ZP_ERR
+    beq     ASM_PARSE_BLOCK_MOVE_OK
+    pla
+    rts
+ASM_PARSE_BLOCK_MOVE_OK:
+    pla
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER+1           ; encoded operand order is dst,src
+    jsr     ASM_EMIT_A
+    lda     ZP_OPER
+    jsr     ASM_EMIT_A
+    rts
+
 ASM_PARSE_REP_GOT_E:
     jsr     ASM_READ_UPPER
     cmp     #'P'
@@ -5850,6 +5908,34 @@ ASM_PARSE_LONG_LIST_MORE:
     inx
     jmp     ASM_PARSE_LONG_LIST
 ASM_PARSE_LONG_LIST_DONE:
+    rts
+
+ASM_PARSE_BLOCK_OPER:
+    jsr     ASM_PARSE_VALUE8
+    sta     ZP_OPER             ; source bank
+    lda     ZP_ERR
+    beq     ASM_PARSE_BLOCK_SRC_OK
+    rts
+ASM_PARSE_BLOCK_SRC_OK:
+    jsr     ASM_SKIP_SPACES
+    lda     $0000,x
+    cmp     #','
+    beq     ASM_PARSE_BLOCK_COMMA
+    jmp     ASM_FAIL
+ASM_PARSE_BLOCK_COMMA:
+    inx
+    jsr     ASM_PARSE_VALUE8
+    sta     ZP_OPER+1           ; destination bank
+    lda     ZP_ERR
+    beq     ASM_PARSE_BLOCK_DST_OK
+    rts
+ASM_PARSE_BLOCK_DST_OK:
+    jsr     ASM_SKIP_SPACES
+    jsr     ASM_X_AT_EOL
+    cmp     #1
+    beq     ASM_PARSE_BLOCK_DONE
+    jmp     ASM_FAIL
+ASM_PARSE_BLOCK_DONE:
     rts
 
 ASM_PARSE_RESB:
@@ -7040,6 +7126,13 @@ DISASM_FETCH_LONG:
     sta     ASM_IMM_BYTES+2
     rts
 
+DISASM_FETCH_BLOCK:
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER+1           ; encoded destination bank
+    jsr     DISASM_FETCH_PRINT
+    sta     ZP_OPER             ; encoded source bank
+    rts
+
 DISASM_FETCH_BRANCH:
     jsr     DISASM_FETCH_PRINT
     sta     ZP_TMP
@@ -7203,6 +7296,18 @@ DISASM_PRINT_LONGX_NEXT:
     ldx     #STR_D_SUFFIX_X
     stx     ZP_PTR
     jsr     PRINT_ZP
+    jmp     DISASM_NEXT
+
+DISASM_PRINT_BLOCK_NEXT:
+    jsr     PRINT_ZP
+    lda     ZP_OPER             ; print source bank first
+    jsr     PUT_HEX2
+    lda     #','
+    sta     CHAR_OUT
+    lda     #'$'
+    sta     CHAR_OUT
+    lda     ZP_OPER+1
+    jsr     PUT_HEX2
     jmp     DISASM_NEXT
 
 DISASM_PRINT_DP_IND_NEXT:
@@ -7615,6 +7720,14 @@ STR_D_STX:
 
 STR_D_STY:
     .ascii "STY $"
+    .byte 0
+
+STR_D_MVN:
+    .ascii "MVN $"
+    .byte 0
+
+STR_D_MVP:
+    .ascii "MVP $"
     .byte 0
 
 STR_D_TAX:

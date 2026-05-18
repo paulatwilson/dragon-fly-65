@@ -465,7 +465,7 @@ describe("monitor", () => {
     expect(output).toContain("|ABC.D");
     expect(output).toContain("0500 41 42 EOR ($42,X)");
     expect(output).toContain("0502 43 00 EOR $00,S");
-    expect(output).toContain("0504 44 DB $44");
+    expect(output).toContain("0504 44 00 00 MVP $00,$00");
   }, 10_000);
 
   test("A command supports word, long, string, and reserve data directives", () => {
@@ -1263,6 +1263,11 @@ describe("monitor", () => {
         "sbc ($2B,s),y",
         "end",
         "D0CE0",
+        "A0D00",
+        "mvn $01,$00",
+        "mvp $02,$03",
+        "end",
+        "D0D00",
       ].join("\r") + "\r",
     );
 
@@ -1290,7 +1295,7 @@ describe("monitor", () => {
 
     expect(output).toContain("0770 41 42 EOR ($42,X)");
     expect(output).toContain("0772 43 00 EOR $00,S");
-    expect(output).toContain("0774 44 DB $44");
+    expect(output).toContain("0774 44 00 00 MVP $00,$00");
 
     expect(output).toContain("0790 D0 03 BNE $0795");
     expect(output).toContain("0792 AD 90 07 LDA $0790");
@@ -1499,6 +1504,9 @@ describe("monitor", () => {
     expect(output).toContain("0CE8 F7 29 SBC [$29],Y");
     expect(output).toContain("0CEA E3 2A SBC $2A,S");
     expect(output).toContain("0CEC F3 2B SBC ($2B,S),Y");
+
+    expect(output).toContain("0D00 54 00 01 MVN $01,$00");
+    expect(output).toContain("0D03 44 03 02 MVP $02,$03");
   }, 40_000);
 
   test("A and D support stack instructions", () => {

@@ -345,7 +345,7 @@ Phase 2 checklist:
 - [x] Chunk N26: Add indirect addressing.
   Add `(dp)`, `(dp,x)`, `(dp),y`, `[dp]`, `[dp],y`, then stack-relative
   `dp,s` and `(dp,s),y`.
-- [ ] Chunk N27: Add block move instructions.
+- [x] Chunk N27: Add block move instructions.
   Add `mvn src,dst` and `mvp src,dst`.
 - [ ] Chunk N28: Keep the parity gate complete for every new group.
   For every chunk, assemble through `A`, disassemble through `D`, verify emitted
