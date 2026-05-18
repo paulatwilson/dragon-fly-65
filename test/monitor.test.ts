@@ -1509,6 +1509,94 @@ describe("monitor", () => {
     expect(output).toContain("0D03 44 03 02 MVP $02,$03");
   }, 40_000);
 
+  test("native parity gate runs meaningful recent groups", () => {
+    const machine = buildMonitor();
+    const output = runWithInput(
+      machine,
+      [
+        "A0D20",
+        "lda $000D38",
+        "sta $00F000",
+        "rts",
+        "end",
+        "A0D38",
+        ".byte 'L'",
+        "end",
+        "D0D20",
+        "G0D20",
+        "A0D40",
+        "lda #$60",
+        "sta $40",
+        "lda #$0D",
+        "sta $41",
+        "lda ($40)",
+        "sta $F000",
+        "rts",
+        "end",
+        "A0D60",
+        ".byte 'I'",
+        "end",
+        "D0D40",
+        "G0D40",
+        "A0D80",
+        "rep #$30",
+        "ldx #$0DB0",
+        "ldy #$0DC0",
+        "lda #$0001",
+        "mvn $00,$00",
+        "sep #$30",
+        "lda $0DC0",
+        "sta $F000",
+        "lda $0DC1",
+        "sta $F000",
+        "rep #$10",
+        "rts",
+        "end",
+        "A0DB0",
+        ".byte 'B','M'",
+        "end",
+        "D0D80",
+        "D0D93",
+        "G0D80",
+      ].join("\r") + "\r",
+    );
+
+    expect(machine.mem.readByte(0x0d20)).toBe(0xaf);
+    expect(machine.mem.readByte(0x0d21)).toBe(0x38);
+    expect(machine.mem.readByte(0x0d22)).toBe(0x0d);
+    expect(machine.mem.readByte(0x0d23)).toBe(0x00);
+    expect(machine.mem.readByte(0x0d24)).toBe(0x8f);
+    expect(machine.mem.readByte(0x0d25)).toBe(0x00);
+    expect(machine.mem.readByte(0x0d26)).toBe(0xf0);
+    expect(machine.mem.readByte(0x0d27)).toBe(0x00);
+    expect(output).toContain("0D20 AF 38 0D 00 LDA $000D38");
+    expect(output).toContain("0D24 8F 00 F0 00 STA $00F000");
+
+    expect(machine.mem.readByte(0x0d48)).toBe(0xb2);
+    expect(machine.mem.readByte(0x0d49)).toBe(0x40);
+    expect(output).toContain("0D48 B2 40 LDA ($40)");
+
+    expect(machine.mem.readByte(0x0d8b)).toBe(0x54);
+    expect(machine.mem.readByte(0x0d8c)).toBe(0x00);
+    expect(machine.mem.readByte(0x0d8d)).toBe(0x00);
+    expect(machine.mem.readByte(0x0dc0)).toBe("B".charCodeAt(0));
+    expect(machine.mem.readByte(0x0dc1)).toBe("M".charCodeAt(0));
+    expect(output).toContain("0D8B 54 00 00 MVN $00,$00");
+    expect(output).toContain("0D93 8D 00 F0 STA $F000");
+    expect(output).toContain("BM");
+  }, 30_000);
+
+  test("monitor examples cover the current native parity gate", () => {
+    const examples = readFileSync(resolve(__dirname, "../examples/asm/monitor-programs.md"), "utf8");
+
+    expect(examples).toContain("## Program 25: Long Addressing");
+    expect(examples).toContain("## Program 26: Indirect Addressing");
+    expect(examples).toContain("## Program 27: Block Move Instructions");
+    expect(examples).toContain("0C40 AF 00 10 00 LDA $001000");
+    expect(examples).toContain("0D8B 54 00 00 MVN $00,$00");
+    expect(examples).not.toContain("until N25 adds long opcode forms");
+  });
+
   test("A and D support stack instructions", () => {
     const machine = buildMonitor();
     const output = runWithInput(

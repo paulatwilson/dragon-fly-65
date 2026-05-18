@@ -1473,8 +1473,7 @@ Purpose:
 
 - Proves `<expr` forces direct page addressing.
 - Proves `!expr` forces absolute addressing.
-- Records that `>expr` selects long addressing, with long opcode emission
-  arriving in N25.
+- Proves `>expr` selects long addressing.
 
 Enter:
 
@@ -1521,10 +1520,18 @@ Long Force Probe:
 ```text
 * A0C40
 0C40> lda >$1000
-?
-0C40> rts
-0C41> end
+0C44> sta >$F000
+0C48> end
 OK
+* D0C40
+0C40 AF 00 10 00 LDA $001000
+0C44 8F 00 F0 00 STA $00F000
+0C48 00 00 BRK #$00
+0C4A 00 00 BRK #$00
+0C4C 00 00 BRK #$00
+0C4E 00 00 BRK #$00
+0C50 00 00 BRK #$00
+0C52 00 00 BRK #$00
 ```
 
 Expected:
@@ -1532,8 +1539,248 @@ Expected:
 - `<$1000` emits direct-page operand `$00`.
 - `!$10` emits absolute operand `$0010`.
 - `!OUT` resolves the `.equ` constant and emits absolute `$F000`.
-- `>$1000` is parsed as a long addressing request; the generic `?` is expected
-  until N25 adds long opcode forms.
+- `>$1000` emits long operand `$001000`.
+
+## Program 25: Long Addressing
+
+Purpose:
+
+- Proves `lda long`, `sta long`, `lda long,x`, `sta long,x`, `jsl long`, and
+  `jml long` assemble and disassemble.
+- Runs the meaningful long load/store subset from bank 0 through the monitor.
+
+Enter:
+
+```text
+* A0D20
+0D20> lda $000D38
+0D24> sta $00F000
+0D28> rts
+0D29> end
+OK
+* A0D38
+0D38> .byte 'L'
+0D39> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0D20
+0D20 AF 38 0D 00 LDA $000D38
+0D24 8F 00 F0 00 STA $00F000
+0D28 60 RTS
+0D29 00 00 BRK #$00
+0D2B 00 00 BRK #$00
+0D2D 00 00 BRK #$00
+0D2F 00 00 BRK #$00
+0D31 00 00 BRK #$00
+```
+
+Run:
+
+```text
+* G0D20
+L
+Returned
+```
+
+Additional long parity:
+
+```text
+* A0D70
+0D70> lda $010008,x
+0D74> sta $01000C,x
+0D78> jsl $010010
+0D7C> jml $010014
+0D80> end
+OK
+* D0D70
+0D70 BF 08 00 01 LDA $010008,X
+0D74 9F 0C 00 01 STA $01000C,X
+0D78 22 10 00 01 JSL $010010
+0D7C 5C 14 00 01 JML $010014
+0D80 00 00 BRK #$00
+0D82 00 00 BRK #$00
+0D84 00 00 BRK #$00
+0D86 00 00 BRK #$00
+```
+
+Expected:
+
+- `D0D20` shows long raw bytes for `LDA` and `STA`.
+- `G0D20` prints `L` and returns.
+- The additional parity block should not be run with `G` unless the target bank
+  and long subroutine/jump destinations are initialized first.
+
+## Program 26: Indirect Addressing
+
+Purpose:
+
+- Proves direct-page indirect and stack-relative accumulator forms assemble and
+  disassemble.
+- Runs a meaningful `(dp)` load by building the direct-page pointer in monitor
+  RAM.
+
+Enter:
+
+```text
+* A0D40
+0D40> lda #$60
+0D42> sta $40
+0D44> lda #$0D
+0D46> sta $41
+0D48> lda ($40)
+0D4A> sta $F000
+0D4D> rts
+0D4E> end
+OK
+* A0D60
+0D60> .byte 'I'
+0D61> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0D40
+0D40 A9 60 LDA #$60
+0D42 85 40 STA $40
+0D44 A9 0D LDA #$0D
+0D46 85 41 STA $41
+0D48 B2 40 LDA ($40)
+0D4A 8D 00 F0 STA $F000
+0D4D 60 RTS
+0D4E 00 00 BRK #$00
+```
+
+Run:
+
+```text
+* G0D40
+I
+Returned
+```
+
+Additional indirect parity:
+
+```text
+* A0DA0
+0DA0> lda ($25)
+0DA2> lda ($26,x)
+0DA4> lda ($27),y
+0DA6> lda [$28]
+0DA8> lda [$29],y
+0DAA> lda $2A,s
+0DAC> lda ($2B,s),y
+0DAE> end
+OK
+* D0DA0
+0DA0 B2 25 LDA ($25)
+0DA2 A1 26 LDA ($26,X)
+0DA4 B1 27 LDA ($27),Y
+0DA6 A7 28 LDA [$28]
+0DA8 B7 29 LDA [$29],Y
+0DAA A3 2A LDA $2A,S
+0DAC B3 2B LDA ($2B,S),Y
+0DAE 00 00 BRK #$00
+```
+
+Expected:
+
+- `G0D40` prints `I` and returns.
+- The parity block demonstrates the indirect spelling family; it should not be
+  run with `G` unless the referenced pointers, stack locations, and index
+  registers are initialized first.
+
+## Program 27: Block Move Instructions
+
+Purpose:
+
+- Proves `mvn src,dst` and `mvp src,dst` assemble and disassemble.
+- Proves `mvn` runs from the monitor by copying two bytes in bank 0.
+
+Enter:
+
+```text
+* A0D80
+0D80> rep #$30
+0D82> ldx #$0DB0
+0D85> ldy #$0DC0
+0D88> lda #$0001
+0D8B> mvn $00,$00
+0D8E> sep #$30
+0D90> lda $0DC0
+0D93> sta $F000
+0D96> lda $0DC1
+0D99> sta $F000
+0D9C> rep #$10
+0D9E> rts
+0D9F> end
+OK
+* A0DB0
+0DB0> .byte 'B','M'
+0DB2> end
+OK
+```
+
+Disassemble:
+
+```text
+* D0D80
+0D80 C2 30 REP #$30
+0D82 A2 B0 0D LDX #$0DB0
+0D85 A0 C0 0D LDY #$0DC0
+0D88 A9 01 00 LDA #$0001
+0D8B 54 00 00 MVN $00,$00
+0D8E E2 30 SEP #$30
+0D90 AD C0 0D LDA $0DC0
+0D93 8D 00 F0 STA $F000
+* D0D93
+0D93 8D 00 F0 STA $F000
+0D96 AD C1 0D LDA $0DC1
+0D99 8D 00 F0 STA $F000
+0D9C C2 10 REP #$10
+0D9E 60 RTS
+0D9F 00 00 BRK #$00
+0DA1 00 00 BRK #$00
+0DA3 00 00 BRK #$00
+```
+
+Run:
+
+```text
+* G0D80
+BM
+Returned
+```
+
+MVP parity:
+
+```text
+* A0DD0
+0DD0> mvp $02,$03
+0DD3> end
+OK
+* D0DD0
+0DD0 44 03 02 MVP $02,$03
+0DD3 00 00 BRK #$00
+0DD5 00 00 BRK #$00
+0DD7 00 00 BRK #$00
+0DD9 00 00 BRK #$00
+0DDB 00 00 BRK #$00
+0DDD 00 00 BRK #$00
+0DDF 00 00 BRK #$00
+```
+
+Expected:
+
+- `mvn $00,$00` emits bytes `54 00 00`, copies `B` and `M` to `$0DC0` and
+  `$0DC1`, then the program prints `BM`.
+- `mvp $02,$03` emits bytes `44 03 02`; block-move source syntax is
+  `src,dst`, while the encoded byte order is destination first, source second.
 
 ## Growth Test Template
 

@@ -458,8 +458,69 @@ ldx abs,y
 ldy abs,x
 sta dp
 sta dp,x
+sta abs
 sta abs,x
 sta abs,y
+lda long
+sta long
+lda long,x
+sta long,x
+lda (dp)
+lda (dp,x)
+lda (dp),y
+lda [dp]
+lda [dp],y
+lda dp,s
+lda (dp,s),y
+sta (dp)
+sta (dp,x)
+sta (dp),y
+sta [dp]
+sta [dp],y
+sta dp,s
+sta (dp,s),y
+cmp (dp)
+cmp (dp,x)
+cmp (dp),y
+cmp [dp]
+cmp [dp],y
+cmp dp,s
+cmp (dp,s),y
+and (dp)
+and (dp,x)
+and (dp),y
+and [dp]
+and [dp],y
+and dp,s
+and (dp,s),y
+ora (dp)
+ora (dp,x)
+ora (dp),y
+ora [dp]
+ora [dp],y
+ora dp,s
+ora (dp,s),y
+eor (dp)
+eor (dp,x)
+eor (dp),y
+eor [dp]
+eor [dp],y
+eor dp,s
+eor (dp,s),y
+adc (dp)
+adc (dp,x)
+adc (dp),y
+adc [dp]
+adc [dp],y
+adc dp,s
+adc (dp,s),y
+sbc (dp)
+sbc (dp,x)
+sbc (dp),y
+sbc [dp]
+sbc [dp],y
+sbc dp,s
+sbc (dp,s),y
 tax
 tay
 txa
@@ -800,10 +861,14 @@ sep #imm8
 rep #imm8
 jsr abs
 jsr (abs,x)
+jsl long
 jmp abs
 jmp (abs)
 jmp (abs,x)
 jmp [abs]
+jml long
+mvn src,dst
+mvp src,dst
 ```
 
 Unknown opcodes are shown as `DB $xx`.
@@ -848,7 +913,11 @@ Examples:
 
 The raw byte column is useful because the monitor assembler is intentionally
 small. When a new mnemonic is added to `A`, its byte encoding should be visible
-through `D` before relying on the program behavior.
+through `D` before relying on the program behavior. The monitor parity gate for
+new native groups is: assemble through `A`, disassemble through `D`, verify the
+raw emitted bytes, run with `G` when the form is meaningful without unsafe
+machine state, and update the examples in
+`examples/asm/monitor-programs.md`.
 
 For branches, `D` shows the resolved absolute target address rather than the raw
 relative offset as the operand:

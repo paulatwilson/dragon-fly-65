@@ -347,9 +347,12 @@ Phase 2 checklist:
   `dp,s` and `(dp,s),y`.
 - [x] Chunk N27: Add block move instructions.
   Add `mvn src,dst` and `mvp src,dst`.
-- [ ] Chunk N28: Keep the parity gate complete for every new group.
+- [x] Chunk N28: Keep the parity gate complete for every new group.
   For every chunk, assemble through `A`, disassemble through `D`, verify emitted
   bytes, run with `G` when meaningful, and update monitor docs/examples.
+  Added runnable parity coverage for meaningful long, indirect, and block-move
+  forms, restored the stale `>` force-modifier example, and added example-file
+  coverage checks so new user-facing groups cannot silently skip examples.
 
 Attribution:
 
