@@ -342,7 +342,7 @@ Phase 2 checklist:
 - [x] Chunk N25: Add long addressing.
   Add `lda long`, `sta long`, `lda long,x`, `sta long,x`, `jsl long`, and
   `jml long`.
-- [ ] Chunk N26: Add indirect addressing.
+- [x] Chunk N26: Add indirect addressing.
   Add `(dp)`, `(dp,x)`, `(dp),y`, `[dp]`, `[dp],y`, then stack-relative
   `dp,s` and `(dp,s),y`.
 - [ ] Chunk N27: Add block move instructions.

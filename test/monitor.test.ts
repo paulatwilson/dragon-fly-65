@@ -463,9 +463,9 @@ describe("monitor", () => {
     expect(machine.mem.readByte(0x0504)).toBe(68);
     expect(output).toContain("0500: 41 42 43 00 44");
     expect(output).toContain("|ABC.D");
-    expect(output).toContain("0500 41 DB $41");
-    expect(output).toContain("0501 42 43 WDM #$43");
-    expect(output).toContain("0503 00 44 BRK #$44");
+    expect(output).toContain("0500 41 42 EOR ($42,X)");
+    expect(output).toContain("0502 43 00 EOR $00,S");
+    expect(output).toContain("0504 44 DB $44");
   }, 10_000);
 
   test("A command supports word, long, string, and reserve data directives", () => {
@@ -1183,6 +1183,86 @@ describe("monitor", () => {
         "jml $010014",
         "end",
         "D0A40",
+        "A0C00",
+        "lda ($25)",
+        "lda ($26,x)",
+        "lda ($27),y",
+        "lda [$28]",
+        "lda [$29],y",
+        "lda $2A,s",
+        "lda ($2B,s),y",
+        "end",
+        "D0C00",
+        "A0C20",
+        "sta ($25)",
+        "sta ($26,x)",
+        "sta ($27),y",
+        "sta [$28]",
+        "sta [$29],y",
+        "sta $2A,s",
+        "sta ($2B,s),y",
+        "end",
+        "D0C20",
+        "A0C40",
+        "cmp ($25)",
+        "cmp ($26,x)",
+        "cmp ($27),y",
+        "cmp [$28]",
+        "cmp [$29],y",
+        "cmp $2A,s",
+        "cmp ($2B,s),y",
+        "end",
+        "D0C40",
+        "A0C60",
+        "and ($25)",
+        "and ($26,x)",
+        "and ($27),y",
+        "and [$28]",
+        "and [$29],y",
+        "and $2A,s",
+        "and ($2B,s),y",
+        "end",
+        "D0C60",
+        "A0C80",
+        "ora ($25)",
+        "ora ($26,x)",
+        "ora ($27),y",
+        "ora [$28]",
+        "ora [$29],y",
+        "ora $2A,s",
+        "ora ($2B,s),y",
+        "end",
+        "D0C80",
+        "A0CA0",
+        "eor ($25)",
+        "eor ($26,x)",
+        "eor ($27),y",
+        "eor [$28]",
+        "eor [$29],y",
+        "eor $2A,s",
+        "eor ($2B,s),y",
+        "end",
+        "D0CA0",
+        "A0CC0",
+        "adc ($25)",
+        "adc ($26,x)",
+        "adc ($27),y",
+        "adc [$28]",
+        "adc [$29],y",
+        "adc $2A,s",
+        "adc ($2B,s),y",
+        "end",
+        "D0CC0",
+        "A0CE0",
+        "sbc ($25)",
+        "sbc ($26,x)",
+        "sbc ($27),y",
+        "sbc [$28]",
+        "sbc [$29],y",
+        "sbc $2A,s",
+        "sbc ($2B,s),y",
+        "end",
+        "D0CE0",
       ].join("\r") + "\r",
     );
 
@@ -1208,9 +1288,9 @@ describe("monitor", () => {
     expect(output).toContain("0758 30 02 BMI $075C");
     expect(output).toContain("075A 10 FC BPL $0758");
 
-    expect(output).toContain("0770 41 DB $41");
-    expect(output).toContain("0771 42 43 WDM #$43");
-    expect(output).toContain("0773 00 44 BRK #$44");
+    expect(output).toContain("0770 41 42 EOR ($42,X)");
+    expect(output).toContain("0772 43 00 EOR $00,S");
+    expect(output).toContain("0774 44 DB $44");
 
     expect(output).toContain("0790 D0 03 BNE $0795");
     expect(output).toContain("0792 AD 90 07 LDA $0790");
@@ -1355,6 +1435,70 @@ describe("monitor", () => {
     expect(output).toContain("0A4C 9F 0C 00 01 STA $01000C,X");
     expect(output).toContain("0A50 22 10 00 01 JSL $010010");
     expect(output).toContain("0A54 5C 14 00 01 JML $010014");
+
+    expect(output).toContain("0C00 B2 25 LDA ($25)");
+    expect(output).toContain("0C02 A1 26 LDA ($26,X)");
+    expect(output).toContain("0C04 B1 27 LDA ($27),Y");
+    expect(output).toContain("0C06 A7 28 LDA [$28]");
+    expect(output).toContain("0C08 B7 29 LDA [$29],Y");
+    expect(output).toContain("0C0A A3 2A LDA $2A,S");
+    expect(output).toContain("0C0C B3 2B LDA ($2B,S),Y");
+
+    expect(output).toContain("0C20 92 25 STA ($25)");
+    expect(output).toContain("0C22 81 26 STA ($26,X)");
+    expect(output).toContain("0C24 91 27 STA ($27),Y");
+    expect(output).toContain("0C26 87 28 STA [$28]");
+    expect(output).toContain("0C28 97 29 STA [$29],Y");
+    expect(output).toContain("0C2A 83 2A STA $2A,S");
+    expect(output).toContain("0C2C 93 2B STA ($2B,S),Y");
+
+    expect(output).toContain("0C40 D2 25 CMP ($25)");
+    expect(output).toContain("0C42 C1 26 CMP ($26,X)");
+    expect(output).toContain("0C44 D1 27 CMP ($27),Y");
+    expect(output).toContain("0C46 C7 28 CMP [$28]");
+    expect(output).toContain("0C48 D7 29 CMP [$29],Y");
+    expect(output).toContain("0C4A C3 2A CMP $2A,S");
+    expect(output).toContain("0C4C D3 2B CMP ($2B,S),Y");
+
+    expect(output).toContain("0C60 32 25 AND ($25)");
+    expect(output).toContain("0C62 21 26 AND ($26,X)");
+    expect(output).toContain("0C64 31 27 AND ($27),Y");
+    expect(output).toContain("0C66 27 28 AND [$28]");
+    expect(output).toContain("0C68 37 29 AND [$29],Y");
+    expect(output).toContain("0C6A 23 2A AND $2A,S");
+    expect(output).toContain("0C6C 33 2B AND ($2B,S),Y");
+
+    expect(output).toContain("0C80 12 25 ORA ($25)");
+    expect(output).toContain("0C82 01 26 ORA ($26,X)");
+    expect(output).toContain("0C84 11 27 ORA ($27),Y");
+    expect(output).toContain("0C86 07 28 ORA [$28]");
+    expect(output).toContain("0C88 17 29 ORA [$29],Y");
+    expect(output).toContain("0C8A 03 2A ORA $2A,S");
+    expect(output).toContain("0C8C 13 2B ORA ($2B,S),Y");
+
+    expect(output).toContain("0CA0 52 25 EOR ($25)");
+    expect(output).toContain("0CA2 41 26 EOR ($26,X)");
+    expect(output).toContain("0CA4 51 27 EOR ($27),Y");
+    expect(output).toContain("0CA6 47 28 EOR [$28]");
+    expect(output).toContain("0CA8 57 29 EOR [$29],Y");
+    expect(output).toContain("0CAA 43 2A EOR $2A,S");
+    expect(output).toContain("0CAC 53 2B EOR ($2B,S),Y");
+
+    expect(output).toContain("0CC0 72 25 ADC ($25)");
+    expect(output).toContain("0CC2 61 26 ADC ($26,X)");
+    expect(output).toContain("0CC4 71 27 ADC ($27),Y");
+    expect(output).toContain("0CC6 67 28 ADC [$28]");
+    expect(output).toContain("0CC8 77 29 ADC [$29],Y");
+    expect(output).toContain("0CCA 63 2A ADC $2A,S");
+    expect(output).toContain("0CCC 73 2B ADC ($2B,S),Y");
+
+    expect(output).toContain("0CE0 F2 25 SBC ($25)");
+    expect(output).toContain("0CE2 E1 26 SBC ($26,X)");
+    expect(output).toContain("0CE4 F1 27 SBC ($27),Y");
+    expect(output).toContain("0CE6 E7 28 SBC [$28]");
+    expect(output).toContain("0CE8 F7 29 SBC [$29],Y");
+    expect(output).toContain("0CEA E3 2A SBC $2A,S");
+    expect(output).toContain("0CEC F3 2B SBC ($2B,S),Y");
   }, 40_000);
 
   test("A and D support stack instructions", () => {
