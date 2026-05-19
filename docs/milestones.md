@@ -253,10 +253,22 @@ Chunk N8: Native assembler/disassembler parity tests [done]
   disassembly text stay in sync.
 ```
 
-Phase 2 should continue from the working monitor assembler and grow toward the
-host TypeScript assembler's practical coverage. Keep chunks small. Each chunk
-must update `monitor/monitor.asm`, monitor workflow tests, monitor docs, and
-examples when the syntax is user-facing.
+Phase 2 should continue from the working monitor assembler and finish parity
+with the host TypeScript assembler's practical W65C816/W65C832 opcode table.
+Keep chunks small. Each chunk must update `monitor/monitor.asm`, monitor
+workflow tests, monitor docs, and examples when the syntax is user-facing.
+
+For this milestone, "finished" means:
+
+- every non-reserved opcode in `src/assembler/table.ts`, plus the DragonFly
+  `xfe` extension, can be assembled through monitor `A` and rendered through
+  monitor `D`,
+- source forms accepted by the host assembler have equivalent monitor syntax,
+  except for explicitly documented monitor memory/table limits,
+- every group has parity tests that assemble through `A`, disassemble through
+  `D`, verify raw bytes, run through `G` when meaningful, and update
+  `examples/asm/monitor-programs.md`,
+- monitor docs describe the full supported syntax and remaining limits.
 
 Phase 2 checklist:
 
@@ -353,6 +365,89 @@ Phase 2 checklist:
   Added runnable parity coverage for meaningful long, indirect, and block-move
   forms, restored the stale `>` force-modifier example, and added example-file
   coverage checks so new user-facing groups cannot silently skip examples.
+- [ ] Chunk N29: Refresh the opcode matrix against the monitor.
+  Audit `docs/opcode-matrix.md` against the real monitor assembler and
+  disassembler, update stale status marks, and make the matrix the tracking
+  source for the remaining chunks below.
+- [ ] Chunk N30: Add store-zero forms.
+  Add `stz dp`, `stz dp,x`, `stz abs`, and `stz abs,x`.
+- [ ] Chunk N31: Add test-and-set/reset bit forms.
+  Add `tsb dp`, `tsb abs`, `trb dp`, and `trb abs`.
+- [ ] Chunk N32: Finish indexed `bit`.
+  Add any missing `bit dp,x` and `bit abs,x` monitor assembler/disassembler
+  coverage, or mark the chunk complete after the N29 audit if coverage is
+  already fully present.
+- [ ] Chunk N33: Finish increment/decrement indexed memory.
+  Add any missing `inc dp,x`, `inc abs,x`, `dec dp,x`, and `dec abs,x`
+  coverage, or mark complete after the N29 audit if already fully present.
+- [ ] Chunk N34: Finish shift/rotate indexed memory.
+  Add any missing `asl dp,x`, `asl abs,x`, `lsr dp,x`, `lsr abs,x`,
+  `rol dp,x`, `rol abs,x`, `ror dp,x`, and `ror abs,x` coverage, or mark
+  complete after the N29 audit if already fully present.
+- [ ] Chunk N35: Finish accumulator ALU long forms.
+  Add `ora long`, `ora long,x`, `and long`, `and long,x`, `eor long`,
+  `eor long,x`, `adc long`, `adc long,x`, `sbc long`, and `sbc long,x`.
+- [ ] Chunk N36: Finish compare long forms.
+  Add `cmp long` and `cmp long,x`.
+- [ ] Chunk N37: Add 16-bit relative branch.
+  Add `brl addr` with absolute target syntax, signed 16-bit fixups, and
+  disassembly that prints the resolved absolute target.
+- [ ] Chunk N38: Add stack operand instructions.
+  Add `pea abs`, `pei (dp)`, and `per addr`. `per` should use absolute target
+  syntax and emit a signed 16-bit program-counter-relative operand.
+- [ ] Chunk N39: Add return-from-long-subroutine.
+  Add `rtl` and a runnable `jsl`/`rtl` monitor example when meaningful in the
+  current emulator model.
+- [ ] Chunk N40: Add remaining transfer instructions.
+  Add `tcs`, `tsc`, `tcd`, `tdc`, `txy`, and `tyx`, with run coverage for the
+  safe register-transfer subset and parity-only coverage for stack/direct-page
+  side-effect cases where needed.
+- [ ] Chunk N41: Add remaining mode/exchange instructions.
+  Add `xba`, `xce`, and DragonFly `xfe`. Document which forms are safe to run
+  from monitor-launched programs and which are parity-only.
+- [ ] Chunk N42: Finish `cpx`/`cpy` absolute audit.
+  Ensure `cpx abs` and `cpy abs` are covered by monitor assembler,
+  disassembler, docs, examples, and parity tests; mark complete immediately if
+  N29 confirms the coverage is already complete.
+- [ ] Chunk N43: Add full immediate-width parity.
+  Ensure every width-sensitive immediate form supported by the host assembler
+  has monitor coverage across `.a8`, `.a16`, `.a32`, `.i8`, `.i16`, `.i32`,
+  and visible `rep`/`sep` width changes.
+- [ ] Chunk N44: Add host assembler expression parity.
+  Add the expression forms needed for host-compatible monitor operands:
+  binary/hex/decimal literals, character literals, labels, `.equ` constants,
+  unary address force modifiers, and simple arithmetic expressions if the host
+  assembler supports them.
+- [ ] Chunk N45: Add origin/alignment source-control directives.
+  Add monitor equivalents for practical host directives such as `.org` if they
+  make sense inside an `A` session; otherwise document why monitor assembly
+  intentionally rejects them.
+- [ ] Chunk N46: Raise or replace compact symbol/fixup limits.
+  Replace one-byte-hash-only symbol matching with stored names, or document a
+  hard final limit if the ROM budget makes full names impractical. The final
+  monitor assembler should not silently reject common programs because of label
+  hash collisions.
+- [ ] Chunk N47: Add complete negative diagnostics.
+  Add tests and docs for unsupported addressing modes, bad operands,
+  out-of-range direct/absolute/long values, branch range failures, duplicate
+  labels, unresolved symbols, table overflow, and unterminated strings.
+- [ ] Chunk N48: Add generated monitor parity coverage.
+  Build a table-driven test from `src/assembler/table.ts` that assembles every
+  supported host opcode form through monitor `A`, disassembles through `D`, and
+  verifies raw bytes and text. Keep hand-written `G` tests for meaningful
+  runtime behavior.
+- [ ] Chunk N49: Final monitor assembler documentation pass.
+  Replace "current subset" language with the final syntax reference, update
+  `docs/monitor.md`, `examples/asm/monitor-programs.md`,
+  `docs/opcode-matrix.md`, and any README references.
+- [ ] Chunk N50: Final ROM budget and workflow gate.
+  Rebuild `monitor/monitor.bin`, verify it still fits the documented ROM
+  window, run `bun test`, `bun run typecheck`, and a real `bun run monitor`
+  smoke workflow that enters, disassembles, and runs a representative program.
+- [ ] Chunk N51: Declare monitor assembler complete.
+  Mark this phase complete only after N29-N50 are done. From this point, new
+  monitor assembler work should be bug fixes or intentionally new architecture
+  features, not catch-up parity with the host assembler.
 
 Attribution:
 
